@@ -1,0 +1,16 @@
+[package]
+name = "rgx"
+version = "0.1.0"
+authors = ["Alexis Sellier <alexis@cloudhead.io>"]
+license = "MIT"
+edition = "2018"
+keywords = ["graphics", "gamedev"]
+
+[lib]
+name = "rgx"
+
+[dependencies]
+wgpu = { version = "*", features = ["vulkan"] }
+env_logger = "*"
+shaderc = "*"
+cgmath = "*"
