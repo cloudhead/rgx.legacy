@@ -445,7 +445,7 @@ impl Context {
         IndexBuffer { wgpu: index_buf }
     }
 
-    pub fn create_sampler(&self, min_filter: &Filter, mag_filter: &Filter) -> Sampler {
+    pub fn create_sampler(&self, min_filter: Filter, mag_filter: Filter) -> Sampler {
         Sampler {
             wgpu: self.device.create_sampler(&wgpu::SamplerDescriptor {
                 r_address_mode: wgpu::AddressMode::Repeat,

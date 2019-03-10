@@ -85,7 +85,7 @@ fn main() {
     // Setup render pipeline
     ///////////////////////////////////////////////////////////////////////////
 
-    let pipeline = ctx.create_pipeline(&bindings_layout, &vertex_layout, vs, fs);
+    let pipeline = ctx.create_pipeline(&bindings_layout, &vertex_layout, &vs, &fs);
 
     ///////////////////////////////////////////////////////////////////////////
     // Setup texture & sampler
