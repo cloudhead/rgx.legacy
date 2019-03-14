@@ -5,6 +5,8 @@ extern crate env_logger;
 extern crate shaderc;
 extern crate wgpu;
 
+use std::ops::Range;
+
 pub struct Shader {
     pub module: wgpu::ShaderModule,
 }
@@ -302,7 +304,23 @@ pub struct Pass<'a> {
     pub wgpu: wgpu::RenderPass<'a>,
 }
 
-impl<'a> Pass<'a> {}
+impl<'a> Pass<'a> {
+    pub fn apply_pipeline(&mut self, pipeline: &Pipeline) {
+        self.wgpu.set_pipeline(&pipeline.wgpu)
+    }
+    pub fn apply_bindings(&mut self, bindings: &Bindings) {
+        self.wgpu.set_bind_group(0, &bindings.wgpu)
+    }
+    pub fn set_index_buffer(&mut self, index_buf: &IndexBuffer) {
+        self.wgpu.set_index_buffer(&index_buf.wgpu, 0)
+    }
+    pub fn set_vertex_buffers(&mut self, vertex_buf: &VertexBuffer) {
+        self.wgpu.set_vertex_buffers(&[(&vertex_buf.wgpu, 0)])
+    }
+    pub fn draw_indexed(&mut self, indices: Range<u32>, instances: Range<u32>) {
+        self.wgpu.draw_indexed(indices, 0, instances)
+    }
+}
 
 pub struct Frame<'a> {
     view: &'a wgpu::TextureView,
