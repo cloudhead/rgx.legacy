@@ -31,12 +31,18 @@ pub struct Pipeline {
     pub wgpu: wgpu::RenderPipeline,
 }
 
-pub struct Context {
+pub enum Command<'a> {
+    UpdateUniformBuffer(&'a UniformBuffer, wgpu::Buffer, usize),
+}
+
+pub struct Context<'a> {
     pub instance: wgpu::Instance,
     pub adapter: wgpu::Adapter,
     pub device: wgpu::Device,
     pub surface: wgpu::Surface,
     pub swap_chain: wgpu::SwapChain,
+
+    commands: Vec<Command<'a>>,
 }
 
 pub struct Bindings {
@@ -52,7 +58,7 @@ impl Bindings {
 pub struct BindingsBuilder<'a> {
     layout: &'a BindingsLayout,
     bindings: Vec<wgpu::Binding<'a>>,
-    ctx: &'a Context,
+    ctx: &'a Context<'a>,
 }
 
 impl<'a> BindingsBuilder<'a> {
@@ -108,7 +114,7 @@ impl BindingsLayout {
 
 pub struct BindingsLayoutBuilder<'a> {
     bindings: Vec<wgpu::BindGroupLayoutBinding>,
-    ctx: &'a Context,
+    ctx: &'a Context<'a>,
 }
 
 impl<'a> BindingsLayoutBuilder<'a> {
@@ -292,7 +298,25 @@ impl VertexLayout {
     }
 }
 
-impl Context {
+pub struct Frame<'a> {
+    view: &'a wgpu::TextureView,
+}
+
+impl<'a> Frame<'a> {
+    pub fn begin_pass(&'a self, encoder: &'a mut wgpu::CommandEncoder) -> wgpu::RenderPass<'a> {
+        encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
+                attachment: &self.view,
+                load_op: wgpu::LoadOp::Clear,
+                store_op: wgpu::StoreOp::Store,
+                clear_color: wgpu::Color::WHITE,
+            }],
+            depth_stencil_attachment: None,
+        })
+    }
+}
+
+impl<'a> Context<'a> {
     pub fn new(window: &wgpu::winit::Window) -> Self {
         env_logger::init();
 
@@ -321,13 +345,40 @@ impl Context {
             },
         );
 
+        let commands = Vec::new();
+
         Self {
             instance,
             adapter,
             device,
             surface,
             swap_chain,
+            commands,
         }
+    }
+
+    pub fn frame<F>(&mut self, f: F)
+    where
+        F: Fn(&mut Frame, &mut wgpu::CommandEncoder),
+    {
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
+
+        let chain_out = self.swap_chain.get_next_texture();
+        let mut frame = Frame {
+            view: &chain_out.view,
+        };
+        for c in &self.commands {
+            match c {
+                Command::UpdateUniformBuffer(dst, src, size) => {
+                    encoder.copy_buffer_to_buffer(&src, 0, &dst.wgpu, 0, *size as u32);
+                }
+            }
+        }
+        f(&mut frame, &mut encoder);
+
+        self.device.get_queue().submit(&[encoder.finish()]);
     }
 
     pub fn create_shader(&self, name: &str, source: &str, stage: ShaderStage) -> Shader {
@@ -437,6 +488,27 @@ impl Context {
         }
     }
 
+    pub fn update_uniform_buffer<T>(&mut self, u: &'a UniformBuffer, buf: T)
+    where
+        T: 'static + Copy,
+    {
+        let tmp = self
+            .device
+            .create_buffer_mapped::<T>(
+                1,
+                wgpu::BufferUsageFlags::UNIFORM
+                    | wgpu::BufferUsageFlags::TRANSFER_SRC
+                    | wgpu::BufferUsageFlags::MAP_WRITE,
+            )
+            .fill_from_slice(&[buf]);
+
+        self.commands.push(Command::UpdateUniformBuffer(
+            u,
+            tmp,
+            std::mem::size_of::<T>(),
+        ));
+    }
+
     pub fn create_index(&self, indices: &[u16]) -> IndexBuffer {
         let index_buf = self
             .device
@@ -486,14 +558,14 @@ impl Context {
         bindings.build()
     }
 
-    pub fn bindings_layout_builder(&self) -> BindingsLayoutBuilder {
+    pub fn bindings_layout_builder(&'a self) -> BindingsLayoutBuilder<'a> {
         BindingsLayoutBuilder {
             ctx: self,
             bindings: Vec::new(),
         }
     }
 
-    pub fn bindings_builder<'a>(&'a self, layout: &'a BindingsLayout) -> BindingsBuilder<'a> {
+    pub fn bindings_builder(&'a self, layout: &'a BindingsLayout) -> BindingsBuilder<'a> {
         BindingsBuilder {
             ctx: self,
             layout,

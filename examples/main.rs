@@ -178,41 +178,22 @@ fn main() {
             _ => {}
         });
 
-        let frame = ctx.swap_chain.get_next_texture();
-        let mut encoder = ctx
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
-
-        let temp = ctx
-            .device
-            .create_buffer_mapped::<Uniforms>(
-                1,
-                wgpu::BufferUsageFlags::UNIFORM
-                    | wgpu::BufferUsageFlags::TRANSFER_SRC
-                    | wgpu::BufferUsageFlags::MAP_WRITE,
-            )
-            .fill_from_slice(&[Uniforms {
+        ctx.update_uniform_buffer(
+            &uniform_buf,
+            Uniforms {
                 transform: Matrix4::from_translation(Vector3::new(x, y, 0.0)),
                 ortho,
-            }]);
-        encoder.copy_buffer_to_buffer(&temp, 0, &uniform_buf.wgpu, 0, 128);
+            },
+        );
 
-        {
-            let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                    attachment: &frame.view,
-                    load_op: wgpu::LoadOp::Clear,
-                    store_op: wgpu::StoreOp::Store,
-                    clear_color: wgpu::Color::WHITE,
-                }],
-                depth_stencil_attachment: None,
-            });
+        ctx.frame(|frame, encoder| {
+            let mut rpass = frame.begin_pass(encoder);
+
             rpass.set_pipeline(&pipeline.wgpu);
             rpass.set_bind_group(0, &bindings.wgpu);
             rpass.set_index_buffer(&index_buf.wgpu, 0);
             rpass.set_vertex_buffers(&[(&vertex_buf.wgpu, 0)]);
             rpass.draw_indexed(0..6, 0, 0..1);
-        }
-        ctx.device.get_queue().submit(&[encoder.finish()]);
+        });
     }
 }
