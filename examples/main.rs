@@ -192,14 +192,14 @@ fn main() {
             },
         );
 
-        ctx.frame(|frame, encoder| {
-            let mut pass = frame.begin_pass(encoder);
+        ctx.frame(|frame| {
+            let mut pass = frame.begin_pass();
 
-            pass.set_pipeline(&pipeline.wgpu);
-            pass.set_bind_group(0, &bindings.wgpu);
-            pass.set_index_buffer(&index_buf.wgpu, 0);
-            pass.set_vertex_buffers(&[(&vertex_buf.wgpu, 0)]);
-            pass.draw_indexed(0..6, 0, 0..1);
+            pass.wgpu.set_pipeline(&pipeline.wgpu);
+            pass.wgpu.set_bind_group(0, &bindings.wgpu);
+            pass.wgpu.set_index_buffer(&index_buf.wgpu, 0);
+            pass.wgpu.set_vertex_buffers(&[(&vertex_buf.wgpu, 0)]);
+            pass.wgpu.draw_indexed(0..6, 0, 0..1);
         });
     }
 }
