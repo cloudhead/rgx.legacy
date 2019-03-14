@@ -1,8 +1,14 @@
+#![deny(clippy::all)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::single_match)]
+
 extern crate rgx;
+
+use rgx::*;
 
 use cgmath::prelude::*;
 use cgmath::{Matrix4, Ortho, Vector3};
-use rgx::*;
+
 use wgpu::winit::{
     ElementState, Event, EventsLoop, KeyboardInput, VirtualKeyCode, Window, WindowEvent,
 };
@@ -187,13 +193,13 @@ fn main() {
         );
 
         ctx.frame(|frame, encoder| {
-            let mut rpass = frame.begin_pass(encoder);
+            let mut pass = frame.begin_pass(encoder);
 
-            rpass.set_pipeline(&pipeline.wgpu);
-            rpass.set_bind_group(0, &bindings.wgpu);
-            rpass.set_index_buffer(&index_buf.wgpu, 0);
-            rpass.set_vertex_buffers(&[(&vertex_buf.wgpu, 0)]);
-            rpass.draw_indexed(0..6, 0, 0..1);
+            pass.set_pipeline(&pipeline.wgpu);
+            pass.set_bind_group(0, &bindings.wgpu);
+            pass.set_index_buffer(&index_buf.wgpu, 0);
+            pass.set_vertex_buffers(&[(&vertex_buf.wgpu, 0)]);
+            pass.draw_indexed(0..6, 0, 0..1);
         });
     }
 }
