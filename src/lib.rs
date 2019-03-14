@@ -298,13 +298,20 @@ impl VertexLayout {
     }
 }
 
+pub struct Pass<'a> {
+    pub wgpu: wgpu::RenderPass<'a>,
+}
+
+impl<'a> Pass<'a> {}
+
 pub struct Frame<'a> {
     view: &'a wgpu::TextureView,
+    encoder: wgpu::CommandEncoder,
 }
 
 impl<'a> Frame<'a> {
-    pub fn begin_pass(&'a self, encoder: &'a mut wgpu::CommandEncoder) -> wgpu::RenderPass<'a> {
-        encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+    pub fn begin_pass(&mut self) -> Pass {
+        let pass = self.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
                 attachment: &self.view,
                 load_op: wgpu::LoadOp::Clear,
@@ -312,7 +319,8 @@ impl<'a> Frame<'a> {
                 clear_color: wgpu::Color::WHITE,
             }],
             depth_stencil_attachment: None,
-        })
+        });
+        Pass { wgpu: pass }
     }
 }
 
@@ -359,16 +367,13 @@ impl<'a> Context<'a> {
 
     pub fn frame<F>(&mut self, f: F)
     where
-        F: Fn(&mut Frame, &mut wgpu::CommandEncoder),
+        F: Fn(&mut Frame),
     {
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
 
         let chain_out = self.swap_chain.get_next_texture();
-        let mut frame = Frame {
-            view: &chain_out.view,
-        };
         for c in &self.commands {
             match c {
                 Command::UpdateUniformBuffer(dst, src, size) => {
@@ -376,9 +381,13 @@ impl<'a> Context<'a> {
                 }
             }
         }
-        f(&mut frame, &mut encoder);
+        let mut frame = Frame {
+            view: &chain_out.view,
+            encoder,
+        };
+        f(&mut frame);
 
-        self.device.get_queue().submit(&[encoder.finish()]);
+        self.device.get_queue().submit(&[frame.encoder.finish()]);
     }
 
     pub fn create_shader(&self, name: &str, source: &str, stage: ShaderStage) -> Shader {
