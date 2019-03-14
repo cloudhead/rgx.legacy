@@ -160,29 +160,37 @@ fn main() {
         x += 1.0;
         y += 1.0;
 
-        events_loop.poll_events(|event| match event {
-            Event::WindowEvent { event, .. } => match event {
-                WindowEvent::KeyboardInput {
-                    input:
-                        KeyboardInput {
-                            virtual_keycode: Some(code),
-                            state: ElementState::Pressed,
-                            ..
-                        },
-                    ..
-                } => match code {
-                    VirtualKeyCode::Escape => {
+        ///////////////////////////////////////////////////////////////////////////
+        // Process events
+        ///////////////////////////////////////////////////////////////////////////
+
+        events_loop.poll_events(|event| {
+            if let Event::WindowEvent { event, .. } = event {
+                match event {
+                    WindowEvent::KeyboardInput {
+                        input:
+                            KeyboardInput {
+                                virtual_keycode: Some(code),
+                                state: ElementState::Pressed,
+                                ..
+                            },
+                        ..
+                    } => {
+                        if let VirtualKeyCode::Escape = code {
+                            running = false;
+                        }
+                    }
+                    WindowEvent::CloseRequested => {
                         running = false;
                     }
                     _ => {}
-                },
-                WindowEvent::CloseRequested => {
-                    running = false;
                 }
-                _ => {}
-            },
-            _ => {}
+            }
         });
+
+        ///////////////////////////////////////////////////////////////////////////
+        // Update uniforms
+        ///////////////////////////////////////////////////////////////////////////
 
         ctx.update_uniform_buffer(
             &uniform_buf,
@@ -191,6 +199,10 @@ fn main() {
                 ortho,
             },
         );
+
+        ///////////////////////////////////////////////////////////////////////////
+        // Draw frame
+        ///////////////////////////////////////////////////////////////////////////
 
         ctx.frame(|frame| {
             let mut pass = frame.begin_pass();
