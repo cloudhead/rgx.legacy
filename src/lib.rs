@@ -57,52 +57,6 @@ impl Uniforms {
     }
 }
 
-pub struct BindingsBuilder<'a> {
-    layout: &'a UniformsLayout,
-    bindings: Vec<wgpu::Binding<'a>>,
-    ctx: &'a Context<'a>,
-}
-
-impl<'a> BindingsBuilder<'a> {
-    pub fn bind_uniforms(&mut self, unifs: &'a UniformBuffer) -> &mut Self {
-        self.bindings.push(wgpu::Binding {
-            binding: self.bindings.len() as u32,
-            resource: wgpu::BindingResource::Buffer {
-                buffer: &unifs.wgpu,
-                range: 0..(unifs.size as u32),
-            },
-        });
-        self
-    }
-
-    pub fn bind_texture(&mut self, texture: &'a Texture) -> &mut Self {
-        self.bindings.push(wgpu::Binding {
-            binding: self.bindings.len() as u32,
-            resource: wgpu::BindingResource::TextureView(&texture.view),
-        });
-        self
-    }
-
-    pub fn bind_sampler(&mut self, sampler: &'a Sampler) -> &mut Self {
-        self.bindings.push(wgpu::Binding {
-            binding: self.bindings.len() as u32,
-            resource: wgpu::BindingResource::Sampler(&sampler.wgpu),
-        });
-        self
-    }
-
-    pub fn build(&self) -> Uniforms {
-        let bind_group = self
-            .ctx
-            .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                layout: &self.layout.wgpu,
-                bindings: self.bindings.as_slice(),
-            });
-        Uniforms::new(bind_group)
-    }
-}
-
 pub struct UniformsLayout {
     pub wgpu: wgpu::BindGroupLayout,
     pub size: usize,
@@ -111,32 +65,6 @@ pub struct UniformsLayout {
 impl UniformsLayout {
     pub fn new(layout: wgpu::BindGroupLayout, size: usize) -> Self {
         Self { wgpu: layout, size }
-    }
-}
-
-pub struct UniformsLayoutBuilder<'a> {
-    bindings: Vec<wgpu::BindGroupLayoutBinding>,
-    ctx: &'a Context<'a>,
-}
-
-impl<'a> UniformsLayoutBuilder<'a> {
-    pub fn binding(&mut self, stage: &ShaderStage, bind_type: &BindingType) -> &mut Self {
-        self.bindings.push(wgpu::BindGroupLayoutBinding {
-            binding: self.bindings.len() as u32,
-            visibility: stage.to_wgpu(),
-            ty: bind_type.to_wgpu(),
-        });
-        self
-    }
-
-    pub fn build(&self) -> UniformsLayout {
-        let layout = self
-            .ctx
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                bindings: self.bindings.as_slice(),
-            });
-        UniformsLayout::new(layout, self.bindings.len())
     }
 }
 
@@ -265,37 +193,25 @@ pub struct VertexLayout {
     pub size: usize,
 }
 
-pub struct VertexBufferDescriptor<'a> {
-    pub wgpu: wgpu::VertexBufferDescriptor<'a>,
-}
-
 impl VertexLayout {
     pub fn from(formats: &[VertexFormat]) -> Self {
         let mut vl = Self::default();
         for vf in formats {
-            vl.attr(*vf);
+            vl.wgpu_attrs.push(wgpu::VertexAttributeDescriptor {
+                attribute_index: vl.wgpu_attrs.len() as u32,
+                offset: vl.size as u32,
+                format: vf.to_wgpu(),
+            });
+            vl.size += vf.bytesize();
         }
         vl
     }
 
-    fn attr(&mut self, format: VertexFormat) -> &mut Self {
-        self.wgpu_attrs.push(wgpu::VertexAttributeDescriptor {
-            attribute_index: self.wgpu_attrs.len() as u32,
-            offset: self.size as u32,
-            format: format.to_wgpu(),
-        });
-        self.size += format.bytesize();
-
-        self
-    }
-
-    pub fn build(&self) -> VertexBufferDescriptor {
-        VertexBufferDescriptor {
-            wgpu: wgpu::VertexBufferDescriptor {
-                stride: self.size as u32,
-                step_mode: wgpu::InputStepMode::Vertex,
-                attributes: self.wgpu_attrs.as_slice(),
-            },
+    fn to_wgpu(&self) -> wgpu::VertexBufferDescriptor {
+        wgpu::VertexBufferDescriptor {
+            stride: self.size as u32,
+            step_mode: wgpu::InputStepMode::Vertex,
+            attributes: self.wgpu_attrs.as_slice(),
         }
     }
 }
@@ -563,41 +479,53 @@ impl<'a> Context<'a> {
     }
 
     pub fn create_uniforms_layout(&self, slots: &[Slot]) -> UniformsLayout {
-        let mut bindings = &mut self.bindings_layout_builder();
+        let mut bindings = Vec::new();
 
         for s in slots {
-            bindings = bindings.binding(&s.stage, &s.binding);
+            bindings.push(wgpu::BindGroupLayoutBinding {
+                binding: bindings.len() as u32,
+                visibility: s.stage.to_wgpu(),
+                ty: s.binding.to_wgpu(),
+            });
         }
-        bindings.build()
+        let layout = self
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                bindings: bindings.as_slice(),
+            });
+        UniformsLayout::new(layout, bindings.len())
     }
 
     pub fn create_uniforms(&self, bs: &UniformsBinding) -> Uniforms {
-        let mut bindings = &mut self.bindings_builder(bs.layout);
+        let layout = bs.layout;
+        let mut bindings = Vec::new();
 
         for (i, s) in bs.slots.iter().enumerate() {
             match s {
-                Uniform::Buffer(unif) => bindings = bindings.bind_uniforms(unif),
-                Uniform::Texture(tex) => bindings = bindings.bind_texture(tex),
-                Uniform::Sampler(sam) => bindings = bindings.bind_sampler(sam),
+                Uniform::Buffer(unif) => {
+                    bindings.push(wgpu::Binding {
+                        binding: bindings.len() as u32,
+                        resource: wgpu::BindingResource::Buffer {
+                            buffer: &unif.wgpu,
+                            range: 0..(unif.size as u32),
+                        },
+                    });
+                }
+                Uniform::Texture(tex) => bindings.push(wgpu::Binding {
+                    binding: bindings.len() as u32,
+                    resource: wgpu::BindingResource::TextureView(&tex.view),
+                }),
+                Uniform::Sampler(sam) => bindings.push(wgpu::Binding {
+                    binding: bindings.len() as u32,
+                    resource: wgpu::BindingResource::Sampler(&sam.wgpu),
+                }),
                 Uniform::Unbound() => panic!("binding slot {} is unbound", i),
             };
         }
-        bindings.build()
-    }
-
-    pub fn bindings_layout_builder(&'a self) -> UniformsLayoutBuilder<'a> {
-        UniformsLayoutBuilder {
-            ctx: self,
-            bindings: Vec::new(),
-        }
-    }
-
-    pub fn bindings_builder(&'a self, layout: &'a UniformsLayout) -> BindingsBuilder<'a> {
-        BindingsBuilder {
-            ctx: self,
-            layout,
-            bindings: Vec::new(),
-        }
+        Uniforms::new(self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &layout.wgpu,
+            bindings: bindings.as_slice(),
+        }))
     }
 
     pub fn create_pipeline(
@@ -612,7 +540,7 @@ impl<'a> Context<'a> {
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 bind_group_layouts: &[&binds.wgpu],
             });
-        let vertex_attrs = vertex_layout.build();
+        let vertex_attrs = vertex_layout.to_wgpu();
 
         Pipeline {
             wgpu: self
@@ -643,7 +571,7 @@ impl<'a> Context<'a> {
                     }],
                     depth_stencil_state: None,
                     index_format: wgpu::IndexFormat::Uint16,
-                    vertex_buffers: &[vertex_attrs.wgpu],
+                    vertex_buffers: &[vertex_attrs],
                     sample_count: 1,
                 }),
         }
