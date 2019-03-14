@@ -210,7 +210,7 @@ fn main() {
             pass.apply_pipeline(&pipeline);
             pass.apply_bindings(&bindings);
             pass.set_index_buffer(&index_buf);
-            pass.set_vertex_buffers(&vertex_buf);
+            pass.set_vertex_buffer(&vertex_buf);
             pass.draw_indexed(0..6, 0..1);
         });
     }
