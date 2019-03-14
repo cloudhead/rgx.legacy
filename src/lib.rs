@@ -314,7 +314,7 @@ impl<'a> Pass<'a> {
     pub fn set_index_buffer(&mut self, index_buf: &IndexBuffer) {
         self.wgpu.set_index_buffer(&index_buf.wgpu, 0)
     }
-    pub fn set_vertex_buffers(&mut self, vertex_buf: &VertexBuffer) {
+    pub fn set_vertex_buffer(&mut self, vertex_buf: &VertexBuffer) {
         self.wgpu.set_vertex_buffers(&[(&vertex_buf.wgpu, 0)])
     }
     pub fn draw_indexed(&mut self, indices: Range<u32>, instances: Range<u32>) {
