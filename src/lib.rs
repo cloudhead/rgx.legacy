@@ -47,18 +47,18 @@ pub struct Context<'a> {
     commands: Vec<Command<'a>>,
 }
 
-pub struct Bindings {
+pub struct Uniforms {
     pub wgpu: wgpu::BindGroup,
 }
 
-impl Bindings {
+impl Uniforms {
     pub fn new(layout: wgpu::BindGroup) -> Self {
         Self { wgpu: layout }
     }
 }
 
 pub struct BindingsBuilder<'a> {
-    layout: &'a BindingsLayout,
+    layout: &'a UniformsLayout,
     bindings: Vec<wgpu::Binding<'a>>,
     ctx: &'a Context<'a>,
 }
@@ -91,7 +91,7 @@ impl<'a> BindingsBuilder<'a> {
         self
     }
 
-    pub fn build(&self) -> Bindings {
+    pub fn build(&self) -> Uniforms {
         let bind_group = self
             .ctx
             .device
@@ -99,27 +99,27 @@ impl<'a> BindingsBuilder<'a> {
                 layout: &self.layout.wgpu,
                 bindings: self.bindings.as_slice(),
             });
-        Bindings::new(bind_group)
+        Uniforms::new(bind_group)
     }
 }
 
-pub struct BindingsLayout {
+pub struct UniformsLayout {
     pub wgpu: wgpu::BindGroupLayout,
     pub size: usize,
 }
 
-impl BindingsLayout {
+impl UniformsLayout {
     pub fn new(layout: wgpu::BindGroupLayout, size: usize) -> Self {
         Self { wgpu: layout, size }
     }
 }
 
-pub struct BindingsLayoutBuilder<'a> {
+pub struct UniformsLayoutBuilder<'a> {
     bindings: Vec<wgpu::BindGroupLayoutBinding>,
     ctx: &'a Context<'a>,
 }
 
-impl<'a> BindingsLayoutBuilder<'a> {
+impl<'a> UniformsLayoutBuilder<'a> {
     pub fn binding(&mut self, stage: &ShaderStage, bind_type: &BindingType) -> &mut Self {
         self.bindings.push(wgpu::BindGroupLayoutBinding {
             binding: self.bindings.len() as u32,
@@ -129,14 +129,14 @@ impl<'a> BindingsLayoutBuilder<'a> {
         self
     }
 
-    pub fn build(&self) -> BindingsLayout {
+    pub fn build(&self) -> UniformsLayout {
         let layout = self
             .ctx
             .device
             .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 bindings: self.bindings.as_slice(),
             });
-        BindingsLayout::new(layout, self.bindings.len())
+        UniformsLayout::new(layout, self.bindings.len())
     }
 }
 
@@ -159,8 +159,8 @@ pub struct UniformBuffer {
 }
 
 #[derive(Clone)]
-pub enum Binding<'a> {
-    UniformBuffer(&'a UniformBuffer),
+pub enum Uniform<'a> {
+    Buffer(&'a UniformBuffer),
     Texture(&'a Texture),
     Sampler(&'a Sampler),
     Unbound(),
@@ -187,29 +187,29 @@ pub struct Slot {
     pub stage: ShaderStage,
 }
 
-pub struct BindingSlots<'a> {
-    slots: Vec<Binding<'a>>,
-    layout: &'a BindingsLayout,
+pub struct UniformsBinding<'a> {
+    slots: Vec<Uniform<'a>>,
+    layout: &'a UniformsLayout,
 }
 
-impl<'a> BindingSlots<'a> {
-    pub fn from(layout: &'a BindingsLayout) -> BindingSlots<'a> {
-        BindingSlots {
-            slots: vec![Binding::Unbound(); layout.size],
+impl<'a> UniformsBinding<'a> {
+    pub fn from(layout: &'a UniformsLayout) -> UniformsBinding<'a> {
+        UniformsBinding {
+            slots: vec![Uniform::Unbound(); layout.size],
             layout,
         }
     }
 }
 
-impl<'a> std::ops::Index<usize> for BindingSlots<'a> {
-    type Output = Binding<'a>;
-    fn index(&self, index: usize) -> &Binding<'a> {
+impl<'a> std::ops::Index<usize> for UniformsBinding<'a> {
+    type Output = Uniform<'a>;
+    fn index(&self, index: usize) -> &Uniform<'a> {
         self.slots.index(index)
     }
 }
 
-impl<'a> std::ops::IndexMut<usize> for BindingSlots<'a> {
-    fn index_mut(&mut self, index: usize) -> &mut Binding<'a> {
+impl<'a> std::ops::IndexMut<usize> for UniformsBinding<'a> {
+    fn index_mut(&mut self, index: usize) -> &mut Uniform<'a> {
         self.slots.index_mut(index)
     }
 }
@@ -308,8 +308,8 @@ impl<'a> Pass<'a> {
     pub fn apply_pipeline(&mut self, pipeline: &Pipeline) {
         self.wgpu.set_pipeline(&pipeline.wgpu)
     }
-    pub fn apply_bindings(&mut self, bindings: &Bindings) {
-        self.wgpu.set_bind_group(0, &bindings.wgpu)
+    pub fn apply_uniforms(&mut self, uniforms: &Uniforms) {
+        self.wgpu.set_bind_group(0, &uniforms.wgpu)
     }
     pub fn set_index_buffer(&mut self, index_buf: &IndexBuffer) {
         self.wgpu.set_index_buffer(&index_buf.wgpu, 0)
@@ -562,7 +562,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn create_bindings_layout(&self, slots: &[Slot]) -> BindingsLayout {
+    pub fn create_uniforms_layout(&self, slots: &[Slot]) -> UniformsLayout {
         let mut bindings = &mut self.bindings_layout_builder();
 
         for s in slots {
@@ -571,28 +571,28 @@ impl<'a> Context<'a> {
         bindings.build()
     }
 
-    pub fn create_binding(&self, bs: &BindingSlots) -> Bindings {
+    pub fn create_uniforms(&self, bs: &UniformsBinding) -> Uniforms {
         let mut bindings = &mut self.bindings_builder(bs.layout);
 
         for (i, s) in bs.slots.iter().enumerate() {
             match s {
-                Binding::UniformBuffer(unif) => bindings = bindings.bind_uniforms(unif),
-                Binding::Texture(tex) => bindings = bindings.bind_texture(tex),
-                Binding::Sampler(sam) => bindings = bindings.bind_sampler(sam),
-                Binding::Unbound() => panic!("binding slot {} is unbound", i),
+                Uniform::Buffer(unif) => bindings = bindings.bind_uniforms(unif),
+                Uniform::Texture(tex) => bindings = bindings.bind_texture(tex),
+                Uniform::Sampler(sam) => bindings = bindings.bind_sampler(sam),
+                Uniform::Unbound() => panic!("binding slot {} is unbound", i),
             };
         }
         bindings.build()
     }
 
-    pub fn bindings_layout_builder(&'a self) -> BindingsLayoutBuilder<'a> {
-        BindingsLayoutBuilder {
+    pub fn bindings_layout_builder(&'a self) -> UniformsLayoutBuilder<'a> {
+        UniformsLayoutBuilder {
             ctx: self,
             bindings: Vec::new(),
         }
     }
 
-    pub fn bindings_builder(&'a self, layout: &'a BindingsLayout) -> BindingsBuilder<'a> {
+    pub fn bindings_builder(&'a self, layout: &'a UniformsLayout) -> BindingsBuilder<'a> {
         BindingsBuilder {
             ctx: self,
             layout,
@@ -602,7 +602,7 @@ impl<'a> Context<'a> {
 
     pub fn create_pipeline(
         &self,
-        binds: &BindingsLayout,
+        binds: &UniformsLayout,
         vertex_layout: &VertexLayout,
         vs: &Shader,
         fs: &Shader,
