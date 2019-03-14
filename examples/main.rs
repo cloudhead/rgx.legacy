@@ -43,7 +43,7 @@ fn main() {
     // Setup shader bindings layout
     ///////////////////////////////////////////////////////////////////////////
 
-    let bindings_layout = ctx.create_bindings_layout(&[
+    let uniforms_layout = ctx.create_uniforms_layout(&[
         Slot {
             binding: BindingType::UniformBuffer,
             stage: ShaderStage::Vertex,
@@ -91,7 +91,7 @@ fn main() {
     // Setup render pipeline
     ///////////////////////////////////////////////////////////////////////////
 
-    let pipeline = ctx.create_pipeline(&bindings_layout, &vertex_layout, &vs, &fs);
+    let pipeline = ctx.create_pipeline(&uniforms_layout, &vertex_layout, &vs, &fs);
 
     ///////////////////////////////////////////////////////////////////////////
     // Setup texture & sampler
@@ -143,13 +143,13 @@ fn main() {
     // Setup uniform layout
     ///////////////////////////////////////////////////////////////////////////
 
-    let mut slots = BindingSlots::from(&bindings_layout);
+    let mut uniforms_binding = UniformsBinding::from(&uniforms_layout);
 
-    slots[0] = Binding::UniformBuffer(&uniform_buf);
-    slots[1] = Binding::Texture(&texture);
-    slots[2] = Binding::Sampler(&sampler);
+    uniforms_binding[0] = Uniform::Buffer(&uniform_buf);
+    uniforms_binding[1] = Uniform::Texture(&texture);
+    uniforms_binding[2] = Uniform::Sampler(&sampler);
 
-    let bindings = ctx.create_binding(&slots);
+    let uniforms = ctx.create_uniforms(&uniforms_binding);
 
     let mut x: f32 = 0.0;
     let mut y: f32 = 0.0;
@@ -208,7 +208,7 @@ fn main() {
             let mut pass = frame.begin_pass();
 
             pass.apply_pipeline(&pipeline);
-            pass.apply_bindings(&bindings);
+            pass.apply_uniforms(&uniforms);
             pass.set_index_buffer(&index_buf);
             pass.set_vertex_buffer(&vertex_buf);
             pass.draw_indexed(0..6, 0..1);
