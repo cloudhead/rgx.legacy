@@ -106,7 +106,7 @@ fn main() {
     ];
 
     // Create 4 by 4 texture and sampler.
-    let texture = ctx.create_texture(texels, 4, 4);
+    let texture = ctx.create_texture(texels.as_slice(), 4, 4);
     let sampler = ctx.create_sampler(Filter::Nearest, Filter::Nearest);
 
     ///////////////////////////////////////////////////////////////////////////
