@@ -400,11 +400,11 @@ impl<'a> Context<'a> {
             .create_buffer_mapped(texels.len(), wgpu::BufferUsageFlags::TRANSFER_SRC)
             .fill_from_slice(&texels);
 
-        let mut init_encoder = self
+        let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
 
-        init_encoder.copy_buffer_to_texture(
+        encoder.copy_buffer_to_texture(
             wgpu::BufferCopyView {
                 buffer: &temp_buf,
                 offset: 0,
@@ -424,16 +424,14 @@ impl<'a> Context<'a> {
             texture_extent,
         );
 
-        let init_command_buf = init_encoder.finish();
-        self.device.get_queue().submit(&[init_command_buf]);
+        self.device.get_queue().submit(&[encoder.finish()]);
         Texture {
             wgpu: texture,
             view: texture_view,
         }
     }
 
-    // TODO: Should take a 'VectorLike'.
-    pub fn create_buffer<T>(&self, vertices: Vec<T>) -> VertexBuffer
+    pub fn create_buffer<T>(&self, vertices: &[T]) -> VertexBuffer
     where
         T: 'static + Copy,
     {
@@ -441,7 +439,7 @@ impl<'a> Context<'a> {
             wgpu: self
                 .device
                 .create_buffer_mapped(vertices.len(), wgpu::BufferUsageFlags::VERTEX)
-                .fill_from_slice(&vertices),
+                .fill_from_slice(vertices),
         }
     }
 
