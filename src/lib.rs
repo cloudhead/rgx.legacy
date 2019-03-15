@@ -7,12 +7,72 @@ extern crate wgpu;
 
 use std::ops::Range;
 
+///////////////////////////////////////////////////////////////////////////////
+/// Shaders
+///////////////////////////////////////////////////////////////////////////////
+
 pub struct Shader {
-    pub module: wgpu::ShaderModule,
+    module: wgpu::ShaderModule,
+}
+
+pub enum ShaderStage {
+    Vertex,
+    Fragment,
+    Compute,
+}
+
+impl ShaderStage {
+    fn to_wgpu(&self) -> wgpu::ShaderStageFlags {
+        match self {
+            ShaderStage::Vertex => wgpu::ShaderStageFlags::VERTEX,
+            ShaderStage::Fragment => wgpu::ShaderStageFlags::FRAGMENT,
+            ShaderStage::Compute => wgpu::ShaderStageFlags::COMPUTE,
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// Uniforms
+///////////////////////////////////////////////////////////////////////////////
+
+pub struct Uniforms {
+    wgpu: wgpu::BindGroup,
+}
+
+impl Uniforms {
+    fn new(layout: wgpu::BindGroup) -> Self {
+        Self { wgpu: layout }
+    }
+}
+
+pub struct UniformsLayout {
+    wgpu: wgpu::BindGroupLayout,
+    size: usize,
+}
+
+impl UniformsLayout {
+    fn new(layout: wgpu::BindGroupLayout, size: usize) -> Self {
+        Self { wgpu: layout, size }
+    }
+}
+
+pub struct UniformBuffer {
+    wgpu: wgpu::Buffer,
+    size: usize,
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// Texturing
+///////////////////////////////////////////////////////////////////////////////
+
+#[allow(dead_code)]
+pub struct Texture {
+    wgpu: wgpu::Texture,
+    view: wgpu::TextureView,
 }
 
 pub struct Sampler {
-    pub wgpu: wgpu::Sampler,
+    wgpu: wgpu::Sampler,
 }
 
 pub enum Filter {
@@ -29,62 +89,79 @@ impl Filter {
     }
 }
 
-pub struct Pipeline {
-    pub wgpu: wgpu::RenderPipeline,
-}
-
-pub enum Command<'a> {
-    UpdateUniformBuffer(&'a UniformBuffer, wgpu::Buffer, usize),
-}
-
-pub struct Context<'a> {
-    pub instance: wgpu::Instance,
-    pub adapter: wgpu::Adapter,
-    pub device: wgpu::Device,
-    pub surface: wgpu::Surface,
-    pub swap_chain: wgpu::SwapChain,
-
-    commands: Vec<Command<'a>>,
-}
-
-pub struct Uniforms {
-    pub wgpu: wgpu::BindGroup,
-}
-
-impl Uniforms {
-    pub fn new(layout: wgpu::BindGroup) -> Self {
-        Self { wgpu: layout }
-    }
-}
-
-pub struct UniformsLayout {
-    pub wgpu: wgpu::BindGroupLayout,
-    pub size: usize,
-}
-
-impl UniformsLayout {
-    pub fn new(layout: wgpu::BindGroupLayout, size: usize) -> Self {
-        Self { wgpu: layout, size }
-    }
-}
-
-pub struct Texture {
-    pub wgpu: wgpu::Texture,
-    pub view: wgpu::TextureView,
-}
+///////////////////////////////////////////////////////////////////////////////
+/// Vertex/Index Buffers
+///////////////////////////////////////////////////////////////////////////////
 
 pub struct VertexBuffer {
-    pub wgpu: wgpu::Buffer,
+    wgpu: wgpu::Buffer,
 }
 
 pub struct IndexBuffer {
-    pub wgpu: wgpu::Buffer,
+    wgpu: wgpu::Buffer,
 }
 
-pub struct UniformBuffer {
-    pub wgpu: wgpu::Buffer,
-    pub size: usize,
+#[derive(Clone, Copy)]
+pub enum VertexFormat {
+    Float,
+    Float2,
+    Float3,
+    Float4,
 }
+
+impl VertexFormat {
+    // TODO: Use `const fn`
+    fn bytesize(self) -> usize {
+        match self {
+            VertexFormat::Float => 4,
+            VertexFormat::Float2 => 8,
+            VertexFormat::Float3 => 12,
+            VertexFormat::Float4 => 16,
+        }
+    }
+    // TODO: Use `const fn`
+    fn to_wgpu(self) -> wgpu::VertexFormat {
+        match self {
+            VertexFormat::Float => wgpu::VertexFormat::Float,
+            VertexFormat::Float2 => wgpu::VertexFormat::Float2,
+            VertexFormat::Float3 => wgpu::VertexFormat::Float3,
+            VertexFormat::Float4 => wgpu::VertexFormat::Float4,
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct VertexLayout {
+    wgpu_attrs: Vec<wgpu::VertexAttributeDescriptor>,
+    size: usize,
+}
+
+impl VertexLayout {
+    pub fn from(formats: &[VertexFormat]) -> Self {
+        let mut vl = Self::default();
+        for vf in formats {
+            vl.wgpu_attrs.push(wgpu::VertexAttributeDescriptor {
+                attribute_index: vl.wgpu_attrs.len() as u32,
+                offset: vl.size as u32,
+                format: vf.to_wgpu(),
+            });
+            vl.size += vf.bytesize();
+        }
+        vl
+    }
+
+    fn to_wgpu(&self) -> wgpu::VertexBufferDescriptor {
+        wgpu::VertexBufferDescriptor {
+            stride: self.size as u32,
+            step_mode: wgpu::InputStepMode::Vertex,
+            attributes: self.wgpu_attrs.as_slice(),
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// Uniform Bindings
+///////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone)]
 pub enum Uniform<'a> {
@@ -131,6 +208,7 @@ impl<'a> UniformsBinding<'a> {
 
 impl<'a> std::ops::Index<usize> for UniformsBinding<'a> {
     type Output = Uniform<'a>;
+
     fn index(&self, index: usize) -> &Uniform<'a> {
         self.slots.index(index)
     }
@@ -142,82 +220,16 @@ impl<'a> std::ops::IndexMut<usize> for UniformsBinding<'a> {
     }
 }
 
-#[derive(Clone, Copy)]
-pub enum VertexFormat {
-    Float,
-    Float2,
-    Float3,
-    Float4,
-}
+///////////////////////////////////////////////////////////////////////////////
+/// Pipeline, Pass
+///////////////////////////////////////////////////////////////////////////////
 
-impl VertexFormat {
-    // TODO: Use `const fn`
-    pub fn bytesize(self) -> usize {
-        match self {
-            VertexFormat::Float => 4,
-            VertexFormat::Float2 => 8,
-            VertexFormat::Float3 => 12,
-            VertexFormat::Float4 => 16,
-        }
-    }
-    // TODO: Use `const fn`
-    pub fn to_wgpu(self) -> wgpu::VertexFormat {
-        match self {
-            VertexFormat::Float => wgpu::VertexFormat::Float,
-            VertexFormat::Float2 => wgpu::VertexFormat::Float2,
-            VertexFormat::Float3 => wgpu::VertexFormat::Float3,
-            VertexFormat::Float4 => wgpu::VertexFormat::Float4,
-        }
-    }
-}
-
-pub struct VertexAttr {
-    index: u32,
-    format: VertexFormat,
-    offset: u32,
-}
-
-impl VertexAttr {
-    pub fn to_wgpu(&self) -> wgpu::VertexAttributeDescriptor {
-        wgpu::VertexAttributeDescriptor {
-            attribute_index: self.index,
-            format: self.format.to_wgpu(),
-            offset: self.offset,
-        }
-    }
-}
-
-#[derive(Default)]
-pub struct VertexLayout {
-    pub wgpu_attrs: Vec<wgpu::VertexAttributeDescriptor>,
-    pub size: usize,
-}
-
-impl VertexLayout {
-    pub fn from(formats: &[VertexFormat]) -> Self {
-        let mut vl = Self::default();
-        for vf in formats {
-            vl.wgpu_attrs.push(wgpu::VertexAttributeDescriptor {
-                attribute_index: vl.wgpu_attrs.len() as u32,
-                offset: vl.size as u32,
-                format: vf.to_wgpu(),
-            });
-            vl.size += vf.bytesize();
-        }
-        vl
-    }
-
-    fn to_wgpu(&self) -> wgpu::VertexBufferDescriptor {
-        wgpu::VertexBufferDescriptor {
-            stride: self.size as u32,
-            step_mode: wgpu::InputStepMode::Vertex,
-            attributes: self.wgpu_attrs.as_slice(),
-        }
-    }
+pub struct Pipeline {
+    wgpu: wgpu::RenderPipeline,
 }
 
 pub struct Pass<'a> {
-    pub wgpu: wgpu::RenderPass<'a>,
+    wgpu: wgpu::RenderPass<'a>,
 }
 
 impl<'a> Pass<'a> {
@@ -238,6 +250,18 @@ impl<'a> Pass<'a> {
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////
+/// Command
+///////////////////////////////////////////////////////////////////////////////
+
+enum Command<'a> {
+    UpdateUniformBuffer(&'a UniformBuffer, wgpu::Buffer, usize),
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// Frame
+///////////////////////////////////////////////////////////////////////////////
+
 pub struct Frame<'a> {
     view: &'a wgpu::TextureView,
     encoder: wgpu::CommandEncoder,
@@ -256,6 +280,16 @@ impl<'a> Frame<'a> {
         });
         Pass { wgpu: pass }
     }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// Context
+///////////////////////////////////////////////////////////////////////////////
+
+pub struct Context<'a> {
+    device: wgpu::Device,
+    swap_chain: wgpu::SwapChain,
+    commands: Vec<Command<'a>>,
 }
 
 impl<'a> Context<'a> {
@@ -290,10 +324,7 @@ impl<'a> Context<'a> {
         let commands = Vec::new();
 
         Self {
-            instance,
-            adapter,
             device,
-            surface,
             swap_chain,
             commands,
         }
@@ -574,22 +605,6 @@ impl<'a> Context<'a> {
                     vertex_buffers: &[vertex_attrs],
                     sample_count: 1,
                 }),
-        }
-    }
-}
-
-pub enum ShaderStage {
-    Vertex,
-    Fragment,
-    Compute,
-}
-
-impl ShaderStage {
-    fn to_wgpu(&self) -> wgpu::ShaderStageFlags {
-        match self {
-            ShaderStage::Vertex => wgpu::ShaderStageFlags::VERTEX,
-            ShaderStage::Fragment => wgpu::ShaderStageFlags::FRAGMENT,
-            ShaderStage::Compute => wgpu::ShaderStageFlags::COMPUTE,
         }
     }
 }
