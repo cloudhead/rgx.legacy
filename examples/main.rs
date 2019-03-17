@@ -66,25 +66,25 @@ fn main() {
     #[rustfmt::skip]
     struct Vertex(
         f32, f32,               // X Y
+        f32, f32,               // U V
         f32, f32, f32, f32,     // R G B A
-        f32, f32                // U V
     );
 
     #[rustfmt::skip]
     let vertex_buf = ctx.create_buffer(vec![
-        //     X      Y        R    G    B    A      U    V
-        Vertex(0.0,   0.0,     0.0, 0.0, 1.0, 1.0,   0.0, 0.0),
-        Vertex(100.0, 0.0,     0.0, 1.0, 0.0, 1.0,   1.0, 0.0),
-        Vertex(0.0,   100.0,   1.0, 0.0, 0.0, 1.0,   0.0, 1.0),
-        Vertex(100.0, 100.0,   1.0, 1.0, 0.0, 1.0,   1.0, 1.0),
+        //     X      Y       U    V      R    G    B    A
+        Vertex(0.0,   0.0,    0.0, 0.0,   0.0, 0.0, 1.0, 1.0),
+        Vertex(100.0, 0.0,    1.0, 0.0,   0.0, 1.0, 0.0, 1.0),
+        Vertex(0.0,   100.0,  0.0, 1.0,   1.0, 0.0, 0.0, 1.0),
+        Vertex(100.0, 100.0,  1.0, 1.0,   1.0, 1.0, 0.0, 1.0),
     ].as_slice());
 
     let index_buf = ctx.create_index(&[0, 1, 2, 2, 3, 1]);
 
     let vertex_layout = VertexLayout::from(&[
         VertexFormat::Float2,
-        VertexFormat::Float4,
         VertexFormat::Float2,
+        VertexFormat::Float4,
     ]);
 
     ///////////////////////////////////////////////////////////////////////////
