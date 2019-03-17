@@ -4,7 +4,7 @@
 
 extern crate rgx;
 
-use rgx::*;
+use rgx::core::*;
 
 use cgmath::prelude::*;
 use cgmath::{Matrix4, Ortho, Vector3};
