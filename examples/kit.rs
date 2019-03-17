@@ -101,12 +101,7 @@ fn main() {
             let y = j as f32 * sh * 2.0;
 
             batch.add(
-                Rect {
-                    x1: 0.0,
-                    y1: 0.0,
-                    x2: texture.w as f32,
-                    y2: texture.h as f32,
-                },
+                texture.rect(),
                 Rect {
                     x1: x,
                     y1: y,
