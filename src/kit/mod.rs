@@ -10,7 +10,7 @@ use cgmath::{Matrix4, Ortho};
 #[rustfmt::skip]
 pub struct Vertex(
     f32, f32,               // X Y
-    f32, f32, f32, f32,     // R G B A
+    u32,                    // RGBA
     f32, f32,               // U V
 );
 
@@ -127,7 +127,7 @@ impl<'a> SpriteBatch<'a> {
         }
     }
 
-    pub fn add(&mut self, src: Rect<f32>, dst: Rect<f32>, xrep: f32, yrep: f32, c: Color<f32>) {
+    pub fn add(&mut self, src: Rect<f32>, dst: Rect<f32>, xrep: f32, yrep: f32, c: Color<u8>) {
         assert!(
             self.buffer.is_none(),
             "SpriteBatch::add called after SpriteBatch::finish"
@@ -141,14 +141,16 @@ impl<'a> SpriteBatch<'a> {
         let rx2: f32 = src.x2 / tw as f32;
         let ry2: f32 = src.y2 / th as f32;
 
+        let color: u32 = c.into();
+
         // TODO: Use an index buffer
         let mut verts: Vec<Vertex> = vec![
-            Vertex(dst.x1, dst.y1, c.r, c.g, c.b, c.a, rx1 * xrep, ry2 * yrep),
-            Vertex(dst.x2, dst.y1, c.r, c.g, c.b, c.a, rx2 * xrep, ry2 * yrep),
-            Vertex(dst.x2, dst.y2, c.r, c.g, c.b, c.a, rx2 * xrep, ry1 * yrep),
-            Vertex(dst.x1, dst.y1, c.r, c.g, c.b, c.a, rx1 * xrep, ry2 * yrep),
-            Vertex(dst.x1, dst.y2, c.r, c.g, c.b, c.a, rx1 * xrep, ry1 * yrep),
-            Vertex(dst.x2, dst.y2, c.r, c.g, c.b, c.a, rx2 * xrep, ry1 * yrep),
+            Vertex(dst.x1, dst.y1, color, rx1 * xrep, ry2 * yrep),
+            Vertex(dst.x2, dst.y1, color, rx2 * xrep, ry2 * yrep),
+            Vertex(dst.x2, dst.y2, color, rx2 * xrep, ry1 * yrep),
+            Vertex(dst.x1, dst.y1, color, rx1 * xrep, ry2 * yrep),
+            Vertex(dst.x1, dst.y2, color, rx1 * xrep, ry1 * yrep),
+            Vertex(dst.x2, dst.y2, color, rx2 * xrep, ry1 * yrep),
         ];
 
         self.vertices.append(&mut verts);
