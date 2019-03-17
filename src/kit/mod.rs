@@ -21,6 +21,17 @@ pub struct Rect<T> {
     pub y2: T,
 }
 
+impl Texture {
+    pub fn rect(&self) -> Rect<f32> {
+        Rect {
+            x1: 0.0,
+            y1: 0.0,
+            x2: self.w as f32,
+            y2: self.h as f32,
+        }
+    }
+}
+
 pub struct Color<T> {
     pub r: T,
     pub g: T,
