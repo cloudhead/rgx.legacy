@@ -119,7 +119,7 @@ fn main() {
             );
         }
     }
-    let vertex_buf = batch.finish(&ctx);
+    batch.finish(&ctx);
 
     ///////////////////////////////////////////////////////////////////////////
     // Setup transform & ortho uniforms
@@ -206,7 +206,6 @@ fn main() {
 
             pass.apply_pipeline(&pipeline);
             pass.apply_uniforms(&uniforms);
-            pass.set_vertex_buffer(&vertex_buf);
 
             batch.draw(&mut pass);
         });
