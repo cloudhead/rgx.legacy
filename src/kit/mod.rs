@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::core;
 use crate::core::{Context, Texture, VertexLayout};
 
@@ -11,11 +12,11 @@ use cgmath::{Matrix4, Ortho, Vector2};
 pub struct Vertex{
     position: Vector2<f32>,
     uv: Vector2<f32>,
-    color: Color<u8>,
+    color: Rgba<u8>,
 }
 
 impl Vertex {
-    pub fn new(x: f32, y: f32, u: f32, v: f32, c: Color<u8>) -> Vertex {
+    pub fn new(x: f32, y: f32, u: f32, v: f32, c: Rgba<u8>) -> Vertex {
         Vertex {
             position: Vector2::new(x, y),
             uv: Vector2::new(u, v),
@@ -24,11 +25,28 @@ impl Vertex {
     }
 }
 
+pub struct Repeat {
+    pub x: f32,
+    pub y: f32,
+}
+
+impl Default for Repeat {
+    fn default() -> Self {
+        Repeat { x: 1.0, y: 1.0 }
+    }
+}
+
 pub struct Rect<T> {
     pub x1: T,
     pub y1: T,
     pub x2: T,
     pub y2: T,
+}
+
+impl<T> Rect<T> {
+    pub fn new(x1: T, y1: T, x2: T, y2: T) -> Rect<T> {
+        Rect { x1, y1, x2, y2 }
+    }
 }
 
 impl Texture {
@@ -43,15 +61,21 @@ impl Texture {
 }
 
 #[derive(Copy, Clone)]
-pub struct Color<T> {
+pub struct Rgba<T> {
     pub r: T,
     pub g: T,
     pub b: T,
     pub a: T,
 }
 
-impl From<Color<u8>> for u32 {
-    fn from(item: Color<u8>) -> Self {
+impl<T> Rgba<T> {
+    pub fn new(r: T, g: T, b: T, a: T) -> Rgba<T> {
+        Rgba { r, g, b, a }
+    }
+}
+
+impl From<Rgba<u8>> for u32 {
+    fn from(item: Rgba<u8>) -> Self {
         ((item.r as u32) << 24)
             | ((item.g as u32) << 16)
             | ((item.b as u32) << 8)
@@ -138,7 +162,7 @@ impl<'a> SpriteBatch<'a> {
         }
     }
 
-    pub fn add(&mut self, src: Rect<f32>, dst: Rect<f32>, xrep: f32, yrep: f32, c: Color<u8>) {
+    pub fn add(&mut self, src: Rect<f32>, dst: Rect<f32>, c: Rgba<u8>, rep: Repeat) {
         assert!(
             self.buffer.is_none(),
             "SpriteBatch::add called after SpriteBatch::finish"
@@ -154,12 +178,12 @@ impl<'a> SpriteBatch<'a> {
 
         // TODO: Use an index buffer
         let mut verts: Vec<Vertex> = vec![
-            Vertex::new(dst.x1, dst.y1, rx1 * xrep, ry2 * yrep, c),
-            Vertex::new(dst.x2, dst.y1, rx2 * xrep, ry2 * yrep, c),
-            Vertex::new(dst.x2, dst.y2, rx2 * xrep, ry1 * yrep, c),
-            Vertex::new(dst.x1, dst.y1, rx1 * xrep, ry2 * yrep, c),
-            Vertex::new(dst.x1, dst.y2, rx1 * xrep, ry1 * yrep, c),
-            Vertex::new(dst.x2, dst.y2, rx2 * xrep, ry1 * yrep, c),
+            Vertex::new(dst.x1, dst.y1, rx1 * rep.x, ry2 * rep.y, c),
+            Vertex::new(dst.x2, dst.y1, rx2 * rep.x, ry2 * rep.y, c),
+            Vertex::new(dst.x2, dst.y2, rx2 * rep.x, ry1 * rep.y, c),
+            Vertex::new(dst.x1, dst.y1, rx1 * rep.x, ry2 * rep.y, c),
+            Vertex::new(dst.x1, dst.y2, rx1 * rep.x, ry1 * rep.y, c),
+            Vertex::new(dst.x2, dst.y2, rx2 * rep.x, ry1 * rep.y, c),
         ];
 
         self.vertices.append(&mut verts);
