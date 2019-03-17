@@ -102,20 +102,9 @@ fn main() {
 
             batch.add(
                 texture.rect(),
-                Rect {
-                    x1: x,
-                    y1: y,
-                    x2: x + sw,
-                    y2: y + sh,
-                },
-                1.0,
-                1.0,
-                Color {
-                    r: 128,
-                    g: 64,
-                    b: 128,
-                    a: 255,
-                },
+                Rect::new(x, y, x + sw, y + sh),
+                Rgba::new(128, 64, 128, 255),
+                Repeat::default(),
             );
         }
     }
