@@ -128,6 +128,11 @@ impl<'a> SpriteBatch<'a> {
     }
 
     pub fn add(&mut self, src: Rect<f32>, dst: Rect<f32>, xrep: f32, yrep: f32, c: Color<f32>) {
+        assert!(
+            self.buffer.is_none(),
+            "SpriteBatch::add called after SpriteBatch::finish"
+        );
+
         let (tw, th) = (self.texture.w, self.texture.h);
 
         // Relative texture coordinates
@@ -151,6 +156,10 @@ impl<'a> SpriteBatch<'a> {
     }
 
     pub fn finish(&mut self, ctx: &core::Context) {
+        assert!(
+            self.buffer.is_none(),
+            "SpriteBatch::finish called more than once"
+        );
         self.buffer = Some(ctx.create_buffer(self.vertices.as_slice()))
     }
 
@@ -158,7 +167,7 @@ impl<'a> SpriteBatch<'a> {
         let buffer = self
             .buffer
             .as_ref()
-            .expect("Buffer::finish() wasn't called");
+            .expect("SpriteBatch::finish wasn't called");
 
         pass.set_vertex_buffer(buffer);
         pass.draw(0..self.vertices.len() as u32, 0..1);
