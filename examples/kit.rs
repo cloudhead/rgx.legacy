@@ -25,53 +25,6 @@ fn main() {
     let mut ctx = kit.ctx;
 
     ///////////////////////////////////////////////////////////////////////////
-    // Setup shaders
-    ///////////////////////////////////////////////////////////////////////////
-
-    let vs = ctx.create_shader(
-        "shader.vert",
-        include_str!("data/shader.vert"),
-        ShaderStage::Vertex,
-    );
-
-    let fs = ctx.create_shader(
-        "shader.frag",
-        include_str!("data/shader.frag"),
-        ShaderStage::Fragment,
-    );
-
-    ///////////////////////////////////////////////////////////////////////////
-    // Setup shader bindings layout
-    ///////////////////////////////////////////////////////////////////////////
-
-    let vertex_layout = VertexLayout::from(&[
-        VertexFormat::Float2,
-        VertexFormat::Float2,
-        VertexFormat::UByte4,
-    ]);
-
-    let uniforms_layout = ctx.create_uniforms_layout(&[
-        Slot {
-            binding: BindingType::UniformBuffer,
-            stage: ShaderStage::Vertex,
-        },
-        Slot {
-            binding: BindingType::SampledTexture,
-            stage: ShaderStage::Fragment,
-        },
-        Slot {
-            binding: BindingType::Sampler,
-            stage: ShaderStage::Fragment,
-        },
-    ]);
-
-    ///////////////////////////////////////////////////////////////////////////
-    // Setup render pipeline
-    ///////////////////////////////////////////////////////////////////////////
-
-    let pipeline = ctx.create_pipeline(&uniforms_layout, &vertex_layout, &vs, &fs);
-
-    ///////////////////////////////////////////////////////////////////////////
     // Setup texture & sampler
     ///////////////////////////////////////////////////////////////////////////
 
@@ -129,13 +82,14 @@ fn main() {
     // Setup uniform layout
     ///////////////////////////////////////////////////////////////////////////
 
-    let mut uniforms_binding = UniformsBinding::from(&uniforms_layout);
+    let mut uniforms_binding = UniformsBinding::from(&kit.uniforms_layout);
 
     uniforms_binding[0] = Uniform::Buffer(&uniform_buf);
     uniforms_binding[1] = Uniform::Texture(&texture);
     uniforms_binding[2] = Uniform::Sampler(&sampler);
 
     let uniforms = ctx.create_uniforms(&uniforms_binding);
+    let pipeline = kit.pipeline;
 
     let mut x: f32 = 0.0;
     let mut y: f32 = 0.0;

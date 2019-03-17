@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use crate::core;
-use crate::core::{Context, Texture, VertexLayout};
+use crate::core::{BindingType, Context, ShaderStage, Texture, VertexLayout};
 
 use wgpu::winit::Window;
 
@@ -87,6 +87,9 @@ pub struct Kit<'a> {
     pub ctx: Context<'a>,
     pub ortho: Ortho<f32>,
     pub transform: Matrix4<f32>,
+    pub pipeline: core::Pipeline,
+    pub vertex_layout: core::VertexLayout,
+    pub uniforms_layout: core::UniformsLayout,
 }
 
 impl<'a> Kit<'a> {
@@ -108,10 +111,50 @@ impl<'a> Kit<'a> {
 
         let ctx = Context::new(w);
 
+        let vertex_layout = VertexLayout::from(&[
+            core::VertexFormat::Float2,
+            core::VertexFormat::Float2,
+            core::VertexFormat::UByte4,
+        ]);
+
+        let uniforms_layout = ctx.create_uniforms_layout(&[
+            core::Slot {
+                binding: BindingType::UniformBuffer,
+                stage: ShaderStage::Vertex,
+            },
+            core::Slot {
+                binding: BindingType::SampledTexture,
+                stage: ShaderStage::Fragment,
+            },
+            core::Slot {
+                binding: BindingType::Sampler,
+                stage: ShaderStage::Fragment,
+            },
+        ]);
+
+        // TODO: Use `env("CARGO_MANIFEST_DIR")`
+        let pipeline = {
+            let vs = ctx.create_shader(
+                "shader.vert",
+                include_str!("data/shader.vert"),
+                ShaderStage::Vertex,
+            );
+
+            let fs = ctx.create_shader(
+                "shader.frag",
+                include_str!("data/shader.frag"),
+                ShaderStage::Fragment,
+            );
+            ctx.create_pipeline(&uniforms_layout, &vertex_layout, &vs, &fs)
+        };
+
         Self {
             ctx,
             ortho,
             transform,
+            pipeline,
+            vertex_layout,
+            uniforms_layout,
         }
     }
 
