@@ -113,6 +113,7 @@ trait VertexLike<'a> {
 pub struct SpriteBatch<'a> {
     pub texture: &'a Texture,
     pub vertices: Vec<Vertex>,
+    pub buffer: Option<core::VertexBuffer>,
     pub size: usize,
 }
 
@@ -121,6 +122,7 @@ impl<'a> SpriteBatch<'a> {
         Self {
             texture: t,
             vertices: Vec::with_capacity(6),
+            buffer: None,
             size: 0,
         }
     }
@@ -148,11 +150,17 @@ impl<'a> SpriteBatch<'a> {
         self.size += 1;
     }
 
-    pub fn finish(&self, ctx: &core::Context) -> core::VertexBuffer {
-        ctx.create_buffer(self.vertices.as_slice())
+    pub fn finish(&mut self, ctx: &core::Context) {
+        self.buffer = Some(ctx.create_buffer(self.vertices.as_slice()))
     }
 
     pub fn draw(&self, pass: &mut core::Pass) {
+        let buffer = self
+            .buffer
+            .as_ref()
+            .expect("Buffer::finish() wasn't called");
+
+        pass.set_vertex_buffer(buffer);
         pass.draw(0..self.vertices.len() as u32, 0..1);
     }
 }
