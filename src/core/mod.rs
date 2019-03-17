@@ -110,7 +110,7 @@ pub enum VertexFormat {
     Float2,
     Float3,
     Float4,
-    Rgba,
+    UByte4,
 }
 
 impl VertexFormat {
@@ -121,7 +121,7 @@ impl VertexFormat {
             VertexFormat::Float2 => 8,
             VertexFormat::Float3 => 12,
             VertexFormat::Float4 => 16,
-            VertexFormat::Rgba => 4,
+            VertexFormat::UByte4 => 4,
         }
     }
     // TODO: Use `const fn`
@@ -131,7 +131,7 @@ impl VertexFormat {
             VertexFormat::Float2 => wgpu::VertexFormat::Float2,
             VertexFormat::Float3 => wgpu::VertexFormat::Float3,
             VertexFormat::Float4 => wgpu::VertexFormat::Float4,
-            VertexFormat::Rgba => wgpu::VertexFormat::Uchar4,
+            VertexFormat::UByte4 => wgpu::VertexFormat::Uchar4Norm,
         }
     }
 }

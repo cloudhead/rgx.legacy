@@ -46,7 +46,7 @@ fn main() {
 
     let vertex_layout = VertexLayout::from(&[
         VertexFormat::Float2,
-        VertexFormat::Float4,
+        VertexFormat::UByte4,
         VertexFormat::Float2,
     ]);
 
@@ -77,10 +77,10 @@ fn main() {
 
     #[rustfmt::skip]
     let texels: Vec<u32> = vec![
-        0xFFFFFFFF, 0x000000FF, 0xFFFFFFFF, 0x000000FF,
-        0x000000FF, 0xFFFFFFFF, 0x000000FF, 0xFFFFFFFF,
-        0xFFFFFFFF, 0x000000FF, 0xFFFFFFFF, 0x000000FF,
-        0x000000FF, 0xFFFFFFFF, 0x000000FF, 0xFFFFFFFF,
+        0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
+        0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
+        0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
+        0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
     ];
 
     // Create 4 by 4 texture and sampler.
@@ -111,10 +111,10 @@ fn main() {
                 1.0,
                 1.0,
                 Color {
-                    r: 1.0,
-                    g: 1.0,
-                    b: 1.0,
-                    a: 1.0,
+                    r: 128,
+                    g: 64,
+                    b: 128,
+                    a: 255,
                 },
             );
         }
