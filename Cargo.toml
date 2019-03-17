@@ -9,8 +9,13 @@ keywords = ["graphics", "gamedev"]
 [lib]
 name = "rgx"
 
+[dependencies.wgpu]
+git = "https://github.com/gfx-rs/wgpu.git"
+branch = "master"
+version = "*"
+features = ["vulkan"]
+
 [dependencies]
-wgpu = { version = "*", features = ["vulkan"] }
 env_logger = "*"
 shaderc = "*"
 cgmath = "*"
