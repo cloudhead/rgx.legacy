@@ -4,15 +4,25 @@ use crate::core::{Context, Texture, VertexLayout};
 use wgpu::winit::Window;
 
 use cgmath::prelude::*;
-use cgmath::{Matrix4, Ortho};
+use cgmath::{Matrix4, Ortho, Vector2};
 
 #[derive(Copy, Clone)]
 #[rustfmt::skip]
-pub struct Vertex(
-    f32, f32,               // X Y
-    u32,                    // RGBA
-    f32, f32,               // U V
-);
+pub struct Vertex{
+    position: Vector2<f32>,
+    uv: Vector2<f32>,
+    color: Color<u8>,
+}
+
+impl Vertex {
+    pub fn new(x: f32, y: f32, u: f32, v: f32, c: Color<u8>) -> Vertex {
+        Vertex {
+            position: Vector2::new(x, y),
+            uv: Vector2::new(u, v),
+            color: c,
+        }
+    }
+}
 
 pub struct Rect<T> {
     pub x1: T,
@@ -32,6 +42,7 @@ impl Texture {
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct Color<T> {
     pub r: T,
     pub g: T,
@@ -141,16 +152,14 @@ impl<'a> SpriteBatch<'a> {
         let rx2: f32 = src.x2 / tw as f32;
         let ry2: f32 = src.y2 / th as f32;
 
-        let color: u32 = c.into();
-
         // TODO: Use an index buffer
         let mut verts: Vec<Vertex> = vec![
-            Vertex(dst.x1, dst.y1, color, rx1 * xrep, ry2 * yrep),
-            Vertex(dst.x2, dst.y1, color, rx2 * xrep, ry2 * yrep),
-            Vertex(dst.x2, dst.y2, color, rx2 * xrep, ry1 * yrep),
-            Vertex(dst.x1, dst.y1, color, rx1 * xrep, ry2 * yrep),
-            Vertex(dst.x1, dst.y2, color, rx1 * xrep, ry1 * yrep),
-            Vertex(dst.x2, dst.y2, color, rx2 * xrep, ry1 * yrep),
+            Vertex::new(dst.x1, dst.y1, rx1 * xrep, ry2 * yrep, c),
+            Vertex::new(dst.x2, dst.y1, rx2 * xrep, ry2 * yrep, c),
+            Vertex::new(dst.x2, dst.y2, rx2 * xrep, ry1 * yrep, c),
+            Vertex::new(dst.x1, dst.y1, rx1 * xrep, ry2 * yrep, c),
+            Vertex::new(dst.x1, dst.y2, rx1 * xrep, ry1 * yrep, c),
+            Vertex::new(dst.x2, dst.y2, rx2 * xrep, ry1 * yrep, c),
         ];
 
         self.vertices.append(&mut verts);

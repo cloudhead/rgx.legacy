@@ -46,8 +46,8 @@ fn main() {
 
     let vertex_layout = VertexLayout::from(&[
         VertexFormat::Float2,
-        VertexFormat::UByte4,
         VertexFormat::Float2,
+        VertexFormat::UByte4,
     ]);
 
     let uniforms_layout = ctx.create_uniforms_layout(&[
