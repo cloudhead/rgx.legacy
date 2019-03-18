@@ -543,7 +543,7 @@ impl<'a> Context<'a> {
             match s {
                 Uniform::Buffer(unif) => {
                     bindings.push(wgpu::Binding {
-                        binding: bindings.len() as u32,
+                        binding: i as u32,
                         resource: wgpu::BindingResource::Buffer {
                             buffer: &unif.wgpu,
                             range: 0..(unif.size as u32),
@@ -551,11 +551,11 @@ impl<'a> Context<'a> {
                     });
                 }
                 Uniform::Texture(tex) => bindings.push(wgpu::Binding {
-                    binding: bindings.len() as u32,
+                    binding: i as u32,
                     resource: wgpu::BindingResource::TextureView(&tex.view),
                 }),
                 Uniform::Sampler(sam) => bindings.push(wgpu::Binding {
-                    binding: bindings.len() as u32,
+                    binding: i as u32,
                     resource: wgpu::BindingResource::Sampler(&sam.wgpu),
                 }),
                 Uniform::Unbound() => panic!("binding slot {} is unbound", i),
