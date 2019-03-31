@@ -205,6 +205,16 @@ impl Kit {
     }
 }
 
+pub struct Pass<'a> {
+    pass: core::Pass<'a>,
+}
+
+impl<'a> Pass<'a> {
+    pub fn draw<T: Drawable>(&mut self, t: &T) {
+        t.draw(&mut self.pass)
+    }
+}
+
 pub struct Frame<'a> {
     frame: core::Frame<'a>,
     pipeline: &'a core::Pipeline,
@@ -212,16 +222,20 @@ pub struct Frame<'a> {
 }
 
 impl<'a> Frame<'a> {
-    pub fn begin_pass(&mut self) -> core::Pass {
+    pub fn pass(&mut self) -> Pass {
         let mut pass = self.frame.begin_pass();
         pass.apply_pipeline(&self.pipeline);
         pass.apply_uniforms(&self.mvp_binding);
-        pass
+        Pass { pass }
     }
 
     pub fn commit(self) {
         self.frame.commit();
     }
+}
+
+pub trait Drawable {
+    fn draw(&self, pass: &mut core::Pass);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -314,8 +328,10 @@ impl<'a> SpriteBatch<'a> {
         self.buffer = Some(buffer);
         self.binding = Some(binding);
     }
+}
 
-    pub fn draw(&self, pass: &mut core::Pass) {
+impl<'a> Drawable for SpriteBatch<'a> {
+    fn draw(&self, pass: &mut core::Pass) {
         let buffer = self
             .buffer
             .as_ref()
