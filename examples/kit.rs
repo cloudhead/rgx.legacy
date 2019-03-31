@@ -144,9 +144,10 @@ fn main() {
 
         let mut frame = kit.frame();
         {
-            let mut pass = frame.begin_pass();
-            bg.draw(&mut pass);
-            fg.draw(&mut pass);
+            let mut pass = frame.pass();
+
+            pass.draw(&bg);
+            pass.draw(&fg);
         }
         frame.commit();
     }
