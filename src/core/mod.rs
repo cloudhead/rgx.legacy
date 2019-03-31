@@ -6,6 +6,7 @@ extern crate shaderc;
 extern crate wgpu;
 
 use std::ops::Range;
+use std::rc::*;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Shaders
@@ -37,22 +38,31 @@ impl ShaderStage {
 
 pub struct Uniforms {
     wgpu: wgpu::BindGroup,
+    set_index: u32,
 }
 
 impl Uniforms {
-    fn new(layout: wgpu::BindGroup) -> Self {
-        Self { wgpu: layout }
+    fn new(set_index: u32, layout: wgpu::BindGroup) -> Self {
+        Self {
+            set_index,
+            wgpu: layout,
+        }
     }
 }
 
 pub struct UniformsLayout {
     wgpu: wgpu::BindGroupLayout,
     size: usize,
+    set_index: u32,
 }
 
 impl UniformsLayout {
-    fn new(layout: wgpu::BindGroupLayout, size: usize) -> Self {
-        Self { wgpu: layout, size }
+    fn new(set_index: u32, layout: wgpu::BindGroupLayout, size: usize) -> Self {
+        Self {
+            wgpu: layout,
+            size,
+            set_index,
+        }
     }
 }
 
@@ -193,7 +203,7 @@ impl BindingType {
     }
 }
 
-pub struct Slot {
+pub struct Binding {
     pub binding: BindingType,
     pub stage: ShaderStage,
 }
@@ -222,6 +232,7 @@ impl<'a> std::ops::Index<usize> for UniformsBinding<'a> {
 
 impl<'a> std::ops::IndexMut<usize> for UniformsBinding<'a> {
     fn index_mut(&mut self, index: usize) -> &mut Uniform<'a> {
+        // TODO: Better error when out of bounds.
         self.slots.index_mut(index)
     }
 }
@@ -232,6 +243,14 @@ impl<'a> std::ops::IndexMut<usize> for UniformsBinding<'a> {
 
 pub struct Pipeline {
     wgpu: wgpu::RenderPipeline,
+    pub layout: PipelineLayout,
+    pub vertex_layout: VertexLayout,
+}
+
+pub struct Set<'a>(pub &'a [Binding]);
+
+pub struct PipelineLayout {
+    pub sets: Vec<UniformsLayout>,
 }
 
 pub struct Pass<'a> {
@@ -243,7 +262,7 @@ impl<'a> Pass<'a> {
         self.wgpu.set_pipeline(&pipeline.wgpu)
     }
     pub fn apply_uniforms(&mut self, uniforms: &Uniforms) {
-        self.wgpu.set_bind_group(0, &uniforms.wgpu)
+        self.wgpu.set_bind_group(uniforms.set_index, &uniforms.wgpu)
     }
     pub fn set_index_buffer(&mut self, index_buf: &IndexBuffer) {
         self.wgpu.set_index_buffer(&index_buf.wgpu, 0)
@@ -263,8 +282,8 @@ impl<'a> Pass<'a> {
 /// Command
 ///////////////////////////////////////////////////////////////////////////////
 
-enum Command<'a> {
-    UpdateUniformBuffer(&'a UniformBuffer, wgpu::Buffer, usize),
+enum Command {
+    UpdateUniformBuffer(Rc<UniformBuffer>, wgpu::Buffer, usize),
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -272,15 +291,16 @@ enum Command<'a> {
 ///////////////////////////////////////////////////////////////////////////////
 
 pub struct Frame<'a> {
-    view: &'a wgpu::TextureView,
+    swap_chain_out: wgpu::SwapChainOutput<'a>,
     encoder: wgpu::CommandEncoder,
+    device: &'a mut wgpu::Device,
 }
 
 impl<'a> Frame<'a> {
     pub fn begin_pass(&mut self) -> Pass {
         let pass = self.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                attachment: &self.view,
+                attachment: &self.swap_chain_out.view,
                 load_op: wgpu::LoadOp::Clear,
                 store_op: wgpu::StoreOp::Store,
                 clear_color: wgpu::Color::WHITE,
@@ -289,19 +309,23 @@ impl<'a> Frame<'a> {
         });
         Pass { wgpu: pass }
     }
+
+    pub fn commit(self) {
+        self.device.get_queue().submit(&[self.encoder.finish()]);
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Context
 ///////////////////////////////////////////////////////////////////////////////
 
-pub struct Context<'a> {
+pub struct Context {
     device: wgpu::Device,
     swap_chain: wgpu::SwapChain,
-    commands: Vec<Command<'a>>,
+    commands: Vec<Command>,
 }
 
-impl<'a> Context<'a> {
+impl Context {
     pub fn new(window: &wgpu::winit::Window) -> Self {
         env_logger::init();
 
@@ -339,15 +363,14 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn frame<F>(&mut self, f: F)
-    where
-        F: Fn(&mut Frame),
-    {
+    pub fn frame(&mut self) -> Frame {
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
 
         let chain_out = self.swap_chain.get_next_texture();
+
+        // TODO: This means we can't add commands after the frame has started!
         for c in &self.commands {
             match c {
                 Command::UpdateUniformBuffer(dst, src, size) => {
@@ -355,13 +378,11 @@ impl<'a> Context<'a> {
                 }
             }
         }
-        let mut frame = Frame {
-            view: &chain_out.view,
+        Frame {
+            swap_chain_out: chain_out,
             encoder,
-        };
-        f(&mut frame);
-
-        self.device.get_queue().submit(&[frame.encoder.finish()]);
+            device: &mut self.device,
+        }
     }
 
     pub fn create_shader(&self, name: &str, source: &str, stage: ShaderStage) -> Shader {
@@ -470,7 +491,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn update_uniform_buffer<T>(&mut self, u: &'a UniformBuffer, buf: T)
+    pub fn update_uniform_buffer<T>(&mut self, u: Rc<UniformBuffer>, buf: T)
     where
         T: 'static + Copy,
     {
@@ -517,7 +538,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn create_uniforms_layout(&self, slots: &[Slot]) -> UniformsLayout {
+    pub fn create_uniforms_layout(&self, index: u32, slots: &[Binding]) -> UniformsLayout {
         let mut bindings = Vec::new();
 
         for s in slots {
@@ -532,7 +553,7 @@ impl<'a> Context<'a> {
             .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 bindings: bindings.as_slice(),
             });
-        UniformsLayout::new(layout, bindings.len())
+        UniformsLayout::new(index, layout, bindings.len())
     }
 
     pub fn create_uniforms(&self, bs: &UniformsBinding) -> Uniforms {
@@ -561,58 +582,86 @@ impl<'a> Context<'a> {
                 Uniform::Unbound() => panic!("binding slot {} is unbound", i),
             };
         }
-        Uniforms::new(self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &layout.wgpu,
-            bindings: bindings.as_slice(),
-        }))
+        Uniforms::new(
+            layout.set_index,
+            self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                layout: &layout.wgpu,
+                bindings: bindings.as_slice(),
+            }),
+        )
+    }
+
+    pub fn create_binding(&self, layout: &UniformsLayout, us: &[Uniform]) -> Uniforms {
+        let mut binding = UniformsBinding::from(layout);
+        for (i, u) in us.iter().enumerate() {
+            binding[i] = u.clone();
+        }
+        self.create_uniforms(&binding)
+    }
+
+    pub fn create_pipeline_layout(&self, ss: &[Set]) -> PipelineLayout {
+        let mut sets = Vec::new();
+        for (i, s) in ss.iter().enumerate() {
+            sets.push(self.create_uniforms_layout(i as u32, s.0))
+        }
+        PipelineLayout { sets }
     }
 
     pub fn create_pipeline(
         &self,
-        binds: &UniformsLayout,
-        vertex_layout: &VertexLayout,
+        pipeline_layout: PipelineLayout,
+        vertex_layout: VertexLayout,
         vs: &Shader,
         fs: &Shader,
     ) -> Pipeline {
-        let pipeline_layout = self
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                bind_group_layouts: &[&binds.wgpu],
-            });
         let vertex_attrs = vertex_layout.to_wgpu();
 
+        let mut sets = Vec::new();
+        for s in pipeline_layout.sets.iter() {
+            sets.push(&s.wgpu);
+        }
+        let layout = &self
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                bind_group_layouts: sets.as_slice(),
+            });
+
+        let wgpu = self
+            .device
+            .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                layout,
+                vertex_stage: wgpu::PipelineStageDescriptor {
+                    module: &vs.module,
+                    entry_point: "main",
+                },
+                fragment_stage: wgpu::PipelineStageDescriptor {
+                    module: &fs.module,
+                    entry_point: "main",
+                },
+                rasterization_state: wgpu::RasterizationStateDescriptor {
+                    front_face: wgpu::FrontFace::Ccw,
+                    cull_mode: wgpu::CullMode::None,
+                    depth_bias: 0,
+                    depth_bias_slope_scale: 0.0,
+                    depth_bias_clamp: 0.0,
+                },
+                primitive_topology: wgpu::PrimitiveTopology::TriangleList,
+                color_states: &[wgpu::ColorStateDescriptor {
+                    format: wgpu::TextureFormat::Bgra8Unorm,
+                    color: wgpu::BlendDescriptor::REPLACE,
+                    alpha: wgpu::BlendDescriptor::REPLACE,
+                    write_mask: wgpu::ColorWriteFlags::ALL,
+                }],
+                depth_stencil_state: None,
+                index_format: wgpu::IndexFormat::Uint16,
+                vertex_buffers: &[vertex_attrs],
+                sample_count: 1,
+            });
+
         Pipeline {
-            wgpu: self
-                .device
-                .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                    layout: &pipeline_layout,
-                    vertex_stage: wgpu::PipelineStageDescriptor {
-                        module: &vs.module,
-                        entry_point: "main",
-                    },
-                    fragment_stage: wgpu::PipelineStageDescriptor {
-                        module: &fs.module,
-                        entry_point: "main",
-                    },
-                    rasterization_state: wgpu::RasterizationStateDescriptor {
-                        front_face: wgpu::FrontFace::Ccw,
-                        cull_mode: wgpu::CullMode::None,
-                        depth_bias: 0,
-                        depth_bias_slope_scale: 0.0,
-                        depth_bias_clamp: 0.0,
-                    },
-                    primitive_topology: wgpu::PrimitiveTopology::TriangleList,
-                    color_states: &[wgpu::ColorStateDescriptor {
-                        format: wgpu::TextureFormat::Bgra8Unorm,
-                        color: wgpu::BlendDescriptor::REPLACE,
-                        alpha: wgpu::BlendDescriptor::REPLACE,
-                        write_mask: wgpu::ColorWriteFlags::ALL,
-                    }],
-                    depth_stencil_state: None,
-                    index_format: wgpu::IndexFormat::Uint16,
-                    vertex_buffers: &[vertex_attrs],
-                    sample_count: 1,
-                }),
+            layout: pipeline_layout,
+            vertex_layout,
+            wgpu,
         }
     }
 }

@@ -1,18 +1,27 @@
 #![allow(dead_code)]
 use crate::core;
-use crate::core::{BindingType, Context, ShaderStage, Texture, VertexLayout};
+use crate::core::{
+    Binding, BindingType, Context, Sampler, Set, ShaderStage, Texture, VertexLayout,
+};
 
 use wgpu::winit::Window;
 
 use cgmath::prelude::*;
 use cgmath::{Matrix4, Ortho, Vector2};
 
+use std::rc::*;
+
 #[derive(Copy, Clone)]
-#[rustfmt::skip]
-pub struct Vertex{
+pub struct Vertex {
     position: Vector2<f32>,
     uv: Vector2<f32>,
     color: Rgba<u8>,
+}
+
+#[derive(Copy, Clone)]
+pub struct Uniforms {
+    pub ortho: Matrix4<f32>,
+    pub transform: Matrix4<f32>,
 }
 
 impl Vertex {
@@ -83,16 +92,16 @@ impl From<Rgba<u8>> for u32 {
     }
 }
 
-pub struct Kit<'a> {
-    pub ctx: Context<'a>,
+pub struct Kit {
+    pub ctx: Context,
     pub ortho: Ortho<f32>,
     pub transform: Matrix4<f32>,
     pub pipeline: core::Pipeline,
-    pub vertex_layout: core::VertexLayout,
-    pub uniforms_layout: core::UniformsLayout,
+    pub mvp_buf: Rc<core::UniformBuffer>,
+    pub mvp_binding: core::Uniforms,
 }
 
-impl<'a> Kit<'a> {
+impl Kit {
     pub fn new(w: &Window) -> Self {
         let win_size = w
             .get_inner_size()
@@ -116,20 +125,21 @@ impl<'a> Kit<'a> {
             core::VertexFormat::Float2,
             core::VertexFormat::UByte4,
         ]);
-
-        let uniforms_layout = ctx.create_uniforms_layout(&[
-            core::Slot {
+        let pipeline_layout = ctx.create_pipeline_layout(&[
+            Set(&[Binding {
                 binding: BindingType::UniformBuffer,
                 stage: ShaderStage::Vertex,
-            },
-            core::Slot {
-                binding: BindingType::SampledTexture,
-                stage: ShaderStage::Fragment,
-            },
-            core::Slot {
-                binding: BindingType::Sampler,
-                stage: ShaderStage::Fragment,
-            },
+            }]),
+            Set(&[
+                Binding {
+                    binding: BindingType::SampledTexture,
+                    stage: ShaderStage::Fragment,
+                },
+                Binding {
+                    binding: BindingType::Sampler,
+                    stage: ShaderStage::Fragment,
+                },
+            ]),
         ]);
 
         // TODO: Use `env("CARGO_MANIFEST_DIR")`
@@ -145,22 +155,72 @@ impl<'a> Kit<'a> {
                 include_str!("data/shader.frag"),
                 ShaderStage::Fragment,
             );
-            ctx.create_pipeline(&uniforms_layout, &vertex_layout, &vs, &fs)
+            ctx.create_pipeline(pipeline_layout, vertex_layout, &vs, &fs)
         };
+
+        let mvp_buf = Rc::new(ctx.create_uniform_buffer(Uniforms {
+            ortho: ortho.into(),
+            transform,
+        }));
+        let mvp_binding =
+            ctx.create_binding(&pipeline.layout.sets[0], &[core::Uniform::Buffer(&mvp_buf)]);
 
         Self {
             ctx,
             ortho,
             transform,
             pipeline,
-            vertex_layout,
-            uniforms_layout,
+            mvp_buf,
+            mvp_binding,
+        }
+    }
+
+    pub fn texture(&mut self, texels: &[u32], w: u32, h: u32) -> Texture {
+        self.ctx.create_texture(texels, w, h)
+    }
+
+    pub fn sampler(&self, min_filter: core::Filter, mag_filter: core::Filter) -> core::Sampler {
+        self.ctx.create_sampler(min_filter, mag_filter)
+    }
+
+    pub fn frame(&mut self) -> Frame {
+        self.ctx.update_uniform_buffer(
+            self.mvp_buf.clone(),
+            Uniforms {
+                transform: self.transform,
+                ortho: self.ortho.into(),
+            },
+        );
+
+        Frame {
+            frame: self.ctx.frame(),
+            pipeline: &self.pipeline,
+            mvp_binding: &self.mvp_binding,
         }
     }
 
     #[allow(dead_code)]
     fn resize(&mut self, _w: u32, _h: u32) {
         unimplemented!();
+    }
+}
+
+pub struct Frame<'a> {
+    frame: core::Frame<'a>,
+    pipeline: &'a core::Pipeline,
+    mvp_binding: &'a core::Uniforms,
+}
+
+impl<'a> Frame<'a> {
+    pub fn begin_pass(&mut self) -> core::Pass {
+        let mut pass = self.frame.begin_pass();
+        pass.apply_pipeline(&self.pipeline);
+        pass.apply_uniforms(&self.mvp_binding);
+        pass
+    }
+
+    pub fn commit(self) {
+        self.frame.commit();
     }
 }
 
@@ -190,17 +250,21 @@ trait VertexLike<'a> {
 
 pub struct SpriteBatch<'a> {
     pub texture: &'a Texture,
+    pub sampler: &'a Sampler,
     pub vertices: Vec<Vertex>,
     pub buffer: Option<core::VertexBuffer>,
+    pub binding: Option<core::Uniforms>,
     pub size: usize,
 }
 
 impl<'a> SpriteBatch<'a> {
-    pub fn new(t: &'a Texture) -> Self {
+    pub fn new(t: &'a Texture, s: &'a Sampler) -> Self {
         Self {
             texture: t,
+            sampler: s,
             vertices: Vec::with_capacity(6),
             buffer: None,
+            binding: None,
             size: 0,
         }
     }
@@ -233,12 +297,22 @@ impl<'a> SpriteBatch<'a> {
         self.size += 1;
     }
 
-    pub fn finish(&mut self, ctx: &core::Context) {
+    pub fn finish(&mut self, kit: &Kit) {
         assert!(
             self.buffer.is_none(),
             "SpriteBatch::finish called more than once"
         );
-        self.buffer = Some(ctx.create_buffer(self.vertices.as_slice()))
+        let buffer = kit.ctx.create_buffer(self.vertices.as_slice());
+        #[rustfmt::skip]
+        let binding = kit.ctx.create_binding(
+            &kit.pipeline.layout.sets[1],
+            &[
+                core::Uniform::Texture(&self.texture),
+                core::Uniform::Sampler(&self.sampler)
+            ],
+        );
+        self.buffer = Some(buffer);
+        self.binding = Some(binding);
     }
 
     pub fn draw(&self, pass: &mut core::Pass) {
@@ -246,7 +320,12 @@ impl<'a> SpriteBatch<'a> {
             .buffer
             .as_ref()
             .expect("SpriteBatch::finish wasn't called");
+        let binding = self
+            .binding
+            .as_ref()
+            .expect("SpriteBatch::finish wasn't called");
 
+        pass.apply_uniforms(binding);
         pass.set_vertex_buffer(buffer);
         pass.draw(0..self.vertices.len() as u32, 0..1);
     }
