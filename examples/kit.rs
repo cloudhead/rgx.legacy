@@ -21,31 +21,57 @@ fn main() {
     // Setup rgx context
     ///////////////////////////////////////////////////////////////////////////
 
-    let kit = Kit::new(&window);
-    let mut ctx = kit.ctx;
+    let mut kit = Kit::new(&window);
 
     ///////////////////////////////////////////////////////////////////////////
-    // Setup texture & sampler
+    // Setup sampler & texture & sampler
     ///////////////////////////////////////////////////////////////////////////
+
+    let sampler = kit.sampler(Filter::Nearest, Filter::Nearest);
 
     #[rustfmt::skip]
-    let texels: Vec<u32> = vec![
+    let texels_1: Vec<u32> = vec![
         0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
         0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
         0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
         0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
     ];
+    let texture_1 = kit.texture(texels_1.as_slice(), 4, 4);
 
-    // Create 4 by 4 texture and sampler.
-    let texture = ctx.create_texture(texels.as_slice(), 4, 4);
-    let sampler = ctx.create_sampler(Filter::Nearest, Filter::Nearest);
+    #[rustfmt::skip]
+    let texels_2 = vec![
+        0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
+        0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
+        0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
+        0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
+    ];
+    let texture_2 = kit.texture(texels_2.as_slice(), 4, 4);
 
     ///////////////////////////////////////////////////////////////////////////
-    // Setup sprite batch
+    // Setup sprite batches
     ///////////////////////////////////////////////////////////////////////////
 
-    let mut batch = SpriteBatch::new(&texture);
+    let mut batch_1 = SpriteBatch::new(&texture_1, &sampler);
+    let (sw, sh) = (128.0, 128.0);
 
+    for i in 0..16 {
+        for j in 0..16 {
+            let x = i as f32 * sw;
+            let y = j as f32 * sh;
+
+            batch_1.add(
+                texture_1.rect(),
+                Rect::new(x, y, x + sw, y + sh),
+                Rgba::new(64, 64, 128, 255),
+                Repeat::default(),
+            );
+        }
+    }
+    batch_1.finish(&kit);
+
+    ///////////////////////////////////////////////////////////////////////////
+
+    let mut batch_2 = SpriteBatch::new(&texture_2, &sampler);
     let (sw, sh) = (64.0, 64.0);
 
     for i in 0..16 {
@@ -53,43 +79,19 @@ fn main() {
             let x = i as f32 * sw * 2.0;
             let y = j as f32 * sh * 2.0;
 
-            batch.add(
-                texture.rect(),
+            batch_2.add(
+                texture_1.rect(),
                 Rect::new(x, y, x + sw, y + sh),
                 Rgba::new(128, 64, 128, 255),
                 Repeat::default(),
             );
         }
     }
-    batch.finish(&ctx);
-
-    ///////////////////////////////////////////////////////////////////////////
-    // Setup transform & ortho uniforms
-    ///////////////////////////////////////////////////////////////////////////
-
-    #[derive(Copy, Clone)]
-    struct Uniforms {
-        pub ortho: Matrix4<f32>,
-        pub transform: Matrix4<f32>,
-    }
-
-    let uniform_buf = ctx.create_uniform_buffer(Uniforms {
-        ortho: kit.ortho.into(),
-        transform: kit.transform,
-    });
+    batch_2.finish(&kit);
 
     ///////////////////////////////////////////////////////////////////////////
     // Setup uniform layout
     ///////////////////////////////////////////////////////////////////////////
-
-    let mut uniforms_binding = UniformsBinding::from(&kit.uniforms_layout);
-
-    uniforms_binding[0] = Uniform::Buffer(&uniform_buf);
-    uniforms_binding[1] = Uniform::Texture(&texture);
-    uniforms_binding[2] = Uniform::Sampler(&sampler);
-
-    let uniforms = ctx.create_uniforms(&uniforms_binding);
-    let pipeline = kit.pipeline;
 
     let mut x: f32 = 0.0;
     let mut y: f32 = 0.0;
@@ -129,28 +131,21 @@ fn main() {
         });
 
         ///////////////////////////////////////////////////////////////////////////
-        // Update uniforms
+        // Update transform
         ///////////////////////////////////////////////////////////////////////////
 
-        ctx.update_uniform_buffer(
-            &uniform_buf,
-            Uniforms {
-                transform: Matrix4::from_translation(Vector3::new(x, y, 0.0)),
-                ortho: kit.ortho.into(),
-            },
-        );
+        kit.transform = Matrix4::from_translation(Vector3::new(x, y, 0.0));
 
         ///////////////////////////////////////////////////////////////////////////
         // Draw frame
         ///////////////////////////////////////////////////////////////////////////
 
-        ctx.frame(|frame| {
+        let mut frame = kit.frame();
+        {
             let mut pass = frame.begin_pass();
-
-            pass.apply_pipeline(&pipeline);
-            pass.apply_uniforms(&uniforms);
-
-            batch.draw(&mut pass);
-        });
+            batch_1.draw(&mut pass);
+            batch_2.draw(&mut pass);
+        }
+        frame.commit();
     }
 }

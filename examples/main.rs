@@ -40,23 +40,23 @@ fn main() {
     );
 
     ///////////////////////////////////////////////////////////////////////////
-    // Setup shader bindings layout
+    // Setup shader pipeline layout
     ///////////////////////////////////////////////////////////////////////////
 
-    let uniforms_layout = ctx.create_uniforms_layout(&[
-        Slot {
+    let pipeline_layout = ctx.create_pipeline_layout(&[Set(&[
+        Binding {
             binding: BindingType::UniformBuffer,
             stage: ShaderStage::Vertex,
         },
-        Slot {
+        Binding {
             binding: BindingType::SampledTexture,
             stage: ShaderStage::Fragment,
         },
-        Slot {
+        Binding {
             binding: BindingType::Sampler,
             stage: ShaderStage::Fragment,
         },
-    ]);
+    ])]);
 
     ///////////////////////////////////////////////////////////////////////////
     // Setup vertex & index buffers
@@ -91,7 +91,7 @@ fn main() {
     // Setup render pipeline
     ///////////////////////////////////////////////////////////////////////////
 
-    let pipeline = ctx.create_pipeline(&uniforms_layout, &vertex_layout, &vs, &fs);
+    let pipeline = ctx.create_pipeline(pipeline_layout, vertex_layout, &vs, &fs);
 
     ///////////////////////////////////////////////////////////////////////////
     // Setup texture & sampler
@@ -143,13 +143,14 @@ fn main() {
     // Setup uniform layout
     ///////////////////////////////////////////////////////////////////////////
 
-    let mut uniforms_binding = UniformsBinding::from(&uniforms_layout);
-
-    uniforms_binding[0] = Uniform::Buffer(&uniform_buf);
-    uniforms_binding[1] = Uniform::Texture(&texture);
-    uniforms_binding[2] = Uniform::Sampler(&sampler);
-
-    let uniforms = ctx.create_uniforms(&uniforms_binding);
+    let uniforms = ctx.create_binding(
+        &pipeline.layout.sets[0],
+        &[
+            Uniform::Buffer(&uniform_buf),
+            Uniform::Texture(&texture),
+            Uniform::Sampler(&sampler),
+        ],
+    );
 
     let mut x: f32 = 0.0;
     let mut y: f32 = 0.0;
