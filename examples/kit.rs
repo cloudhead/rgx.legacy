@@ -114,15 +114,13 @@ fn main() {
                     WindowEvent::KeyboardInput {
                         input:
                             KeyboardInput {
-                                virtual_keycode: Some(code),
+                                virtual_keycode: Some(VirtualKeyCode::Escape),
                                 state: ElementState::Pressed,
                                 ..
                             },
                         ..
                     } => {
-                        if let VirtualKeyCode::Escape = code {
-                            running = false;
-                        }
+                        running = false;
                     }
                     WindowEvent::CloseRequested => {
                         running = false;
