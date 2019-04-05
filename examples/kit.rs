@@ -142,13 +142,11 @@ fn main() {
         // Draw frame
         ///////////////////////////////////////////////////////////////////////////
 
-        let mut frame = kit.frame();
-        {
-            let mut pass = frame.pass();
+        kit.frame(|f| {
+            let mut pass = f.pass();
 
             pass.draw(&bg);
             pass.draw(&fg);
-        }
-        frame.commit();
+        });
     }
 }
