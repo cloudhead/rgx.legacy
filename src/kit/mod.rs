@@ -183,7 +183,16 @@ impl Kit {
         self.ctx.create_sampler(min_filter, mag_filter)
     }
 
-    pub fn frame(&mut self) -> Frame {
+    pub fn frame<F>(&mut self, f: F)
+    where
+        F: FnOnce(&mut Frame),
+    {
+        let mut frame = self._frame();
+        f(&mut frame);
+        frame.commit();
+    }
+
+    fn _frame(&mut self) -> Frame {
         self.ctx.update_uniform_buffer(
             self.mvp_buf.clone(),
             Uniforms {
