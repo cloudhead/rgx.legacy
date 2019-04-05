@@ -134,10 +134,10 @@ fn main() {
     }
     .into();
 
-    let uniform_buf = ctx.create_uniform_buffer(Uniforms {
+    let uniform_buf = std::rc::Rc::new(ctx.create_uniform_buffer(Uniforms {
         ortho,
         transform: Matrix4::identity(),
-    });
+    }));
 
     ///////////////////////////////////////////////////////////////////////////
     // Setup uniform layout
@@ -194,7 +194,7 @@ fn main() {
         ///////////////////////////////////////////////////////////////////////////
 
         ctx.update_uniform_buffer(
-            &uniform_buf,
+            uniform_buf.clone(),
             Uniforms {
                 transform: Matrix4::from_translation(Vector3::new(x, y, 0.0)),
                 ortho,
@@ -205,7 +205,8 @@ fn main() {
         // Draw frame
         ///////////////////////////////////////////////////////////////////////////
 
-        ctx.frame(|frame| {
+        let mut frame = ctx.frame();
+        {
             let mut pass = frame.begin_pass();
 
             pass.apply_pipeline(&pipeline);
@@ -213,6 +214,7 @@ fn main() {
             pass.set_index_buffer(&index_buf);
             pass.set_vertex_buffer(&vertex_buf);
             pass.draw_indexed(0..6, 0..1);
-        });
+        }
+        frame.commit();
     }
 }
