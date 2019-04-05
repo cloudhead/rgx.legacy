@@ -185,12 +185,17 @@ impl Kit {
 
     pub fn frame<F>(&mut self, f: F)
     where
-        F: FnOnce(&mut Frame),
+        F: FnOnce(&mut Pass),
     {
         let mut frame = self._frame();
-        f(&mut frame);
+        {
+            let mut pass = frame.pass();
+            f(&mut pass);
+        }
         frame.commit();
     }
+
+    ////////////////////////////////////////////////////////////////////////////
 
     fn _frame(&mut self) -> Frame {
         self.ctx.update_uniform_buffer(

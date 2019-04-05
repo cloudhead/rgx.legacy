@@ -142,9 +142,7 @@ fn main() {
         // Draw frame
         ///////////////////////////////////////////////////////////////////////////
 
-        kit.frame(|f| {
-            let mut pass = f.pass();
-
+        kit.frame(|pass| {
             pass.draw(&bg);
             pass.draw(&fg);
         });
