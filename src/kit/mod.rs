@@ -92,6 +92,47 @@ impl From<Rgba<u8>> for u32 {
     }
 }
 
+pub enum AnimationState {
+    Playing(u32, f64),
+    Paused(u32, f64),
+    Stopped,
+}
+
+pub struct Animation<T> {
+    pub state: AnimationState,
+    pub speed: f64,
+    pub frames: Vec<T>,
+}
+
+impl<T> Animation<T> {
+    pub fn step(&mut self, delta: f64) {
+        match self.state {
+            AnimationState::Playing(_, elapsed) => {
+                let elapsed = elapsed + delta;
+                let fraction = elapsed / self.speed;
+                let cursor = fraction.floor() as u32 % self.frames.len() as u32;
+                self.state = AnimationState::Playing(cursor, elapsed);
+            }
+            _ => {}
+        }
+    }
+
+    pub fn val(&self) -> T
+    where
+        T: Copy,
+    {
+        self.frames[self.cursor() as usize]
+    }
+
+    pub fn cursor(&self) -> u32 {
+        match self.state {
+            AnimationState::Playing(cursor, _) => cursor,
+            AnimationState::Paused(cursor, _) => cursor,
+            AnimationState::Stopped => 0,
+        }
+    }
+}
+
 pub struct Kit {
     pub ctx: Context,
     pub ortho: Ortho<f32>,
