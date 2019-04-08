@@ -648,8 +648,16 @@ impl Context {
                 primitive_topology: wgpu::PrimitiveTopology::TriangleList,
                 color_states: &[wgpu::ColorStateDescriptor {
                     format: wgpu::TextureFormat::Bgra8Unorm,
-                    color: wgpu::BlendDescriptor::REPLACE,
-                    alpha: wgpu::BlendDescriptor::REPLACE,
+                    color: wgpu::BlendDescriptor {
+                        src_factor: wgpu::BlendFactor::SrcAlpha,
+                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                        operation: wgpu::BlendOperation::Add,
+                    },
+                    alpha: wgpu::BlendDescriptor {
+                        src_factor: wgpu::BlendFactor::SrcAlpha,
+                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                        operation: wgpu::BlendOperation::Add,
+                    },
                     write_mask: wgpu::ColorWriteFlags::ALL,
                 }],
                 depth_stencil_state: None,
