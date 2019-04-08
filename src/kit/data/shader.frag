@@ -9,10 +9,10 @@ layout(location = 1) in  vec4 f_color;
 layout(location = 0) out vec4 fragColor;
 
 void main() {
-	fragColor = mix(
-		texture(sampler2D(tex, sam),
-			vec2(f_uv.s, 1 - f_uv.t)),
-		vec4(f_color.rgb, 1.0),
-		f_color.a
+	vec4 texel = texture(sampler2D(tex, sam), vec2(f_uv.s, 1 - f_uv.t));
+
+	fragColor = vec4(
+		mix(texel.rgb, f_color.rgb, f_color.a),
+		texel.a
 	);
 }
