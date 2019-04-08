@@ -30,22 +30,24 @@ fn main() {
     let sampler = kit.sampler(Filter::Nearest, Filter::Nearest);
 
     #[rustfmt::skip]
-    let bg_texels: Vec<u32> = vec![
+    let bg_texels: [u32; 16] = [
         0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
         0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
         0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
         0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
     ];
-    let bg_texture = kit.texture(bg_texels.as_slice(), 4, 4);
+    let bg_buffer: [u8; 64] = unsafe { std::mem::transmute(bg_texels) };
+    let bg_texture = kit.texture(&bg_buffer, 4, 4);
 
     #[rustfmt::skip]
-    let fg_texels = vec![
+    let fg_texels: [u32; 16] = [
         0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
         0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
         0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
         0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
     ];
-    let fg_texture = kit.texture(fg_texels.as_slice(), 4, 4);
+    let fg_buffer: [u8; 64] = unsafe { std::mem::transmute(fg_texels) };
+    let fg_texture = kit.texture(&fg_buffer, 4, 4);
 
     ///////////////////////////////////////////////////////////////////////////
     // Setup sprite batches

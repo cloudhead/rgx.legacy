@@ -411,7 +411,7 @@ impl Context {
         }
     }
 
-    pub fn create_texture(&mut self, texels: &[u32], w: u32, h: u32) -> Texture {
+    pub fn create_texture(&mut self, texels: &[u8], w: u32, h: u32) -> Texture {
         let texture_extent = wgpu::Extent3d {
             width: w,
             height: h,

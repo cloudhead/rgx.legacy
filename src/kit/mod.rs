@@ -225,7 +225,7 @@ impl Kit {
         }
     }
 
-    pub fn texture(&mut self, texels: &[u32], w: u32, h: u32) -> Texture {
+    pub fn texture(&mut self, texels: &[u8], w: u32, h: u32) -> Texture {
         self.ctx.create_texture(texels, w, h)
     }
 
