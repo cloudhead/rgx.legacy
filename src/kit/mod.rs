@@ -45,6 +45,7 @@ impl Default for Repeat {
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct Rect<T> {
     pub x1: T,
     pub y1: T,
@@ -105,15 +106,23 @@ pub struct Animation<T> {
 }
 
 impl<T> Animation<T> {
+    pub fn new(frames: &[T]) -> Self
+    where
+        T: Clone,
+    {
+        Self {
+            state: AnimationState::Playing(0, 0.0),
+            speed: 1.0,
+            frames: frames.to_vec(),
+        }
+    }
+
     pub fn step(&mut self, delta: f64) {
-        match self.state {
-            AnimationState::Playing(_, elapsed) => {
-                let elapsed = elapsed + delta;
-                let fraction = elapsed / self.speed;
-                let cursor = fraction.floor() as u32 % self.frames.len() as u32;
-                self.state = AnimationState::Playing(cursor, elapsed);
-            }
-            _ => {}
+        if let AnimationState::Playing(_, elapsed) = self.state {
+            let elapsed = elapsed + delta;
+            let fraction = elapsed / self.speed;
+            let cursor = fraction.floor() as u32 % self.frames.len() as u32;
+            self.state = AnimationState::Playing(cursor, elapsed);
         }
     }
 
