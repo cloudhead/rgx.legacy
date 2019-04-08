@@ -10,7 +10,8 @@ layout(location = 0) out vec4 fragColor;
 
 void main() {
 	fragColor = mix(
-		texture(sampler2D(tex, sam), f_uv),
+		texture(sampler2D(tex, sam),
+			vec2(f_uv.s, 1 - f_uv.t)),
 		vec4(f_color.rgb, 1.0),
 		f_color.a
 	);

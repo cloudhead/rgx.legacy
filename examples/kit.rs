@@ -63,7 +63,7 @@ fn main() {
             bg.add(
                 bg_texture.rect(),
                 Rect::new(x, y, x + sw, y + sh),
-                Rgba::new(64, 64, 128, 255),
+                Rgba::new(64, 64, 128, 128),
                 Repeat::default(),
             );
         }
@@ -84,7 +84,7 @@ fn main() {
             fg.add(
                 fg_texture.rect(),
                 Rect::new(x, y, x + sw, y + sh),
-                Rgba::new(128, 64, 128, 255),
+                Rgba::new(128, 64, 128, 128),
                 Repeat::default(),
             );
         }
