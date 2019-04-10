@@ -98,15 +98,16 @@ fn main() {
     ///////////////////////////////////////////////////////////////////////////
 
     #[rustfmt::skip]
-    let texels: Vec<u32> = vec![
-        0xFFFFFFFF, 0x000000FF, 0xFFFFFFFF, 0x000000FF,
-        0x000000FF, 0xFFFFFFFF, 0x000000FF, 0xFFFFFFFF,
-        0xFFFFFFFF, 0x000000FF, 0xFFFFFFFF, 0x000000FF,
-        0x000000FF, 0xFFFFFFFF, 0x000000FF, 0xFFFFFFFF,
+    let texels: [u32; 16] = [
+        0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
+        0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
+        0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
+        0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
     ];
+    let buffer: [u8; 64] = unsafe { std::mem::transmute(texels) };
 
     // Create 4 by 4 texture and sampler.
-    let texture = ctx.create_texture(texels.as_slice(), 4, 4);
+    let texture = ctx.create_texture(&buffer, 4, 4);
     let sampler = ctx.create_sampler(Filter::Nearest, Filter::Nearest);
 
     ///////////////////////////////////////////////////////////////////////////
