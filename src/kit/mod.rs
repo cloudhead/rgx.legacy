@@ -101,18 +101,18 @@ pub enum AnimationState {
 
 pub struct Animation<T> {
     pub state: AnimationState,
-    pub speed: f64,
+    pub delay: f64,
     pub frames: Vec<T>,
 }
 
 impl<T> Animation<T> {
-    pub fn new(frames: &[T]) -> Self
+    pub fn new(frames: &[T], delay: f64) -> Self
     where
         T: Clone,
     {
         Self {
             state: AnimationState::Playing(0, 0.0),
-            speed: 1.0,
+            delay,
             frames: frames.to_vec(),
         }
     }
@@ -120,7 +120,7 @@ impl<T> Animation<T> {
     pub fn step(&mut self, delta: f64) {
         if let AnimationState::Playing(_, elapsed) = self.state {
             let elapsed = elapsed + delta;
-            let fraction = elapsed / self.speed;
+            let fraction = elapsed / self.delay;
             let cursor = fraction.floor() as u32 % self.frames.len() as u32;
             self.state = AnimationState::Playing(cursor, elapsed);
         }
@@ -131,6 +131,18 @@ impl<T> Animation<T> {
         T: Copy,
     {
         self.frames[self.cursor() as usize]
+    }
+
+    pub fn len(&self) -> usize {
+        self.frames.len()
+    }
+
+    pub fn elapsed(&self) -> f64 {
+        match self.state {
+            AnimationState::Playing(_, elapsed) => elapsed,
+            AnimationState::Paused(_, elapsed) => elapsed,
+            AnimationState::Stopped => 0.0,
+        }
     }
 
     pub fn cursor(&self) -> u32 {
