@@ -4,6 +4,7 @@ use crate::core::{
     Binding, BindingType, Context, Sampler, Set, ShaderStage, Texture, VertexLayout,
 };
 
+use wgpu::winit::dpi::PhysicalSize;
 use wgpu::winit::Window;
 
 use cgmath::prelude::*;
@@ -257,6 +258,31 @@ impl Kit {
         frame.commit();
     }
 
+    pub fn resize(&mut self, physical: PhysicalSize) {
+        self.ctx.resize(physical);
+
+        let ortho = Ortho::<f32> {
+            left: 0.0,
+            right: physical.width as f32,
+            bottom: 0.0,
+            top: physical.height as f32,
+            near: -1.0,
+            far: 1.0,
+        };
+
+        let mvp_buf = Rc::new(self.ctx.create_uniform_buffer(Uniforms {
+            ortho: ortho.into(),
+            transform: self.transform,
+        }));
+        let mvp_binding = self.ctx.create_binding(
+            &self.pipeline.layout.sets[0],
+            &[core::Uniform::Buffer(&mvp_buf)],
+        );
+
+        self.mvp_buf = mvp_buf;
+        self.mvp_binding = mvp_binding;
+    }
+
     ////////////////////////////////////////////////////////////////////////////
 
     fn _frame(&mut self) -> Frame {
@@ -273,11 +299,6 @@ impl Kit {
             pipeline: &self.pipeline,
             mvp_binding: &self.mvp_binding,
         }
-    }
-
-    #[allow(dead_code)]
-    fn resize(&mut self, _w: u32, _h: u32) {
-        unimplemented!();
     }
 }
 

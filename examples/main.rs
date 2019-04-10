@@ -185,6 +185,9 @@ fn main() {
                     WindowEvent::CloseRequested => {
                         running = false;
                     }
+                    WindowEvent::Resized(size) => {
+                        ctx.resize(size.to_physical(window.get_hidpi_factor()));
+                    }
                     _ => {}
                 }
             }

@@ -321,6 +321,7 @@ impl<'a> Frame<'a> {
 
 pub struct Context {
     device: wgpu::Device,
+    surface: wgpu::Surface,
     swap_chain: wgpu::SwapChain,
     commands: Vec<Command>,
 }
@@ -344,20 +345,15 @@ impl Context {
             .get_inner_size()
             .unwrap()
             .to_physical(window.get_hidpi_factor());
-        let swap_chain = device.create_swap_chain(
-            &surface,
-            &wgpu::SwapChainDescriptor {
-                usage: wgpu::TextureUsageFlags::OUTPUT_ATTACHMENT,
-                format: wgpu::TextureFormat::Bgra8Unorm,
-                width: size.width as u32,
-                height: size.height as u32,
-            },
-        );
+        let swap_chain_desc =
+            swap_chain_descriptor(size.width.round() as u32, size.height.round() as u32);
+        let swap_chain = device.create_swap_chain(&surface, &swap_chain_desc);
 
         let commands = Vec::new();
 
         Self {
             device,
+            surface,
             swap_chain,
             commands,
         }
@@ -671,5 +667,25 @@ impl Context {
             vertex_layout,
             wgpu,
         }
+    }
+
+    pub fn resize(&mut self, physical: wgpu::winit::dpi::PhysicalSize) {
+        let swap_chain_descriptor = swap_chain_descriptor(
+            physical.width.round() as u32,
+            physical.height.round() as u32,
+        );
+
+        self.swap_chain = self
+            .device
+            .create_swap_chain(&self.surface, &swap_chain_descriptor);
+    }
+}
+
+fn swap_chain_descriptor(width: u32, height: u32) -> wgpu::SwapChainDescriptor {
+    wgpu::SwapChainDescriptor {
+        usage: wgpu::TextureUsageFlags::OUTPUT_ATTACHMENT,
+        format: wgpu::TextureFormat::Bgra8Unorm,
+        width,
+        height,
     }
 }
