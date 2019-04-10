@@ -19,3 +19,6 @@ features = ["vulkan"]
 env_logger = "*"
 shaderc = "*"
 cgmath = "*"
+
+[dev-dependencies]
+image = "*"
