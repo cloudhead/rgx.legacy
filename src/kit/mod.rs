@@ -4,6 +4,8 @@ use crate::core::{
     Binding, BindingType, Context, Sampler, Set, ShaderStage, Texture, VertexLayout,
 };
 
+pub use crate::core::Rgba;
+
 use wgpu::winit::dpi::PhysicalSize;
 use wgpu::winit::Window;
 
@@ -16,7 +18,15 @@ use std::rc::*;
 pub struct Vertex {
     position: Vector2<f32>,
     uv: Vector2<f32>,
-    color: Rgba<u8>,
+    color: Rgba8,
+}
+
+#[derive(Copy, Clone)]
+struct Rgba8 {
+    r: u8,
+    g: u8,
+    b: u8,
+    a: u8,
 }
 
 #[derive(Copy, Clone)]
@@ -26,7 +36,7 @@ pub struct Uniforms {
 }
 
 impl Vertex {
-    pub fn new(x: f32, y: f32, u: f32, v: f32, c: Rgba<u8>) -> Vertex {
+    fn new(x: f32, y: f32, u: f32, v: f32, c: Rgba8) -> Vertex {
         Vertex {
             position: Vector2::new(x, y),
             uv: Vector2::new(u, v),
@@ -71,26 +81,14 @@ impl Texture {
     }
 }
 
-#[derive(Copy, Clone)]
-pub struct Rgba<T> {
-    pub r: T,
-    pub g: T,
-    pub b: T,
-    pub a: T,
-}
-
-impl<T> Rgba<T> {
-    pub fn new(r: T, g: T, b: T, a: T) -> Rgba<T> {
-        Rgba { r, g, b, a }
-    }
-}
-
-impl From<Rgba<u8>> for u32 {
-    fn from(item: Rgba<u8>) -> Self {
-        ((item.r as u32) << 24)
-            | ((item.g as u32) << 16)
-            | ((item.b as u32) << 8)
-            | ((item.a as u32) << 0)
+impl From<Rgba> for Rgba8 {
+    fn from(rgba: Rgba) -> Self {
+        Self {
+            r: (rgba.r * 255.0).round() as u8,
+            g: (rgba.g * 255.0).round() as u8,
+            b: (rgba.b * 255.0).round() as u8,
+            a: (rgba.a * 255.0).round() as u8,
+        }
     }
 }
 
@@ -159,6 +157,7 @@ pub struct Kit {
     pub ctx: Context,
     pub ortho: Ortho<f32>,
     pub transform: Matrix4<f32>,
+    pub clear: Rgba,
     pub pipeline: core::Pipeline,
     pub mvp_buf: Rc<core::UniformBuffer>,
     pub mvp_binding: core::Uniforms,
@@ -205,6 +204,8 @@ impl Kit {
             ]),
         ]);
 
+        let clear = Rgba::new(1.0, 1.0, 1.0, 1.0);
+
         // TODO: Use `env("CARGO_MANIFEST_DIR")`
         let pipeline = {
             let vs = ctx.create_shader(
@@ -232,6 +233,7 @@ impl Kit {
             ctx,
             ortho,
             transform,
+            clear,
             pipeline,
             mvp_buf,
             mvp_binding,
@@ -250,9 +252,10 @@ impl Kit {
     where
         F: FnOnce(&mut Pass),
     {
+        let clear = self.clear;
         let mut frame = self._frame();
         {
-            let mut pass = frame.pass();
+            let mut pass = frame.pass(clear);
             f(&mut pass);
         }
         frame.commit();
@@ -307,8 +310,8 @@ pub struct Frame<'a> {
 }
 
 impl<'a> Frame<'a> {
-    pub fn pass(&mut self) -> Pass {
-        let mut pass = self.frame.begin_pass();
+    pub fn pass(&mut self, clear_color: Rgba) -> Pass {
+        let mut pass = self.frame.begin_pass(clear_color);
         pass.apply_pipeline(&self.pipeline);
         pass.apply_uniforms(&self.mvp_binding);
         Pass { pass }
@@ -368,12 +371,13 @@ impl<'a> SpriteBatch<'a> {
         }
     }
 
-    pub fn add(&mut self, src: Rect<f32>, dst: Rect<f32>, c: Rgba<u8>, rep: Repeat) {
+    pub fn add(&mut self, src: Rect<f32>, dst: Rect<f32>, rgba: Rgba, rep: Repeat) {
         assert!(
             self.buffer.is_none(),
             "SpriteBatch::add called after SpriteBatch::finish"
         );
 
+        let c: Rgba8 = rgba.into();
         let (tw, th) = (self.texture.w, self.texture.h);
 
         // Relative texture coordinates

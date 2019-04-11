@@ -65,7 +65,7 @@ fn main() {
             bg.add(
                 bg_texture.rect(),
                 Rect::new(x, y, x + sw, y + sh),
-                Rgba::new(64, 64, 128, 128),
+                Rgba::new(0.25, 0.25, 0.5, 0.5),
                 Repeat::default(),
             );
         }
@@ -86,7 +86,7 @@ fn main() {
             fg.add(
                 fg_texture.rect(),
                 Rect::new(x, y, x + sw, y + sh),
-                Rgba::new(128, 64, 128, 128),
+                Rgba::new(0.5, 0.25, 0.5, 0.5),
                 Repeat::default(),
             );
         }
@@ -136,10 +136,11 @@ fn main() {
         });
 
         ///////////////////////////////////////////////////////////////////////////
-        // Update transform
+        // Update transform & clear color
         ///////////////////////////////////////////////////////////////////////////
 
         kit.transform = Matrix4::from_translation(Vector3::new(x, y, 0.0));
+        kit.clear = Rgba::new(0.8, 0.3, 0.1, 1.0);
 
         ///////////////////////////////////////////////////////////////////////////
         // Draw frame

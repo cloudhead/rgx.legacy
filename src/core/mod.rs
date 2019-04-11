@@ -9,6 +9,40 @@ use std::ops::Range;
 use std::rc::*;
 
 ///////////////////////////////////////////////////////////////////////////////
+/// Rgba
+///////////////////////////////////////////////////////////////////////////////
+
+#[derive(Copy, Clone)]
+pub struct Rgba {
+    pub r: f32,
+    pub g: f32,
+    pub b: f32,
+    pub a: f32,
+}
+
+impl Rgba {
+    pub const WHITE: Self = Self {
+        r: 1.0,
+        g: 1.0,
+        b: 1.0,
+        a: 1.0,
+    };
+
+    pub fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
+        Self { r, g, b, a }
+    }
+
+    fn to_wgpu(&self) -> wgpu::Color {
+        wgpu::Color {
+            r: self.r,
+            g: self.g,
+            b: self.b,
+            a: self.a,
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
 /// Shaders
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -297,13 +331,13 @@ pub struct Frame<'a> {
 }
 
 impl<'a> Frame<'a> {
-    pub fn begin_pass(&mut self) -> Pass {
+    pub fn begin_pass(&mut self, clear_color: Rgba) -> Pass {
         let pass = self.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
                 attachment: &self.swap_chain_out.view,
                 load_op: wgpu::LoadOp::Clear,
                 store_op: wgpu::StoreOp::Store,
-                clear_color: wgpu::Color::WHITE,
+                clear_color: clear_color.to_wgpu(),
             }],
             depth_stencil_attachment: None,
         });
