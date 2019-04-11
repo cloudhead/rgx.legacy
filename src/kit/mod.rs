@@ -159,8 +159,9 @@ pub struct Kit {
     pub transform: Matrix4<f32>,
     pub clear: Rgba,
     pub pipeline: core::Pipeline,
-    pub mvp_buf: Rc<core::UniformBuffer>,
-    pub mvp_binding: core::Uniforms,
+
+    mvp_buf: Rc<core::UniformBuffer>,
+    mvp_binding: core::Uniforms,
 }
 
 impl Kit {
