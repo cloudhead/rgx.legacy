@@ -148,7 +148,7 @@ fn main() {
                 sb.add(
                     anim.val(),
                     rect,
-                    Rgba::new((i * 8 % 255) as u8, (j * 8 % 255) as u8, 128, 196),
+                    Rgba::new(i as f32 / rows as f32, j as f32 / cols as f32, 0.5, 0.75),
                     Repeat::default(),
                 );
             }

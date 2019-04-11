@@ -211,7 +211,7 @@ fn main() {
 
         let mut frame = ctx.frame();
         {
-            let mut pass = frame.begin_pass();
+            let mut pass = frame.begin_pass(Rgba::WHITE);
 
             pass.apply_pipeline(&pipeline);
             pass.apply_uniforms(&uniforms);
