@@ -516,7 +516,7 @@ impl Context {
         let index_buf = self
             .device
             .create_buffer_mapped(indices.len(), wgpu::BufferUsageFlags::INDEX)
-            .fill_from_slice(&indices);
+            .fill_from_slice(indices);
         IndexBuffer { wgpu: index_buf }
     }
 
