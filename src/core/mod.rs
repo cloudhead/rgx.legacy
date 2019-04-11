@@ -1,7 +1,6 @@
 #![deny(clippy::all, clippy::use_self)]
 
 extern crate cgmath;
-extern crate env_logger;
 extern crate shaderc;
 extern crate wgpu;
 
@@ -362,8 +361,6 @@ pub struct Context {
 
 impl Context {
     pub fn new(window: &wgpu::winit::Window) -> Self {
-        env_logger::init();
-
         let instance = wgpu::Instance::new();
         let adapter = instance.get_adapter(&wgpu::AdapterDescriptor {
             power_preference: wgpu::PowerPreference::LowPower,
