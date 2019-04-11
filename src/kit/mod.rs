@@ -261,7 +261,7 @@ impl Kit {
     pub fn resize(&mut self, physical: PhysicalSize) {
         self.ctx.resize(physical);
 
-        let ortho = Ortho::<f32> {
+        self.ortho = Ortho::<f32> {
             left: 0.0,
             right: physical.width as f32,
             bottom: 0.0,
@@ -269,18 +269,6 @@ impl Kit {
             near: -1.0,
             far: 1.0,
         };
-
-        let mvp_buf = Rc::new(self.ctx.create_uniform_buffer(Uniforms {
-            ortho: ortho.into(),
-            transform: self.transform,
-        }));
-        let mvp_binding = self.ctx.create_binding(
-            &self.pipeline.layout.sets[0],
-            &[core::Uniform::Buffer(&mvp_buf)],
-        );
-
-        self.mvp_buf = mvp_buf;
-        self.mvp_binding = mvp_binding;
     }
 
     ////////////////////////////////////////////////////////////////////////////
