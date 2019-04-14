@@ -71,6 +71,12 @@ fn main() {
 
     let mut running = true;
 
+    let size = window
+        .get_inner_size()
+        .unwrap()
+        .to_physical(window.get_hidpi_factor());
+    let canvas = kit.canvas(size);
+
     while running {
         events_loop.poll_events(|event| {
             if let Event::WindowEvent { event, .. } = event {
@@ -132,12 +138,16 @@ fn main() {
         );
         sb.finish(&kit);
 
+        kit.offscreen(&canvas, |c| {
+            c.draw(&sb);
+        });
+
         ///////////////////////////////////////////////////////////////////////////
         // Draw frame
         ///////////////////////////////////////////////////////////////////////////
 
         kit.frame(|pass| {
-            pass.draw(&sb);
+            pass.draw(&canvas);
         });
     }
 }

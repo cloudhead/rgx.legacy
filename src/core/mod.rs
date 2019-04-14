@@ -349,6 +349,19 @@ impl<'a> Frame<'a> {
         Pass { wgpu: pass }
     }
 
+    pub fn begin_offscreen_pass(&mut self, texture: &Texture, clear_color: Rgba) -> Pass {
+        let pass = self.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
+                attachment: &texture.view,
+                load_op: wgpu::LoadOp::Clear,
+                store_op: wgpu::StoreOp::Store,
+                clear_color: clear_color.to_wgpu(),
+            }],
+            depth_stencil_attachment: None,
+        });
+        Pass { wgpu: pass }
+    }
+
     pub fn commit(self) {
         self.device.get_queue().submit(&[self.encoder.finish()]);
     }
@@ -441,6 +454,29 @@ impl Context {
         };
         Shader {
             module: self.device.create_shader_module(spv.as_binary_u8()),
+        }
+    }
+
+    pub fn create_framebuffer_texture(&mut self, w: u32, h: u32) -> Texture {
+        let texture_extent = wgpu::Extent3d {
+            width: w,
+            height: h,
+            depth: 1,
+        };
+        let texture = self.device.create_texture(&wgpu::TextureDescriptor {
+            size: texture_extent,
+            array_size: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Bgra8Unorm,
+            usage: wgpu::TextureUsageFlags::SAMPLED | wgpu::TextureUsageFlags::OUTPUT_ATTACHMENT,
+        });
+        let texture_view = texture.create_default_view();
+
+        Texture {
+            wgpu: texture,
+            view: texture_view,
+            w,
+            h,
         }
     }
 

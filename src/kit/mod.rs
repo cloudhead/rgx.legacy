@@ -262,6 +262,28 @@ impl Kit {
         frame.commit();
     }
 
+    pub fn offscreen<F>(&mut self, fb: &Framebuffer, f: F)
+    where
+        F: FnOnce(&mut Pass),
+    {
+        let clear = self.clear;
+        let mut frame = self._frame();
+        {
+            let mut pass = frame.offscreen_pass(&fb.texture, clear);
+            f(&mut pass);
+        }
+        frame.commit();
+    }
+
+    pub fn canvas(&mut self, physical: PhysicalSize) -> Framebuffer {
+        let texture = self
+            .ctx
+            .create_framebuffer_texture(physical.width as u32, physical.height as u32);
+        let sampler = self.sampler(core::Filter::Nearest, core::Filter::Nearest);
+
+        self.framebuffer(texture, sampler)
+    }
+
     pub fn resize(&mut self, physical: PhysicalSize) {
         self.ctx.resize(physical);
 
@@ -277,6 +299,49 @@ impl Kit {
 
     ////////////////////////////////////////////////////////////////////////////
 
+    fn framebuffer(&self, texture: Texture, sampler: Sampler) -> Framebuffer {
+        let (tw, th) = (texture.w, texture.h);
+
+        let src = texture.rect();
+        let dst = texture.rect();
+        let rep = Repeat::default();
+
+        // Relative texture coordinates
+        let rx1: f32 = src.x1 / tw as f32;
+        let ry1: f32 = src.y1 / th as f32;
+        let rx2: f32 = src.x2 / tw as f32;
+        let ry2: f32 = src.y2 / th as f32;
+
+        let c = Rgba::TRANSPARENT.into();
+
+        let vertices = vec![
+            Vertex::new(dst.x1, dst.y1, rx1 * rep.x, ry2 * rep.y, c),
+            Vertex::new(dst.x2, dst.y1, rx2 * rep.x, ry2 * rep.y, c),
+            Vertex::new(dst.x2, dst.y2, rx2 * rep.x, ry1 * rep.y, c),
+            Vertex::new(dst.x1, dst.y1, rx1 * rep.x, ry2 * rep.y, c),
+            Vertex::new(dst.x1, dst.y2, rx1 * rep.x, ry1 * rep.y, c),
+            Vertex::new(dst.x2, dst.y2, rx2 * rep.x, ry1 * rep.y, c),
+        ];
+
+        let buffer = self.ctx.create_buffer(vertices.as_slice());
+
+        #[rustfmt::skip]
+        let binding = self.ctx.create_binding(
+            &self.pipeline.layout.sets[1],
+            &[
+                core::Uniform::Texture(&texture),
+                core::Uniform::Sampler(&sampler)
+            ],
+        );
+
+        Framebuffer {
+            texture,
+            sampler,
+            buffer,
+            binding,
+        }
+    }
+
     fn _frame(&mut self) -> Frame {
         self.ctx.update_uniform_buffer(
             self.mvp_buf.clone(),
@@ -291,6 +356,14 @@ impl Kit {
             pipeline: &self.pipeline,
             mvp_binding: &self.mvp_binding,
         }
+    }
+}
+
+impl Drawable for Framebuffer {
+    fn draw(&self, pass: &mut core::Pass) {
+        pass.apply_uniforms(&self.binding);
+        pass.set_vertex_buffer(&self.buffer);
+        pass.draw(0..6, 0..1);
     }
 }
 
@@ -318,10 +391,32 @@ impl<'a> Frame<'a> {
         Pass { pass }
     }
 
+    pub fn offscreen_pass(&mut self, texture: &Texture, clear_color: Rgba) -> Pass {
+        let mut pass = self.frame.begin_offscreen_pass(texture, clear_color);
+        pass.apply_pipeline(&self.pipeline);
+        pass.apply_uniforms(&self.mvp_binding);
+        Pass { pass }
+    }
+
     pub fn commit(self) {
         self.frame.commit();
     }
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+/// Framebuffer
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+pub struct Framebuffer {
+    pub texture: Texture,
+    pub sampler: Sampler,
+    pub buffer: core::VertexBuffer,
+    pub binding: core::Uniforms,
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+/// Drawable
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 pub trait Drawable {
     fn draw(&self, pass: &mut core::Pass);
