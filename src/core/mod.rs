@@ -349,7 +349,18 @@ impl<'a> Frame<'a> {
         Pass { wgpu: pass }
     }
 
-    pub fn begin_offscreen_pass(&mut self, texture: &Texture, clear_color: Rgba) -> Pass {
+    pub fn commit(self) {
+        self.device.get_queue().submit(&[self.encoder.finish()]);
+    }
+}
+
+pub struct Offscreen<'a> {
+    encoder: wgpu::CommandEncoder,
+    device: &'a mut wgpu::Device,
+}
+
+impl<'a> Offscreen<'a> {
+    pub fn begin_pass(&mut self, texture: &Texture, clear_color: Rgba) -> Pass {
         let pass = self.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
                 attachment: &texture.view,
@@ -426,6 +437,25 @@ impl Context {
         }
         Frame {
             swap_chain_out: chain_out,
+            encoder,
+            device: &mut self.device,
+        }
+    }
+
+    pub fn offscreen(&mut self) -> Offscreen {
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
+
+        // TODO: This means we can't add commands after the frame has started!
+        for c in &self.commands {
+            match c {
+                Command::UpdateUniformBuffer(dst, src, size) => {
+                    encoder.copy_buffer_to_buffer(&src, 0, &dst.wgpu, 0, *size as u32);
+                }
+            }
+        }
+        Offscreen {
             encoder,
             device: &mut self.device,
         }

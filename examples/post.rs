@@ -71,11 +71,12 @@ fn main() {
 
     let mut running = true;
 
-    let size = window
+    let mut win = window
         .get_inner_size()
         .unwrap()
         .to_physical(window.get_hidpi_factor());
-    let canvas = kit.canvas(size);
+
+    let mut canvas = kit.canvas(win);
 
     while running {
         events_loop.poll_events(|event| {
@@ -96,17 +97,14 @@ fn main() {
                         running = false;
                     }
                     WindowEvent::Resized(size) => {
-                        kit.resize(size.to_physical(window.get_hidpi_factor()));
+                        win = size.to_physical(window.get_hidpi_factor());
+                        kit.resize(win);
+                        canvas = kit.canvas(win);
                     }
                     _ => {}
                 }
             }
         });
-
-        let win = window
-            .get_inner_size()
-            .unwrap()
-            .to_physical(window.get_hidpi_factor());
 
         {
             let now = Instant::now();
@@ -137,6 +135,10 @@ fn main() {
             Repeat::default(),
         );
         sb.finish(&kit);
+
+        ///////////////////////////////////////////////////////////////////////////
+        // Draw to off-screen canvas
+        ///////////////////////////////////////////////////////////////////////////
 
         kit.offscreen(&canvas, |c| {
             c.draw(&sb);

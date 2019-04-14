@@ -136,6 +136,10 @@ impl<T> Animation<T> {
         self.frames.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     pub fn elapsed(&self) -> f64 {
         match self.state {
             AnimationState::Playing(_, elapsed) => elapsed,
@@ -267,9 +271,9 @@ impl Kit {
         F: FnOnce(&mut Pass),
     {
         let clear = self.clear;
-        let mut frame = self._frame();
+        let mut frame = self._offscreen_frame();
         {
-            let mut pass = frame.offscreen_pass(&fb.texture, clear);
+            let mut pass = frame.pass(&fb.texture, clear);
             f(&mut pass);
         }
         frame.commit();
@@ -357,6 +361,22 @@ impl Kit {
             mvp_binding: &self.mvp_binding,
         }
     }
+
+    fn _offscreen_frame(&mut self) -> Offscreen {
+        self.ctx.update_uniform_buffer(
+            self.mvp_buf.clone(),
+            Uniforms {
+                transform: self.transform,
+                ortho: self.ortho.into(),
+            },
+        );
+
+        Offscreen {
+            frame: self.ctx.offscreen(),
+            pipeline: &self.pipeline,
+            mvp_binding: &self.mvp_binding,
+        }
+    }
 }
 
 impl Drawable for Framebuffer {
@@ -391,8 +411,20 @@ impl<'a> Frame<'a> {
         Pass { pass }
     }
 
-    pub fn offscreen_pass(&mut self, texture: &Texture, clear_color: Rgba) -> Pass {
-        let mut pass = self.frame.begin_offscreen_pass(texture, clear_color);
+    pub fn commit(self) {
+        self.frame.commit();
+    }
+}
+
+pub struct Offscreen<'a> {
+    frame: core::Offscreen<'a>,
+    pipeline: &'a core::Pipeline,
+    mvp_binding: &'a core::Uniforms,
+}
+
+impl<'a> Offscreen<'a> {
+    pub fn pass(&mut self, texture: &Texture, clear_color: Rgba) -> Pass {
+        let mut pass = self.frame.begin_pass(texture, clear_color);
         pass.apply_pipeline(&self.pipeline);
         pass.apply_uniforms(&self.mvp_binding);
         Pass { pass }
