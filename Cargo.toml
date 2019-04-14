@@ -16,9 +16,10 @@ version = "*"
 features = ["vulkan"]
 
 [dependencies]
-env_logger = "*"
-shaderc = "*"
 cgmath = "*"
+log = "0.4"
+simple_logger = "1.0"
+shaderc = "*"
 
 [dev-dependencies]
 image = "*"

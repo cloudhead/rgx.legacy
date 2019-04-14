@@ -2,7 +2,10 @@
 #![allow(clippy::unreadable_literal)]
 #![allow(clippy::single_match)]
 
-extern crate env_logger;
+#[macro_use]
+extern crate log;
+extern crate simple_logger;
+
 extern crate rgx;
 
 use rgx::core::*;
@@ -17,7 +20,9 @@ use wgpu::winit::{
 use std::time::Instant;
 
 fn main() {
-    env_logger::init();
+    simple_logger::init().unwrap();
+
+    info!("Starting 'post' example");
 
     let mut events_loop = EventsLoop::new();
     let window = Window::new(&events_loop).unwrap();
@@ -149,5 +154,7 @@ fn main() {
         kit.frame(|pass| {
             pass.draw(&canvas);
         });
+
+        running = false;
     }
 }
