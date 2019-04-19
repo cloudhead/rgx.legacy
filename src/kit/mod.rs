@@ -36,11 +36,11 @@ pub struct Uniforms {
 }
 
 impl Vertex {
-    fn new(x: f32, y: f32, u: f32, v: f32, c: Rgba8) -> Vertex {
+    fn new(x: f32, y: f32, u: f32, v: f32, color: Rgba8) -> Vertex {
         Vertex {
             position: Vector2::new(x, y),
             uv: Vector2::new(u, v),
-            color: c,
+            color,
         }
     }
 }
