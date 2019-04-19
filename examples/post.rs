@@ -8,6 +8,7 @@ extern crate rgx;
 use rgx::core::*;
 use rgx::kit::*;
 
+use cgmath::{Matrix4, Vector3};
 use image::ImageDecoder;
 
 use wgpu::winit::{
@@ -76,8 +77,6 @@ fn main() {
         .unwrap()
         .to_physical(window.get_hidpi_factor());
 
-    let mut canvas = kit.canvas(win);
-
     while running {
         events_loop.poll_events(|event| {
             if let Event::WindowEvent { event, .. } = event {
@@ -99,7 +98,6 @@ fn main() {
                     WindowEvent::Resized(size) => {
                         win = size.to_physical(window.get_hidpi_factor());
                         kit.resize(win);
-                        canvas = kit.canvas(win);
                     }
                     _ => {}
                 }
@@ -137,19 +135,16 @@ fn main() {
         sb.finish(&kit);
 
         ///////////////////////////////////////////////////////////////////////////
-        // Draw to off-screen canvas
-        ///////////////////////////////////////////////////////////////////////////
-
-        kit.offscreen(&canvas, |c| {
-            c.draw(&sb);
-        });
-
-        ///////////////////////////////////////////////////////////////////////////
         // Draw frame
         ///////////////////////////////////////////////////////////////////////////
 
-        kit.frame(|pass| {
-            pass.draw(&canvas);
+        kit.frame(|f| {
+            f.transform(
+                Matrix4::from_translation(Vector3::new(10.0, 10.0, 0.0)),
+                |t| {
+                    t.draw(&sb);
+                },
+            );
         });
     }
 }
