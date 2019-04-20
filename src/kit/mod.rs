@@ -157,6 +157,23 @@ impl<T> Animation<T> {
     }
 }
 
+pub enum Effect {
+    Colorize(f32, f32, f32),
+    Transform(Matrix4<f32>),
+}
+
+pub struct Effects {
+    effects: Vec<Effect>,
+}
+
+impl Effects {
+    fn new() -> Self {
+        Self {
+            effects: Vec::new(),
+        }
+    }
+}
+
 pub struct Kit {
     pub ctx: Context,
     pub ortho: Ortho<f32>,
@@ -266,27 +283,27 @@ impl Kit {
         frame.commit();
     }
 
-    pub fn offscreen<F>(&mut self, fb: &Framebuffer, f: F)
-    where
-        F: FnOnce(&mut Pass),
-    {
-        let clear = self.clear;
-        let mut frame = self._offscreen_frame();
-        {
-            let mut pass = frame.pass(&fb.texture, clear);
-            f(&mut pass);
-        }
-        frame.commit();
-    }
+    //     pub fn offscreen<F>(&mut self, fb: &Framebuffer, f: F)
+    //     where
+    //         F: FnOnce(&mut Pass),
+    //     {
+    //         let clear = self.clear;
+    //         let mut frame = self._offscreen_frame();
+    //         {
+    //             let mut pass = frame.pass(&fb.texture, clear);
+    //             f(&mut pass);
+    //         }
+    //         frame.commit();
+    //     }
 
-    pub fn canvas(&mut self, physical: PhysicalSize) -> Framebuffer {
-        let texture = self
-            .ctx
-            .create_framebuffer_texture(physical.width as u32, physical.height as u32);
-        let sampler = self.sampler(core::Filter::Nearest, core::Filter::Nearest);
+    // pub fn canvas(&mut self, physical: PhysicalSize) -> Framebuffer {
+    //     let texture = self
+    //         .ctx
+    //         .create_framebuffer_texture(physical.width as u32, physical.height as u32);
+    //     let sampler = self.sampler(core::Filter::Nearest, core::Filter::Nearest);
 
-        self.framebuffer(texture, sampler)
-    }
+    //     self.framebuffer(texture, sampler)
+    // }
 
     pub fn resize(&mut self, physical: PhysicalSize) {
         self.ctx.resize(physical);
@@ -347,13 +364,13 @@ impl Kit {
     }
 
     fn _frame(&mut self) -> Frame {
-        self.ctx.update_uniform_buffer(
-            self.mvp_buf.clone(),
-            Uniforms {
-                transform: self.transform,
-                ortho: self.ortho.into(),
-            },
-        );
+        // self.ctx.update_uniform_buffer(
+        //     self.mvp_buf.clone(),
+        //     Uniforms {
+        //         transform: self.transform,
+        //         ortho: self.ortho.into(),
+        //     },
+        // );
 
         Frame {
             frame: self.ctx.frame(),
@@ -362,21 +379,21 @@ impl Kit {
         }
     }
 
-    fn _offscreen_frame(&mut self) -> Offscreen {
-        self.ctx.update_uniform_buffer(
-            self.mvp_buf.clone(),
-            Uniforms {
-                transform: self.transform,
-                ortho: self.ortho.into(),
-            },
-        );
+    // fn _offscreen_frame(&mut self) -> Offscreen {
+    //     self.ctx.update_uniform_buffer(
+    //         self.mvp_buf.clone(),
+    //         Uniforms {
+    //             transform: self.transform,
+    //             ortho: self.ortho.into(),
+    //         },
+    //     );
 
-        Offscreen {
-            frame: self.ctx.offscreen(),
-            pipeline: &self.pipeline,
-            mvp_binding: &self.mvp_binding,
-        }
-    }
+    //     Offscreen {
+    //         frame: self.ctx.offscreen(),
+    //         pipeline: &self.pipeline,
+    //         mvp_binding: &self.mvp_binding,
+    //     }
+    // }
 }
 
 impl Drawable for Framebuffer {
@@ -389,11 +406,103 @@ impl Drawable for Framebuffer {
 
 pub struct Pass<'a> {
     pass: core::Pass<'a>,
+    effects: Vec<Effect>,
+    transforms: Vec<Matrix4<f32>>,
+    dirty: bool,
+    commands: Vec<Command<'a>>,
 }
 
+enum Command<'a> {
+    Draw(&'a SpriteBatch<'a>),
+    Transform(Matrix4<f32>),
+    Opt(&'a Option<u32>),
+}
+
+impl<'a> std::fmt::Debug for Command<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Command::Draw(_) => write!(f, "Command::Draw"),
+            Command::Transform(t) => write!(f, "Command::Transform({:?})", t),
+            _ => write!(f, "lol"),
+        }
+    }
+}
+
+// impl<'a> Drop for Pass<'a> {
+//     // TODO: Submit/commit
+//     fn drop(&mut self) {
+//         dbg!(&self.commands);
+//         drop(self.commands);
+//     }
+// }
+
 impl<'a> Pass<'a> {
-    pub fn draw<T: Drawable>(&mut self, t: &T) {
-        t.draw(&mut self.pass)
+    pub fn new(p: core::Pass<'a>) -> Self {
+        Self {
+            pass: p,
+            effects: Vec::new(),
+            transforms: Vec::new(),
+            commands: Vec::new(),
+            dirty: true,
+        }
+    }
+
+    pub fn test(&mut self, f: &'a Option<u32>) {
+        self.commands.push(Command::Opt(f));
+    }
+
+    // pub fn draw<T: Drawable<'static>>(&mut self, t: &'static T) {
+    //     let tr = Matrix4::from_scale(3.0);
+    //     if self.dirty {
+    //         self.commands.push(Command::Transform(tr));
+    //     }
+    //     self.commands.push(Command::Draw(t));
+    //     // t.draw(&mut self.pass)
+    // }
+    pub fn draw(&mut self, t: &'a SpriteBatch) {
+        // let tr = Matrix4::from_scale(3.0);
+        // if self.dirty {
+        //     self.commands.push(Command::Transform(tr));
+        // }
+        self.commands.push(Command::Draw(t));
+        // t.draw(&mut self.pass)
+    }
+
+    pub fn filter<F>(&mut self, e: Effect, f: F)
+    where
+        F: FnOnce(&mut Self),
+    {
+        self.effects.push(e);
+        f(self);
+        self.effects.pop();
+    }
+
+    pub fn transform<F>(&mut self, t: Matrix4<f32>, f: F)
+    where
+        F: FnOnce(&mut Self),
+    {
+        self.effects.push(Effect::Transform(t));
+        // self.dirty = true;
+
+        f(self);
+
+        self.effects.pop();
+        // self.dirty = true;
+        // self.ctx.update_uniform_buffer(
+        //     self.mvp_buf.clone(),
+        //     Uniforms {
+        //         transform: self.transform,
+        //         ortho: self.ortho.into(),
+        //     },
+        // );
+
+        // let clear = self.clear;
+        // let mut frame = self._frame();
+        // {
+        //     let mut pass = frame.pass(clear);
+        //     f(&mut pass);
+        // }
+        // frame.commit();
     }
 }
 
@@ -408,7 +517,7 @@ impl<'a> Frame<'a> {
         let mut pass = self.frame.begin_pass(clear_color);
         pass.apply_pipeline(&self.pipeline);
         pass.apply_uniforms(&self.mvp_binding);
-        Pass { pass }
+        Pass::new(pass)
     }
 
     pub fn commit(self) {
@@ -416,24 +525,24 @@ impl<'a> Frame<'a> {
     }
 }
 
-pub struct Offscreen<'a> {
-    frame: core::Offscreen<'a>,
-    pipeline: &'a core::Pipeline,
-    mvp_binding: &'a core::Uniforms,
-}
+// pub struct Offscreen<'a> {
+//     frame: core::Offscreen<'a>,
+//     pipeline: &'a core::Pipeline,
+//     mvp_binding: &'a core::Uniforms,
+// }
 
-impl<'a> Offscreen<'a> {
-    pub fn pass(&mut self, texture: &Texture, clear_color: Rgba) -> Pass {
-        let mut pass = self.frame.begin_pass(texture, clear_color);
-        pass.apply_pipeline(&self.pipeline);
-        pass.apply_uniforms(&self.mvp_binding);
-        Pass { pass }
-    }
+// impl<'a> Offscreen<'a> {
+//     pub fn pass(&mut self, texture: &Texture, clear_color: Rgba) -> Pass {
+//         let mut pass = self.frame.begin_pass(texture, clear_color);
+//         pass.apply_pipeline(&self.pipeline);
+//         pass.apply_uniforms(&self.mvp_binding);
+//         Pass { pass }
+//     }
 
-    pub fn commit(self) {
-        self.frame.commit();
-    }
-}
+//     pub fn commit(self) {
+//         self.frame.commit();
+//     }
+// }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// Framebuffer

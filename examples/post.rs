@@ -8,6 +8,7 @@ extern crate rgx;
 use rgx::core::*;
 use rgx::kit::*;
 
+use cgmath::prelude::*;
 use cgmath::{Matrix4, Vector3};
 use image::ImageDecoder;
 
@@ -120,6 +121,7 @@ fn main() {
         // Prepare frame
         ///////////////////////////////////////////////////////////////////////////
 
+        let lol = Some(213);
         let mut sb = SpriteBatch::new(&sprite, &sampler);
         let (sw, sh) = (w * 10.0, sprite.h as f32 * 10.0);
 
@@ -139,12 +141,13 @@ fn main() {
         ///////////////////////////////////////////////////////////////////////////
 
         kit.frame(|f| {
-            f.transform(
-                Matrix4::from_translation(Vector3::new(10.0, 10.0, 0.0)),
-                |t| {
-                    t.draw(&sb);
-                },
-            );
+            // f.transform(
+            //     Matrix4::from_translation(Vector3::new(10.0, 10.0, 0.0)),
+            //     |t| {
+            // f.draw(&sb);
+            f.test(&lol);
+            // },
+            // );
         });
     }
 }

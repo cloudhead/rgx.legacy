@@ -55,6 +55,7 @@ pub struct Shader {
     module: wgpu::ShaderModule,
 }
 
+#[derive(Debug)]
 pub enum ShaderStage {
     Vertex,
     Fragment,
@@ -127,6 +128,7 @@ pub struct Sampler {
     wgpu: wgpu::Sampler,
 }
 
+#[derive(Debug)]
 pub enum Filter {
     Nearest,
     Linear,

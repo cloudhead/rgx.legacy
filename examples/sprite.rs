@@ -129,33 +129,13 @@ fn main() {
         let rows = (win.height as f32 / sh) as u32;
         let cols = (win.width as f32 / (sw / 2.0)) as u32;
 
-        x += delta as f32 / move_speed;
+        sb.add(
+            anim.val(),
+            rect,
+            Rgba::new(i as f32 / rows as f32, j as f32 / cols as f32, 0.5, 0.75),
+            Repeat::default(),
+        );
 
-        for i in 0..rows {
-            let y = i as f32 * sh;
-
-            for j in 0..cols {
-                let pad = j as f32 * sw / 2.0;
-
-                let rect = if i % 2 == 0 {
-                    Rect::new(
-                        win.width as f32 - x - pad,
-                        y,
-                        win.width as f32 - x - pad - sw,
-                        y + sh,
-                    )
-                } else {
-                    Rect::new(pad + x, y, pad + x + sw, y + sh)
-                };
-
-                sb.add(
-                    anim.val(),
-                    rect,
-                    Rgba::new(i as f32 / rows as f32, j as f32 / cols as f32, 0.5, 0.75),
-                    Repeat::default(),
-                );
-            }
-        }
         sb.finish(&kit);
 
         ///////////////////////////////////////////////////////////////////////////
