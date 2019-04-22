@@ -299,6 +299,22 @@ pub struct Pass<'a> {
 }
 
 impl<'a> Pass<'a> {
+    pub fn new(
+        encoder: &'a mut wgpu::CommandEncoder,
+        view: &wgpu::TextureView,
+        clear_color: Rgba,
+    ) -> Self {
+        let pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
+                attachment: view,
+                load_op: wgpu::LoadOp::Clear,
+                store_op: wgpu::StoreOp::Store,
+                clear_color: clear_color.to_wgpu(),
+            }],
+            depth_stencil_attachment: None,
+        });
+        Pass { wgpu: pass }
+    }
     pub fn apply_pipeline(&mut self, pipeline: &Pipeline) {
         self.wgpu.set_pipeline(&pipeline.wgpu)
     }
@@ -320,75 +336,14 @@ impl<'a> Pass<'a> {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-/// Command
-///////////////////////////////////////////////////////////////////////////////
-
-enum Command {
-    UpdateUniformBuffer(Rc<UniformBuffer>, wgpu::Buffer, usize),
-}
-
-///////////////////////////////////////////////////////////////////////////////
-/// Frame
-///////////////////////////////////////////////////////////////////////////////
-
-pub struct Frame<'a> {
-    swap_chain_out: wgpu::SwapChainOutput<'a>,
-    encoder: wgpu::CommandEncoder,
-    device: &'a mut wgpu::Device,
-}
-
-impl<'a> Frame<'a> {
-    pub fn begin_pass(&mut self, clear_color: Rgba) -> Pass {
-        let pass = self.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                attachment: &self.swap_chain_out.view,
-                load_op: wgpu::LoadOp::Clear,
-                store_op: wgpu::StoreOp::Store,
-                clear_color: clear_color.to_wgpu(),
-            }],
-            depth_stencil_attachment: None,
-        });
-        Pass { wgpu: pass }
-    }
-
-    pub fn commit(self) {
-        self.device.get_queue().submit(&[self.encoder.finish()]);
-    }
-}
-
-pub struct Offscreen<'a> {
-    encoder: wgpu::CommandEncoder,
-    device: &'a mut wgpu::Device,
-}
-
-impl<'a> Offscreen<'a> {
-    pub fn begin_pass(&mut self, texture: &Texture, clear_color: Rgba) -> Pass {
-        let pass = self.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                attachment: &texture.view,
-                load_op: wgpu::LoadOp::Clear,
-                store_op: wgpu::StoreOp::Store,
-                clear_color: clear_color.to_wgpu(),
-            }],
-            depth_stencil_attachment: None,
-        });
-        Pass { wgpu: pass }
-    }
-
-    pub fn commit(self) {
-        self.device.get_queue().submit(&[self.encoder.finish()]);
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////////
 /// Context
 ///////////////////////////////////////////////////////////////////////////////
 
 pub struct Context {
-    device: wgpu::Device,
+    pub device: wgpu::Device,
+
     surface: wgpu::Surface,
     swap_chain: wgpu::SwapChain,
-    commands: Vec<Command>,
 }
 
 impl Context {
@@ -412,54 +367,10 @@ impl Context {
             swap_chain_descriptor(size.width.round() as u32, size.height.round() as u32);
         let swap_chain = device.create_swap_chain(&surface, &swap_chain_desc);
 
-        let commands = Vec::new();
-
         Self {
             device,
             surface,
             swap_chain,
-            commands,
-        }
-    }
-
-    pub fn frame(&mut self) -> Frame {
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
-
-        let chain_out = self.swap_chain.get_next_texture();
-
-        // TODO: This means we can't add commands after the frame has started!
-        for c in &self.commands {
-            match c {
-                Command::UpdateUniformBuffer(dst, src, size) => {
-                    encoder.copy_buffer_to_buffer(&src, 0, &dst.wgpu, 0, *size as u32);
-                }
-            }
-        }
-        Frame {
-            swap_chain_out: chain_out,
-            encoder,
-            device: &mut self.device,
-        }
-    }
-
-    pub fn offscreen(&mut self) -> Offscreen {
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
-
-        // TODO: This means we can't add commands after the frame has started!
-        for c in &self.commands {
-            match c {
-                Command::UpdateUniformBuffer(dst, src, size) => {
-                    encoder.copy_buffer_to_buffer(&src, 0, &dst.wgpu, 0, *size as u32);
-                }
-            }
-        }
-        Offscreen {
-            encoder,
-            device: &mut self.device,
         }
     }
 
@@ -487,6 +398,23 @@ impl Context {
         Shader {
             module: self.device.create_shader_module(spv.as_binary_u8()),
         }
+    }
+
+    pub fn create_encoder(&self) -> wgpu::CommandEncoder {
+        self.device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 })
+    }
+    pub fn submit_encoder(&mut self, bufs: &[wgpu::CommandBuffer]) {
+        self.device.get_queue().submit(bufs);
+    }
+
+    pub fn create_pass<'a>(
+        &'a mut self,
+        encoder: &'a mut wgpu::CommandEncoder,
+        clear_color: Rgba,
+    ) -> Pass<'a> {
+        let chain_out = self.swap_chain.get_next_texture();
+        Pass::new(encoder, &chain_out.view, clear_color)
     }
 
     pub fn create_framebuffer_texture(&mut self, w: u32, h: u32) -> Texture {
@@ -592,11 +520,15 @@ impl Context {
         }
     }
 
-    pub fn update_uniform_buffer<T>(&mut self, u: Rc<UniformBuffer>, buf: T)
-    where
+    pub fn update_uniform_buffer<T>(
+        &mut self,
+        u: Rc<UniformBuffer>,
+        buf: T,
+        encoder: &mut wgpu::CommandEncoder,
+    ) where
         T: 'static + Copy,
     {
-        let tmp = self
+        let src = self
             .device
             .create_buffer_mapped::<T>(
                 1,
@@ -606,11 +538,7 @@ impl Context {
             )
             .fill_from_slice(&[buf]);
 
-        self.commands.push(Command::UpdateUniformBuffer(
-            u,
-            tmp,
-            std::mem::size_of::<T>(),
-        ));
+        encoder.copy_buffer_to_buffer(&src, 0, &u.wgpu, 0, std::mem::size_of::<T>() as u32);
     }
 
     pub fn create_index(&self, indices: &[u16]) -> IndexBuffer {

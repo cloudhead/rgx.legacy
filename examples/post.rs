@@ -1,6 +1,6 @@
-#![deny(clippy::all)]
-#![allow(clippy::unreadable_literal)]
-#![allow(clippy::single_match)]
+// #![deny(clippy::all)]
+// #![allow(clippy::unreadable_literal)]
+// #![allow(clippy::single_match)]
 
 extern crate env_logger;
 extern crate rgx;
@@ -121,16 +121,12 @@ fn main() {
         // Prepare frame
         ///////////////////////////////////////////////////////////////////////////
 
-        let lol = Some(213);
         let mut sb = SpriteBatch::new(&sprite, &sampler);
         let (sw, sh) = (w * 10.0, sprite.h as f32 * 10.0);
 
-        let x = win.width as f32 / 2.0;
-        let y = win.height as f32 / 2.0;
-
         sb.add(
             anim.val(),
-            Rect::new(x, y, x + sw, y + sh),
+            Rect::new(0.0, 0.0, sw, sh),
             Rgba::TRANSPARENT,
             Repeat::default(),
         );
@@ -141,13 +137,19 @@ fn main() {
         ///////////////////////////////////////////////////////////////////////////
 
         kit.frame(|f| {
-            // f.transform(
-            //     Matrix4::from_translation(Vector3::new(10.0, 10.0, 0.0)),
-            //     |t| {
-            // f.draw(&sb);
-            f.test(&lol);
-            // },
-            // );
+            f.transform(
+                Matrix4::from_translation(Vector3::new(0.0, 100.0, 0.0)),
+                |f| {
+                    f.draw(&sb);
+
+                    f.transform(
+                        Matrix4::from_translation(Vector3::new(0.0, 300.0, 0.0)),
+                        |f| {
+                            f.draw(&sb);
+                        },
+                    );
+                },
+            );
         });
     }
 }
