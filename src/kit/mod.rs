@@ -14,6 +14,44 @@ use cgmath::{Matrix4, Ortho, Vector2};
 
 use std::rc::*;
 
+#[derive(Clone)]
+struct NonEmpty<T>(T, Vec<T>);
+
+impl<T> NonEmpty<T>
+where
+    T: Clone,
+{
+    fn singleton(e: T) -> Self {
+        NonEmpty(e, Vec::new())
+    }
+
+    fn push(&mut self, e: T) {
+        self.1.push(e)
+    }
+
+    fn pop(&mut self) -> Option<T> {
+        self.1.pop()
+    }
+
+    fn len(&self) -> usize {
+        self.1.len() + 1
+    }
+
+    fn last(&self) -> &T {
+        match self.1.last() {
+            None => &self.0,
+            Some(e) => e,
+        }
+    }
+}
+
+impl<T> Into<Vec<T>> for NonEmpty<T> {
+    /// Turns a non-empty list into a Vec.
+    fn into(self) -> Vec<T> {
+        std::iter::once(self.0).chain(self.1).collect()
+    }
+}
+
 #[derive(Copy, Clone)]
 pub struct Vertex {
     position: Vector2<f32>,
@@ -36,11 +74,11 @@ pub struct Uniforms {
 }
 
 impl Vertex {
-    fn new(x: f32, y: f32, u: f32, v: f32, c: Rgba8) -> Vertex {
+    fn new(x: f32, y: f32, u: f32, v: f32, color: Rgba8) -> Vertex {
         Vertex {
             position: Vector2::new(x, y),
             uv: Vector2::new(u, v),
-            color: c,
+            color,
         }
     }
 }
@@ -136,6 +174,10 @@ impl<T> Animation<T> {
         self.frames.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     pub fn elapsed(&self) -> f64 {
         match self.state {
             AnimationState::Playing(_, elapsed) => elapsed,
@@ -153,6 +195,42 @@ impl<T> Animation<T> {
     }
 }
 
+pub enum Effect {
+    Colorize(f32, f32, f32),
+    Transform(Matrix4<f32>),
+}
+
+pub struct Effects {
+    effects: Vec<Effect>,
+}
+
+impl Effects {
+    fn new() -> Self {
+        Self {
+            effects: Vec::new(),
+        }
+    }
+}
+
+struct Model {
+    buf: Rc<core::UniformBuffer>,
+    binding: core::Uniforms,
+    size: usize,
+}
+
+impl Model {
+    fn create(
+        ctx: &mut Context,
+        layout: &core::UniformsLayout,
+        transforms: &[Matrix4<f32>],
+    ) -> Self {
+        let buf = Rc::new(ctx.create_uniform_buffer(transforms));
+        let binding = ctx.create_binding(&layout, &[core::Uniform::Buffer(&buf)]);
+        let size = transforms.len();
+        Self { buf, binding, size }
+    }
+}
+
 pub struct Kit {
     pub ctx: Context,
     pub ortho: Ortho<f32>,
@@ -162,6 +240,8 @@ pub struct Kit {
 
     mvp_buf: Rc<core::UniformBuffer>,
     mvp_binding: core::Uniforms,
+
+    model: Model,
 }
 
 impl Kit {
@@ -181,7 +261,7 @@ impl Kit {
             far: 1.0,
         };
 
-        let ctx = Context::new(w);
+        let mut ctx = Context::new(w);
 
         let vertex_layout = VertexLayout::from(&[
             core::VertexFormat::Float2,
@@ -189,10 +269,17 @@ impl Kit {
             core::VertexFormat::UByte4,
         ]);
         let pipeline_layout = ctx.create_pipeline_layout(&[
+            // 0
             Set(&[Binding {
                 binding: BindingType::UniformBuffer,
                 stage: ShaderStage::Vertex,
             }]),
+            // 1
+            Set(&[Binding {
+                binding: BindingType::UniformBuffer,
+                stage: ShaderStage::Vertex,
+            }]),
+            // 2
             Set(&[
                 Binding {
                     binding: BindingType::SampledTexture,
@@ -205,7 +292,7 @@ impl Kit {
             ]),
         ]);
 
-        let clear = Rgba::new(1.0, 1.0, 1.0, 1.0);
+        let clear = Rgba::new(0.1, 0.1, 0.1, 1.0);
 
         // TODO: Use `env("CARGO_MANIFEST_DIR")`
         let pipeline = {
@@ -223,12 +310,14 @@ impl Kit {
             ctx.create_pipeline(pipeline_layout, vertex_layout, &vs, &fs)
         };
 
-        let mvp_buf = Rc::new(ctx.create_uniform_buffer(Uniforms {
+        let mvp_buf = Rc::new(ctx.create_uniform_buffer(&[Uniforms {
             ortho: ortho.into(),
             transform,
-        }));
+        }]));
         let mvp_binding =
             ctx.create_binding(&pipeline.layout.sets[0], &[core::Uniform::Buffer(&mvp_buf)]);
+
+        let model = Model::create(&mut ctx, &pipeline.layout.sets[1], &[Matrix4::identity()]);
 
         Self {
             ctx,
@@ -238,6 +327,7 @@ impl Kit {
             pipeline,
             mvp_buf,
             mvp_binding,
+            model,
         }
     }
 
@@ -249,17 +339,16 @@ impl Kit {
         self.ctx.create_sampler(min_filter, mag_filter)
     }
 
-    pub fn frame<F>(&mut self, f: F)
+    pub fn frame<'a, F>(&mut self, f: F)
     where
-        F: FnOnce(&mut Pass),
+        F: FnOnce(&mut Frame<'a>),
     {
-        let clear = self.clear;
-        let mut frame = self._frame();
-        {
-            let mut pass = frame.pass(clear);
-            f(&mut pass);
-        }
-        frame.commit();
+        let mut frame = Frame {
+            commands: Vec::new(),
+        };
+        f(&mut frame);
+
+        self.commit(frame);
     }
 
     pub fn resize(&mut self, physical: PhysicalSize) {
@@ -277,51 +366,169 @@ impl Kit {
 
     ////////////////////////////////////////////////////////////////////////////
 
-    fn _frame(&mut self) -> Frame {
-        self.ctx.update_uniform_buffer(
-            self.mvp_buf.clone(),
-            Uniforms {
-                transform: self.transform,
-                ortho: self.ortho.into(),
-            },
+    fn framebuffer(&self, texture: Texture, sampler: Sampler) -> Framebuffer {
+        let (tw, th) = (texture.w, texture.h);
+
+        let src = texture.rect();
+        let dst = texture.rect();
+        let rep = Repeat::default();
+
+        // Relative texture coordinates
+        let rx1: f32 = src.x1 / tw as f32;
+        let ry1: f32 = src.y1 / th as f32;
+        let rx2: f32 = src.x2 / tw as f32;
+        let ry2: f32 = src.y2 / th as f32;
+
+        let c = Rgba::TRANSPARENT.into();
+
+        let vertices = vec![
+            Vertex::new(dst.x1, dst.y1, rx1 * rep.x, ry2 * rep.y, c),
+            Vertex::new(dst.x2, dst.y1, rx2 * rep.x, ry2 * rep.y, c),
+            Vertex::new(dst.x2, dst.y2, rx2 * rep.x, ry1 * rep.y, c),
+            Vertex::new(dst.x1, dst.y1, rx1 * rep.x, ry2 * rep.y, c),
+            Vertex::new(dst.x1, dst.y2, rx1 * rep.x, ry1 * rep.y, c),
+            Vertex::new(dst.x2, dst.y2, rx2 * rep.x, ry1 * rep.y, c),
+        ];
+
+        let buffer = self.ctx.create_buffer(vertices.as_slice());
+
+        #[rustfmt::skip]
+        let binding = self.ctx.create_binding(
+            &self.pipeline.layout.sets[2],
+            &[
+                core::Uniform::Texture(&texture),
+                core::Uniform::Sampler(&sampler)
+            ],
         );
 
-        Frame {
-            frame: self.ctx.frame(),
-            pipeline: &self.pipeline,
-            mvp_binding: &self.mvp_binding,
+        Framebuffer {
+            texture,
+            sampler,
+            buffer,
+            binding,
         }
     }
-}
 
-pub struct Pass<'a> {
-    pass: core::Pass<'a>,
-}
+    fn update_model(&mut self, transforms: &[Matrix4<f32>]) {
+        self.model = Model::create(&mut self.ctx, &self.pipeline.layout.sets[1], transforms);
+    }
 
-impl<'a> Pass<'a> {
-    pub fn draw<T: Drawable>(&mut self, t: &T) {
-        t.draw(&mut self.pass)
+    fn commit(&mut self, frame: Frame) {
+        let mut encoder = self.ctx.create_encoder();
+        {
+            {
+                let mut transforms = NonEmpty::singleton(Matrix4::<f32>::identity());
+                let mut stack = transforms.clone();
+
+                for c in &frame.commands {
+                    match c {
+                        Command::PushMatrix(t) => {
+                            stack.push(stack.last() * t);
+                        }
+                        Command::PopMatrix() => {
+                            stack.pop();
+                        }
+                        Command::Draw(_) => {
+                            continue;
+                        }
+                    }
+                    transforms.push(*stack.last());
+                }
+
+                let vec: Vec<Matrix4<f32>> = transforms.into();
+                let slice = vec.as_slice();
+
+                if self.model.size < slice.len() {
+                    self.update_model(slice);
+                } else {
+                    self.ctx
+                        .update_uniform_buffer(self.model.buf.clone(), slice, &mut encoder);
+                }
+            }
+
+            let mut pass = self.ctx.create_pass(&mut encoder, self.clear);
+
+            pass.apply_pipeline(&self.pipeline);
+            pass.apply_uniforms(&self.mvp_binding, &[0]);
+
+            let (mut i, mut dirty) = (0, true);
+            for c in &frame.commands {
+                match c {
+                    Command::Draw(d) => {
+                        if dirty {
+                            pass.apply_uniforms(&self.model.binding, &[i]);
+                            dirty = false;
+                        }
+                        d.draw(&mut pass);
+                    }
+                    Command::PushMatrix(_) | Command::PopMatrix() => {
+                        i += std::mem::size_of::<Matrix4<f32>>() as u32;
+                        dirty = true;
+                    }
+                }
+            }
+        }
+        self.ctx.submit_encoder(&[encoder.finish()]);
     }
 }
 
 pub struct Frame<'a> {
-    frame: core::Frame<'a>,
-    pipeline: &'a core::Pipeline,
-    mvp_binding: &'a core::Uniforms,
+    commands: Vec<Command<'a>>,
 }
 
 impl<'a> Frame<'a> {
-    pub fn pass(&mut self, clear_color: Rgba) -> Pass {
-        let mut pass = self.frame.begin_pass(clear_color);
-        pass.apply_pipeline(&self.pipeline);
-        pass.apply_uniforms(&self.mvp_binding);
-        Pass { pass }
+    pub fn draw(&mut self, sb: &'a SpriteBatch) {
+        self.commands.push(Command::Draw(sb));
     }
 
-    pub fn commit(self) {
-        self.frame.commit();
+    pub fn transform<F>(&mut self, t: Matrix4<f32>, f: F)
+    where
+        F: FnOnce(&mut Self),
+    {
+        self.commands.push(Command::PushMatrix(t));
+        f(self);
+        self.commands.push(Command::PopMatrix());
     }
 }
+
+impl Drawable for Framebuffer {
+    fn draw(&self, pass: &mut core::Pass) {
+        pass.apply_uniforms(&self.binding, &[]);
+        pass.set_vertex_buffer(&self.buffer);
+        pass.draw(0..6, 0..1);
+    }
+}
+
+pub enum Command<'a> {
+    PushMatrix(Matrix4<f32>),
+    PopMatrix(),
+    Draw(&'a SpriteBatch<'a>),
+}
+
+impl<'a> std::fmt::Debug for Command<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Command::Draw(_) => write!(f, "Command::Draw"),
+            Command::PushMatrix(t) => write!(f, "Command::PushMatrix({:?})", t),
+            Command::PopMatrix() => write!(f, "Command::PopMatrix()"),
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+/// Framebuffer
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+pub struct Framebuffer {
+    pub texture: Texture,
+    pub sampler: Sampler,
+    pub buffer: core::VertexBuffer,
+    pub binding: core::Uniforms,
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+/// Drawable
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 pub trait Drawable {
     fn draw(&self, pass: &mut core::Pass);
@@ -409,7 +616,7 @@ impl<'a> SpriteBatch<'a> {
         let buffer = kit.ctx.create_buffer(self.vertices.as_slice());
         #[rustfmt::skip]
         let binding = kit.ctx.create_binding(
-            &kit.pipeline.layout.sets[1],
+            &kit.pipeline.layout.sets[2],
             &[
                 core::Uniform::Texture(&self.texture),
                 core::Uniform::Sampler(&self.sampler)
@@ -431,7 +638,7 @@ impl<'a> Drawable for SpriteBatch<'a> {
             .as_ref()
             .expect("SpriteBatch::finish wasn't called");
 
-        pass.apply_uniforms(binding);
+        pass.apply_uniforms(binding, &[]);
         pass.set_vertex_buffer(buffer);
         pass.draw(0..self.vertices.len() as u32, 0..1);
     }

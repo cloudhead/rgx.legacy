@@ -55,6 +55,7 @@ pub struct Shader {
     module: wgpu::ShaderModule,
 }
 
+#[derive(Debug)]
 pub enum ShaderStage {
     Vertex,
     Fragment,
@@ -127,6 +128,7 @@ pub struct Sampler {
     wgpu: wgpu::Sampler,
 }
 
+#[derive(Debug)]
 pub enum Filter {
     Nearest,
     Linear,
@@ -235,7 +237,7 @@ pub enum BindingType {
 impl BindingType {
     fn to_wgpu(&self) -> wgpu::BindingType {
         match self {
-            BindingType::UniformBuffer => wgpu::BindingType::UniformBuffer,
+            BindingType::UniformBuffer => wgpu::BindingType::UniformBufferDynamic,
             BindingType::SampledTexture => wgpu::BindingType::SampledTexture,
             BindingType::Sampler => wgpu::BindingType::Sampler,
         }
@@ -297,11 +299,28 @@ pub struct Pass<'a> {
 }
 
 impl<'a> Pass<'a> {
+    pub fn new(
+        encoder: &'a mut wgpu::CommandEncoder,
+        view: &wgpu::TextureView,
+        clear_color: Rgba,
+    ) -> Self {
+        let pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
+                attachment: view,
+                load_op: wgpu::LoadOp::Clear,
+                store_op: wgpu::StoreOp::Store,
+                clear_color: clear_color.to_wgpu(),
+            }],
+            depth_stencil_attachment: None,
+        });
+        Pass { wgpu: pass }
+    }
     pub fn apply_pipeline(&mut self, pipeline: &Pipeline) {
         self.wgpu.set_pipeline(&pipeline.wgpu)
     }
-    pub fn apply_uniforms(&mut self, uniforms: &Uniforms) {
-        self.wgpu.set_bind_group(uniforms.set_index, &uniforms.wgpu)
+    pub fn apply_uniforms(&mut self, uniforms: &Uniforms, offsets: &[u32]) {
+        self.wgpu
+            .set_bind_group(uniforms.set_index, &uniforms.wgpu, offsets)
     }
     pub fn set_index_buffer(&mut self, index_buf: &IndexBuffer) {
         self.wgpu.set_index_buffer(&index_buf.wgpu, 0)
@@ -318,43 +337,6 @@ impl<'a> Pass<'a> {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-/// Command
-///////////////////////////////////////////////////////////////////////////////
-
-enum Command {
-    UpdateUniformBuffer(Rc<UniformBuffer>, wgpu::Buffer, usize),
-}
-
-///////////////////////////////////////////////////////////////////////////////
-/// Frame
-///////////////////////////////////////////////////////////////////////////////
-
-pub struct Frame<'a> {
-    swap_chain_out: wgpu::SwapChainOutput<'a>,
-    encoder: wgpu::CommandEncoder,
-    device: &'a mut wgpu::Device,
-}
-
-impl<'a> Frame<'a> {
-    pub fn begin_pass(&mut self, clear_color: Rgba) -> Pass {
-        let pass = self.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                attachment: &self.swap_chain_out.view,
-                load_op: wgpu::LoadOp::Clear,
-                store_op: wgpu::StoreOp::Store,
-                clear_color: clear_color.to_wgpu(),
-            }],
-            depth_stencil_attachment: None,
-        });
-        Pass { wgpu: pass }
-    }
-
-    pub fn commit(self) {
-        self.device.get_queue().submit(&[self.encoder.finish()]);
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////////
 /// Context
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -362,7 +344,6 @@ pub struct Context {
     device: wgpu::Device,
     surface: wgpu::Surface,
     swap_chain: wgpu::SwapChain,
-    commands: Vec<Command>,
 }
 
 impl Context {
@@ -386,35 +367,10 @@ impl Context {
             swap_chain_descriptor(size.width.round() as u32, size.height.round() as u32);
         let swap_chain = device.create_swap_chain(&surface, &swap_chain_desc);
 
-        let commands = Vec::new();
-
         Self {
             device,
             surface,
             swap_chain,
-            commands,
-        }
-    }
-
-    pub fn frame(&mut self) -> Frame {
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
-
-        let chain_out = self.swap_chain.get_next_texture();
-
-        // TODO: This means we can't add commands after the frame has started!
-        for c in &self.commands {
-            match c {
-                Command::UpdateUniformBuffer(dst, src, size) => {
-                    encoder.copy_buffer_to_buffer(&src, 0, &dst.wgpu, 0, *size as u32);
-                }
-            }
-        }
-        Frame {
-            swap_chain_out: chain_out,
-            encoder,
-            device: &mut self.device,
         }
     }
 
@@ -441,6 +397,46 @@ impl Context {
         };
         Shader {
             module: self.device.create_shader_module(spv.as_binary_u8()),
+        }
+    }
+
+    pub fn create_encoder(&self) -> wgpu::CommandEncoder {
+        self.device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 })
+    }
+    pub fn submit_encoder(&mut self, bufs: &[wgpu::CommandBuffer]) {
+        self.device.get_queue().submit(bufs);
+    }
+
+    pub fn create_pass<'a>(
+        &'a mut self,
+        encoder: &'a mut wgpu::CommandEncoder,
+        clear_color: Rgba,
+    ) -> Pass<'a> {
+        let chain_out = self.swap_chain.get_next_texture();
+        Pass::new(encoder, &chain_out.view, clear_color)
+    }
+
+    pub fn create_framebuffer_texture(&mut self, w: u32, h: u32) -> Texture {
+        let texture_extent = wgpu::Extent3d {
+            width: w,
+            height: h,
+            depth: 1,
+        };
+        let texture = self.device.create_texture(&wgpu::TextureDescriptor {
+            size: texture_extent,
+            array_size: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Bgra8Unorm,
+            usage: wgpu::TextureUsageFlags::SAMPLED | wgpu::TextureUsageFlags::OUTPUT_ATTACHMENT,
+        });
+        let texture_view = texture.create_default_view();
+
+        Texture {
+            wgpu: texture,
+            view: texture_view,
+            w,
+            h,
         }
     }
 
@@ -508,7 +504,7 @@ impl Context {
         }
     }
 
-    pub fn create_uniform_buffer<T>(&self, buf: T) -> UniformBuffer
+    pub fn create_uniform_buffer<T>(&self, buf: &[T]) -> UniformBuffer
     where
         T: 'static + Copy,
     {
@@ -517,32 +513,38 @@ impl Context {
             wgpu: self
                 .device
                 .create_buffer_mapped::<T>(
-                    1,
+                    buf.len(),
                     wgpu::BufferUsageFlags::UNIFORM | wgpu::BufferUsageFlags::TRANSFER_DST,
                 )
-                .fill_from_slice(&[buf]),
+                .fill_from_slice(buf),
         }
     }
 
-    pub fn update_uniform_buffer<T>(&mut self, u: Rc<UniformBuffer>, buf: T)
-    where
+    pub fn update_uniform_buffer<T>(
+        &mut self,
+        u: Rc<UniformBuffer>,
+        buf: &[T],
+        encoder: &mut wgpu::CommandEncoder,
+    ) where
         T: 'static + Copy,
     {
-        let tmp = self
+        let src = self
             .device
             .create_buffer_mapped::<T>(
-                1,
+                buf.len(),
                 wgpu::BufferUsageFlags::UNIFORM
                     | wgpu::BufferUsageFlags::TRANSFER_SRC
                     | wgpu::BufferUsageFlags::MAP_WRITE,
             )
-            .fill_from_slice(&[buf]);
+            .fill_from_slice(buf);
 
-        self.commands.push(Command::UpdateUniformBuffer(
-            u,
-            tmp,
-            std::mem::size_of::<T>(),
-        ));
+        encoder.copy_buffer_to_buffer(
+            &src,
+            0,
+            &u.wgpu,
+            0,
+            (std::mem::size_of::<T>() * buf.len()) as u32,
+        );
     }
 
     pub fn create_index(&self, indices: &[u16]) -> IndexBuffer {
