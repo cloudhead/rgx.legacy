@@ -32,13 +32,13 @@ fn main() {
 
     let vs = ctx.create_shader(
         "shader.vert",
-        include_str!("data/shader.vert"),
+        include_str!("data/main.vert"),
         ShaderStage::Vertex,
     );
 
     let fs = ctx.create_shader(
         "shader.frag",
-        include_str!("data/shader.frag"),
+        include_str!("data/main.frag"),
         ShaderStage::Fragment,
     );
 
@@ -138,10 +138,10 @@ fn main() {
     }
     .into();
 
-    let uniform_buf = std::rc::Rc::new(ctx.create_uniform_buffer(Uniforms {
+    let uniform_buf = std::rc::Rc::new(ctx.create_uniform_buffer(&[Uniforms {
         ortho,
         transform: Matrix4::identity(),
-    }));
+    }]));
 
     ///////////////////////////////////////////////////////////////////////////
     // Setup uniform layout
@@ -197,31 +197,37 @@ fn main() {
         });
 
         ///////////////////////////////////////////////////////////////////////////
+        // Command encoder
+        ///////////////////////////////////////////////////////////////////////////
+
+        let mut encoder = ctx.create_encoder();
+
+        ///////////////////////////////////////////////////////////////////////////
         // Update uniforms
         ///////////////////////////////////////////////////////////////////////////
 
         ctx.update_uniform_buffer(
             uniform_buf.clone(),
-            Uniforms {
+            &[Uniforms {
                 transform: Matrix4::from_translation(Vector3::new(x, y, 0.0)),
                 ortho,
-            },
+            }],
+            &mut encoder,
         );
 
         ///////////////////////////////////////////////////////////////////////////
         // Draw frame
         ///////////////////////////////////////////////////////////////////////////
 
-        let mut frame = ctx.frame();
         {
-            let mut pass = frame.begin_pass(Rgba::WHITE);
+            let mut pass = ctx.create_pass(&mut encoder, Rgba::TRANSPARENT);
 
             pass.apply_pipeline(&pipeline);
-            pass.apply_uniforms(&uniforms);
+            pass.apply_uniforms(&uniforms, &[0]);
             pass.set_index_buffer(&index_buf);
             pass.set_vertex_buffer(&vertex_buf);
             pass.draw_indexed(0..6, 0..1);
         }
-        frame.commit();
+        ctx.submit_encoder(&[encoder.finish()]);
     }
 }

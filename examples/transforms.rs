@@ -8,6 +8,7 @@ extern crate rgx;
 use rgx::core::*;
 use rgx::kit::*;
 
+use cgmath::{Matrix4, Vector3};
 use image::ImageDecoder;
 
 use wgpu::winit::{
@@ -71,7 +72,13 @@ fn main() {
 
     let mut running = true;
 
-    while running {
+    for offset in 0..1024 {
+        let offset: f32 = offset as f32;
+
+        if !running {
+            break;
+        }
+
         events_loop.poll_events(|event| {
             if let Event::WindowEvent { event, .. } = event {
                 match event {
@@ -97,11 +104,6 @@ fn main() {
             }
         });
 
-        let win = window
-            .get_inner_size()
-            .unwrap()
-            .to_physical(window.get_hidpi_factor());
-
         {
             let now = Instant::now();
             delta = now.duration_since(last_frame).as_millis() as f64;
@@ -121,12 +123,9 @@ fn main() {
         let mut sb = SpriteBatch::new(&sprite, &sampler);
         let (sw, sh) = (w * 10.0, sprite.h as f32 * 10.0);
 
-        let x = win.width as f32 / 2.0;
-        let y = win.height as f32 / 2.0;
-
         sb.add(
             anim.val(),
-            Rect::new(x, y, x + sw, y + sh),
+            Rect::new(0.0, 0.0, sw, sh),
             Rgba::TRANSPARENT,
             Repeat::default(),
         );
@@ -136,8 +135,31 @@ fn main() {
         // Draw frame
         ///////////////////////////////////////////////////////////////////////////
 
-        kit.frame(|pass| {
-            pass.draw(&sb);
+        kit.frame(|f| {
+            f.draw(&sb);
+
+            f.transform(
+                Matrix4::from_translation(Vector3::new(480.0 + offset, 480.0, 0.0))
+                    * Matrix4::from_scale(0.5),
+                |f| {
+                    f.transform(
+                        Matrix4::from_translation(Vector3::new(160.0 + offset, 0.0, 0.0)),
+                        |f| {
+                            f.draw(&sb);
+                        },
+                    );
+                    f.draw(&sb);
+                },
+            );
+            if offset > 160.0 {
+                f.transform(
+                    Matrix4::from_translation(Vector3::new(640.0 + offset, 640.0, 0.0))
+                        * Matrix4::from_scale(0.3),
+                    |f| {
+                        f.draw(&sb);
+                    },
+                );
+            }
         });
     }
 }
