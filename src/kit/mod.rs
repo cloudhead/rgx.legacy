@@ -195,9 +195,9 @@ impl<T> Animation<T> {
     }
 }
 
+#[derive(Clone)]
 pub enum Effect {
     Colorize(f32, f32, f32),
-    Transform(Matrix4<f32>),
 }
 
 pub struct Effects {
@@ -345,6 +345,8 @@ impl Kit {
     {
         let mut frame = Frame {
             commands: Vec::new(),
+            transforms: NonEmpty::singleton(Matrix4::identity()),
+            effects: Vec::new(),
         };
         f(&mut frame);
 
@@ -418,21 +420,9 @@ impl Kit {
         {
             {
                 let mut transforms = NonEmpty::singleton(Matrix4::<f32>::identity());
-                let mut stack = transforms.clone();
 
-                for c in &frame.commands {
-                    match c {
-                        Command::PushMatrix(t) => {
-                            stack.push(stack.last() * t);
-                        }
-                        Command::PopMatrix() => {
-                            stack.pop();
-                        }
-                        Command::Draw(_) => {
-                            continue;
-                        }
-                    }
-                    transforms.push(*stack.last());
+                for Command(_, t, _) in &frame.commands {
+                    transforms.push(*t);
                 }
 
                 let vec: Vec<Matrix4<f32>> = transforms.into();
@@ -451,21 +441,11 @@ impl Kit {
             pass.apply_pipeline(&self.pipeline);
             pass.apply_uniforms(&self.mvp_binding, &[0]);
 
-            let (mut i, mut dirty) = (0, true);
-            for c in &frame.commands {
-                match c {
-                    Command::Draw(d) => {
-                        if dirty {
-                            pass.apply_uniforms(&self.model.binding, &[i]);
-                            dirty = false;
-                        }
-                        d.draw(&mut pass);
-                    }
-                    Command::PushMatrix(_) | Command::PopMatrix() => {
-                        i += std::mem::size_of::<Matrix4<f32>>() as u32;
-                        dirty = true;
-                    }
-                }
+            let mut i = 0;
+            for Command(d, _, _) in &frame.commands {
+                i += std::mem::size_of::<Matrix4<f32>>() as u32;
+                pass.apply_uniforms(&self.model.binding, &[i]);
+                d.draw(&mut pass);
             }
         }
         self.ctx.submit_encoder(&[encoder.finish()]);
@@ -474,20 +454,36 @@ impl Kit {
 
 pub struct Frame<'a> {
     commands: Vec<Command<'a>>,
+    transforms: NonEmpty<Matrix4<f32>>,
+    effects: Vec<Effect>,
 }
 
 impl<'a> Frame<'a> {
     pub fn draw(&mut self, sb: &'a SpriteBatch) {
-        self.commands.push(Command::Draw(sb));
+        self.commands
+            .push(Command(sb, *self.transforms.last(), self.effects.clone()));
     }
 
-    pub fn transform<F>(&mut self, t: Matrix4<f32>, f: F)
+    pub fn transform<F>(&mut self, t: Matrix4<f32>, block: F)
     where
         F: FnOnce(&mut Self),
     {
-        self.commands.push(Command::PushMatrix(t));
-        f(self);
-        self.commands.push(Command::PopMatrix());
+        self.transforms.push(self.transforms.last() * t);
+
+        block(self);
+
+        self.transforms.pop();
+    }
+
+    pub fn colorize<F>(&mut self, r: f32, g: f32, b: f32, block: F)
+    where
+        F: FnOnce(&mut Self),
+    {
+        self.effects.push(Effect::Colorize(r, g, b));
+
+        block(self);
+
+        self.effects.pop();
     }
 }
 
@@ -499,19 +495,11 @@ impl Drawable for Framebuffer {
     }
 }
 
-pub enum Command<'a> {
-    PushMatrix(Matrix4<f32>),
-    PopMatrix(),
-    Draw(&'a SpriteBatch<'a>),
-}
+pub struct Command<'a>(&'a SpriteBatch<'a>, Matrix4<f32>, Vec<Effect>);
 
 impl<'a> std::fmt::Debug for Command<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Command::Draw(_) => write!(f, "Command::Draw"),
-            Command::PushMatrix(t) => write!(f, "Command::PushMatrix({:?})", t),
-            Command::PopMatrix() => write!(f, "Command::PopMatrix()"),
-        }
+        write!(f, "Command")
     }
 }
 
