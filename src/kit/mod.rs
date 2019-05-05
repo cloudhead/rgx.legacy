@@ -419,14 +419,12 @@ impl Kit {
         let mut encoder = self.ctx.create_encoder();
         {
             {
-                let mut transforms = NonEmpty::singleton(Matrix4::<f32>::identity());
-
+                let mut transforms = Vec::new();
                 for Command(_, t, _) in &frame.commands {
                     transforms.push(*t);
                 }
 
-                let vec: Vec<Matrix4<f32>> = transforms.into();
-                let slice = vec.as_slice();
+                let slice = transforms.as_slice();
 
                 if self.model.size < slice.len() {
                     self.update_model(slice);
@@ -443,9 +441,10 @@ impl Kit {
 
             let mut i = 0;
             for Command(d, _, _) in &frame.commands {
-                i += std::mem::size_of::<Matrix4<f32>>() as u32;
                 pass.apply_uniforms(&self.model.binding, &[i]);
                 d.draw(&mut pass);
+
+                i += std::mem::size_of::<Matrix4<f32>>() as u32;
             }
         }
         self.ctx.submit_encoder(&[encoder.finish()]);
