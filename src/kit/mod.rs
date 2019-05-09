@@ -630,3 +630,15 @@ impl<'a> Drawable for SpriteBatch<'a> {
         pass.draw(0..self.vertices.len() as u32, 0..1);
     }
 }
+
+pub fn ortho(w: f64, h: f64) -> Matrix4<f32> {
+    Ortho::<f32> {
+        left: 0.0,
+        right: w as f32,
+        bottom: 0.0,
+        top: h as f32,
+        near: -1.0,
+        far: 1.0,
+    }
+    .into()
+}
