@@ -1,18 +1,11 @@
 #![allow(dead_code)]
 use crate::core;
-use crate::core::{
-    Binding, BindingType, Context, Sampler, Set, ShaderStage, Texture, VertexLayout,
-};
+use crate::core::{Binding, BindingType, Sampler, Set, ShaderStage, Texture, VertexLayout};
 
 pub use crate::core::Rgba;
 
-use wgpu::winit::dpi::PhysicalSize;
-use wgpu::winit::Window;
-
 use cgmath::prelude::*;
 use cgmath::{Matrix4, Ortho, Vector2};
-
-use std::rc::*;
 
 #[derive(Clone)]
 struct NonEmpty<T>(T, Vec<T>);
@@ -67,6 +60,15 @@ struct Rgba8 {
     a: u8,
 }
 
+impl Rgba8 {
+    const TRANSPARENT: Rgba8 = Rgba8 {
+        r: 0,
+        g: 0,
+        b: 0,
+        a: 0,
+    };
+}
+
 #[derive(Copy, Clone)]
 pub struct Uniforms {
     pub ortho: Matrix4<f32>,
@@ -86,6 +88,12 @@ impl Vertex {
 pub struct Repeat {
     pub x: f32,
     pub y: f32,
+}
+
+impl Repeat {
+    pub fn new(x: f32, y: f32) -> Self {
+        Repeat { x, y }
+    }
 }
 
 impl Default for Repeat {
@@ -195,91 +203,122 @@ impl<T> Animation<T> {
     }
 }
 
-#[derive(Clone)]
-pub enum Effect {
-    Colorize(f32, f32, f32),
+pub struct Pipeline2dDescription<'a> {
+    description: core::PipelineDescription<'a>,
 }
 
-pub struct Effects {
-    effects: Vec<Effect>,
-}
+impl<'a> core::PipelineDescriptionLike<'static> for Pipeline2dDescription<'a> {
+    type ConcretePipeline = Pipeline2d;
+    type Uniforms = self::Uniforms;
 
-impl Effects {
-    fn new() -> Self {
-        Self {
-            effects: Vec::new(),
+    fn setup(&mut self, pip: core::Pipeline, dev: &core::Device, w: u32, h: u32) -> Pipeline2d {
+        let ortho = ortho(w, h);
+        let transform = Matrix4::identity();
+
+        let buf =
+            std::rc::Rc::new(dev.create_uniform_buffer(&[Self::Uniforms { ortho, transform }]));
+
+        let binding = dev.create_binding(&pip.layout.sets[0], &[core::Uniform::Buffer(&buf)]);
+
+        Pipeline2d {
+            pipeline: pip,
+            buf,
+            binding,
+            ortho,
         }
     }
-}
 
-struct Model {
-    buf: Rc<core::UniformBuffer>,
-    binding: core::Uniforms,
-    size: usize,
-}
-
-impl Model {
-    fn create(
-        ctx: &mut Context,
-        layout: &core::UniformsLayout,
-        transforms: &[Matrix4<f32>],
-    ) -> Self {
-        let buf = Rc::new(ctx.create_uniform_buffer(transforms));
-        let binding = ctx.create_binding(&layout, &[core::Uniform::Buffer(&buf)]);
-        let size = transforms.len();
-        Self { buf, binding, size }
+    fn description(&self) -> &core::PipelineDescription {
+        &self.description
     }
 }
 
-pub struct Kit {
-    pub ctx: Context,
-    pub ortho: Ortho<f32>,
-    pub transform: Matrix4<f32>,
-    pub clear: Rgba,
-    pub pipeline: core::Pipeline,
-
-    mvp_buf: Rc<core::UniformBuffer>,
-    mvp_binding: core::Uniforms,
-
-    model: Model,
+pub struct Pipeline2d {
+    pipeline: core::Pipeline,
+    binding: core::Uniforms,
+    buf: std::rc::Rc<core::UniformBuffer>,
+    ortho: Matrix4<f32>,
 }
 
-impl Kit {
-    pub fn new(w: &Window) -> Self {
-        let win_size = w
-            .get_inner_size()
-            .unwrap()
-            .to_physical(w.get_hidpi_factor());
+impl Pipeline2d {
+    pub fn sprite<'a>(
+        &self,
+        renderer: &'a core::Renderer,
+        texture: &'a core::Texture,
+        sampler: &'a core::Sampler,
+        src: Rect<f32>,
+        dst: Rect<f32>,
+        color: Rgba,
+        rep: Repeat,
+    ) -> (core::VertexBuffer, core::Uniforms) {
+        #[rustfmt::skip]
+        let binding = renderer.device.create_binding(
+            &self.pipeline.layout.sets[1],
+            &[
+                core::Uniform::Texture(&texture),
+                core::Uniform::Sampler(&sampler)
+            ],
+        );
+        Sprite::new(texture, sampler, binding).build(&renderer, src, dst, color, rep)
+    }
 
-        let transform = Matrix4::identity();
-        let ortho = Ortho::<f32> {
-            left: 0.0,
-            right: win_size.width as f32,
-            bottom: 0.0,
-            top: win_size.height as f32,
-            near: -1.0,
-            far: 1.0,
-        };
+    pub fn sprite_batch<'a>(
+        &self,
+        renderer: &'a core::Renderer,
+        texture: &'a core::Texture,
+        sampler: &'a core::Sampler,
+    ) -> SpriteBatch<'a> {
+        #[rustfmt::skip]
+        let binding = renderer.device.create_binding(
+            &self.pipeline.layout.sets[1],
+            &[
+                core::Uniform::Texture(&texture),
+                core::Uniform::Sampler(&sampler)
+            ],
+        );
+        SpriteBatch::new(texture, sampler, binding)
+    }
+}
 
-        let mut ctx = Context::new(w);
+impl<'a> core::PipelineLike<'a> for Pipeline2d {
+    type PrepareContext = Matrix4<f32>;
+    type Uniforms = self::Uniforms;
 
-        let vertex_layout = VertexLayout::from(&[
+    fn resize(&mut self, w: u32, h: u32) {
+        self.ortho = ortho(w, h);
+    }
+
+    fn apply(&self, pass: &mut core::Pass) {
+        pass.apply_pipeline(&self.pipeline);
+        pass.apply_uniforms(&self.binding, &[0]);
+    }
+
+    fn prepare(
+        &'a self,
+        transform: Matrix4<f32>,
+    ) -> (std::rc::Rc<core::UniformBuffer>, Vec<self::Uniforms>) {
+        (
+            self.buf.clone(),
+            vec![self::Uniforms {
+                transform,
+                ortho: self.ortho,
+            }],
+        )
+    }
+}
+
+pub const SPRITE2D: Pipeline2dDescription = Pipeline2dDescription {
+    description: core::PipelineDescription {
+        vertex_layout: &[
             core::VertexFormat::Float2,
             core::VertexFormat::Float2,
             core::VertexFormat::UByte4,
-        ]);
-        let pipeline_layout = ctx.create_pipeline_layout(&[
-            // 0
+        ],
+        pipeline_layout: &[
             Set(&[Binding {
                 binding: BindingType::UniformBuffer,
                 stage: ShaderStage::Vertex,
             }]),
-            // 1
-            Set(&[Binding {
-                binding: BindingType::UniformBuffer,
-                stage: ShaderStage::Vertex,
-            }]),
-            // 2
             Set(&[
                 Binding {
                     binding: BindingType::SampledTexture,
@@ -290,217 +329,12 @@ impl Kit {
                     stage: ShaderStage::Fragment,
                 },
             ]),
-        ]);
-
-        let clear = Rgba::new(0.1, 0.1, 0.1, 1.0);
-
+        ],
         // TODO: Use `env("CARGO_MANIFEST_DIR")`
-        let pipeline = {
-            let vs = ctx.create_shader(
-                "shader.vert",
-                include_str!("data/shader.vert"),
-                ShaderStage::Vertex,
-            );
-
-            let fs = ctx.create_shader(
-                "shader.frag",
-                include_str!("data/shader.frag"),
-                ShaderStage::Fragment,
-            );
-            ctx.create_pipeline(pipeline_layout, vertex_layout, &vs, &fs)
-        };
-
-        let mvp_buf = Rc::new(ctx.create_uniform_buffer(&[Uniforms {
-            ortho: ortho.into(),
-            transform,
-        }]));
-        let mvp_binding =
-            ctx.create_binding(&pipeline.layout.sets[0], &[core::Uniform::Buffer(&mvp_buf)]);
-
-        let model = Model::create(&mut ctx, &pipeline.layout.sets[1], &[Matrix4::identity()]);
-
-        Self {
-            ctx,
-            ortho,
-            transform,
-            clear,
-            pipeline,
-            mvp_buf,
-            mvp_binding,
-            model,
-        }
-    }
-
-    pub fn texture(&mut self, texels: &[u8], w: u32, h: u32) -> Texture {
-        self.ctx.create_texture(texels, w, h)
-    }
-
-    pub fn sampler(&self, min_filter: core::Filter, mag_filter: core::Filter) -> core::Sampler {
-        self.ctx.create_sampler(min_filter, mag_filter)
-    }
-
-    pub fn frame<'a, F>(&mut self, f: F)
-    where
-        F: FnOnce(&mut Frame<'a>),
-    {
-        let mut frame = Frame {
-            commands: Vec::new(),
-            transforms: NonEmpty::singleton(Matrix4::identity()),
-            effects: Vec::new(),
-        };
-        f(&mut frame);
-
-        self.commit(frame);
-    }
-
-    pub fn resize(&mut self, physical: PhysicalSize) {
-        self.ctx.resize(physical);
-
-        self.ortho = Ortho::<f32> {
-            left: 0.0,
-            right: physical.width as f32,
-            bottom: 0.0,
-            top: physical.height as f32,
-            near: -1.0,
-            far: 1.0,
-        };
-    }
-
-    ////////////////////////////////////////////////////////////////////////////
-
-    fn framebuffer(&self, texture: Texture, sampler: Sampler) -> Framebuffer {
-        let (tw, th) = (texture.w, texture.h);
-
-        let src = texture.rect();
-        let dst = texture.rect();
-        let rep = Repeat::default();
-
-        // Relative texture coordinates
-        let rx1: f32 = src.x1 / tw as f32;
-        let ry1: f32 = src.y1 / th as f32;
-        let rx2: f32 = src.x2 / tw as f32;
-        let ry2: f32 = src.y2 / th as f32;
-
-        let c = Rgba::TRANSPARENT.into();
-
-        let vertices = vec![
-            Vertex::new(dst.x1, dst.y1, rx1 * rep.x, ry2 * rep.y, c),
-            Vertex::new(dst.x2, dst.y1, rx2 * rep.x, ry2 * rep.y, c),
-            Vertex::new(dst.x2, dst.y2, rx2 * rep.x, ry1 * rep.y, c),
-            Vertex::new(dst.x1, dst.y1, rx1 * rep.x, ry2 * rep.y, c),
-            Vertex::new(dst.x1, dst.y2, rx1 * rep.x, ry1 * rep.y, c),
-            Vertex::new(dst.x2, dst.y2, rx2 * rep.x, ry1 * rep.y, c),
-        ];
-
-        let buffer = self.ctx.create_buffer(vertices.as_slice());
-
-        #[rustfmt::skip]
-        let binding = self.ctx.create_binding(
-            &self.pipeline.layout.sets[2],
-            &[
-                core::Uniform::Texture(&texture),
-                core::Uniform::Sampler(&sampler)
-            ],
-        );
-
-        Framebuffer {
-            texture,
-            sampler,
-            buffer,
-            binding,
-        }
-    }
-
-    fn update_model(&mut self, transforms: &[Matrix4<f32>]) {
-        self.model = Model::create(&mut self.ctx, &self.pipeline.layout.sets[1], transforms);
-    }
-
-    fn commit(&mut self, frame: Frame) {
-        let mut encoder = self.ctx.create_encoder();
-        {
-            {
-                let mut transforms = Vec::new();
-                for Command(_, t, _) in &frame.commands {
-                    transforms.push(*t);
-                }
-
-                let slice = transforms.as_slice();
-
-                if self.model.size < slice.len() {
-                    self.update_model(slice);
-                } else {
-                    self.ctx
-                        .update_uniform_buffer(self.model.buf.clone(), slice, &mut encoder);
-                }
-            }
-
-            let mut pass = self.ctx.create_pass(&mut encoder, self.clear);
-
-            pass.apply_pipeline(&self.pipeline);
-            pass.apply_uniforms(&self.mvp_binding, &[0]);
-
-            let mut i = 0;
-            for Command(d, _, _) in &frame.commands {
-                pass.apply_uniforms(&self.model.binding, &[i]);
-                d.draw(&mut pass);
-
-                i += std::mem::size_of::<Matrix4<f32>>() as u32;
-            }
-        }
-        self.ctx.submit_encoder(&[encoder.finish()]);
-    }
-}
-
-pub struct Frame<'a> {
-    commands: Vec<Command<'a>>,
-    transforms: NonEmpty<Matrix4<f32>>,
-    effects: Vec<Effect>,
-}
-
-impl<'a> Frame<'a> {
-    pub fn draw(&mut self, sb: &'a SpriteBatch) {
-        self.commands
-            .push(Command(sb, *self.transforms.last(), self.effects.clone()));
-    }
-
-    pub fn transform<F>(&mut self, t: Matrix4<f32>, block: F)
-    where
-        F: FnOnce(&mut Self),
-    {
-        self.transforms.push(self.transforms.last() * t);
-
-        block(self);
-
-        self.transforms.pop();
-    }
-
-    pub fn colorize<F>(&mut self, r: f32, g: f32, b: f32, block: F)
-    where
-        F: FnOnce(&mut Self),
-    {
-        self.effects.push(Effect::Colorize(r, g, b));
-
-        block(self);
-
-        self.effects.pop();
-    }
-}
-
-impl Drawable for Framebuffer {
-    fn draw(&self, pass: &mut core::Pass) {
-        pass.apply_uniforms(&self.binding, &[]);
-        pass.set_vertex_buffer(&self.buffer);
-        pass.draw(0..6, 0..1);
-    }
-}
-
-pub struct Command<'a>(&'a SpriteBatch<'a>, Matrix4<f32>, Vec<Effect>);
-
-impl<'a> std::fmt::Debug for Command<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Command")
-    }
-}
+        vertex_shader: include_str!("data/sprite.vert"),
+        fragment_shader: include_str!("data/sprite.frag"),
+    },
+};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// Framebuffer
@@ -511,14 +345,6 @@ pub struct Framebuffer {
     pub sampler: Sampler,
     pub buffer: core::VertexBuffer,
     pub binding: core::Uniforms,
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-/// Drawable
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-pub trait Drawable {
-    fn draw(&self, pass: &mut core::Pass);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -542,36 +368,79 @@ trait VertexLike<'a> {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-/// SpriteBatch
+/// Sprite & SpriteBatch
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+pub struct Sprite<'a> {
+    pub texture: &'a Texture,
+    pub sampler: &'a Sampler,
+    pub binding: core::Uniforms,
+}
+
+impl<'a> Sprite<'a> {
+    pub fn new(t: &'a Texture, s: &'a Sampler, binding: core::Uniforms) -> Self {
+        Self {
+            texture: t,
+            sampler: s,
+            binding,
+        }
+    }
+
+    pub fn build(
+        self,
+        renderer: &core::Renderer,
+        src: Rect<f32>,
+        dst: Rect<f32>,
+        color: Rgba,
+        rep: Repeat,
+    ) -> (core::VertexBuffer, core::Uniforms) {
+        let (tw, th) = (self.texture.w, self.texture.h);
+
+        // Relative texture coordinates
+        let rx1: f32 = src.x1 / tw as f32;
+        let ry1: f32 = src.y1 / th as f32;
+        let rx2: f32 = src.x2 / tw as f32;
+        let ry2: f32 = src.y2 / th as f32;
+
+        let c = color.into();
+
+        // TODO: Use an index buffer
+        let verts: Vec<Vertex> = vec![
+            Vertex::new(dst.x1, dst.y1, rx1 * rep.x, ry2 * rep.y, c),
+            Vertex::new(dst.x2, dst.y1, rx2 * rep.x, ry2 * rep.y, c),
+            Vertex::new(dst.x2, dst.y2, rx2 * rep.x, ry1 * rep.y, c),
+            Vertex::new(dst.x1, dst.y1, rx1 * rep.x, ry2 * rep.y, c),
+            Vertex::new(dst.x1, dst.y2, rx1 * rep.x, ry1 * rep.y, c),
+            Vertex::new(dst.x2, dst.y2, rx2 * rep.x, ry1 * rep.y, c),
+        ];
+
+        (
+            renderer.device.create_buffer(verts.as_slice()),
+            self.binding,
+        )
+    }
+}
 
 pub struct SpriteBatch<'a> {
     pub texture: &'a Texture,
     pub sampler: &'a Sampler,
     pub vertices: Vec<Vertex>,
-    pub buffer: Option<core::VertexBuffer>,
-    pub binding: Option<core::Uniforms>,
+    pub binding: core::Uniforms,
     pub size: usize,
 }
 
 impl<'a> SpriteBatch<'a> {
-    pub fn new(t: &'a Texture, s: &'a Sampler) -> Self {
+    fn new(t: &'a Texture, s: &'a Sampler, binding: core::Uniforms) -> Self {
         Self {
             texture: t,
             sampler: s,
             vertices: Vec::with_capacity(6),
-            buffer: None,
-            binding: None,
+            binding,
             size: 0,
         }
     }
 
     pub fn add(&mut self, src: Rect<f32>, dst: Rect<f32>, rgba: Rgba, rep: Repeat) {
-        assert!(
-            self.buffer.is_none(),
-            "SpriteBatch::add called after SpriteBatch::finish"
-        );
-
         let c: Rgba8 = rgba.into();
         let (tw, th) = (self.texture.w, self.texture.h);
 
@@ -595,43 +464,15 @@ impl<'a> SpriteBatch<'a> {
         self.size += 1;
     }
 
-    pub fn finish(&mut self, kit: &Kit) {
-        assert!(
-            self.buffer.is_none(),
-            "SpriteBatch::finish called more than once"
-        );
-        let buffer = kit.ctx.create_buffer(self.vertices.as_slice());
-        #[rustfmt::skip]
-        let binding = kit.ctx.create_binding(
-            &kit.pipeline.layout.sets[2],
-            &[
-                core::Uniform::Texture(&self.texture),
-                core::Uniform::Sampler(&self.sampler)
-            ],
-        );
-        self.buffer = Some(buffer);
-        self.binding = Some(binding);
+    pub fn finish(self, rend: &core::Renderer) -> (core::VertexBuffer, core::Uniforms) {
+        (
+            rend.device.create_buffer(self.vertices.as_slice()),
+            self.binding,
+        )
     }
 }
 
-impl<'a> Drawable for SpriteBatch<'a> {
-    fn draw(&self, pass: &mut core::Pass) {
-        let buffer = self
-            .buffer
-            .as_ref()
-            .expect("SpriteBatch::finish wasn't called");
-        let binding = self
-            .binding
-            .as_ref()
-            .expect("SpriteBatch::finish wasn't called");
-
-        pass.apply_uniforms(binding, &[]);
-        pass.set_vertex_buffer(buffer);
-        pass.draw(0..self.vertices.len() as u32, 0..1);
-    }
-}
-
-pub fn ortho(w: f64, h: f64) -> Matrix4<f32> {
+pub fn ortho(w: u32, h: u32) -> Matrix4<f32> {
     Ortho::<f32> {
         left: 0.0,
         right: w as f32,
