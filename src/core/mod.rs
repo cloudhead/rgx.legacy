@@ -7,6 +7,8 @@ extern crate wgpu;
 use std::ops::Range;
 use std::rc::*;
 
+use std::{mem, ptr};
+
 ///////////////////////////////////////////////////////////////////////////////
 /// Rgba
 ///////////////////////////////////////////////////////////////////////////////
@@ -148,7 +150,15 @@ impl Filter {
 ///////////////////////////////////////////////////////////////////////////////
 
 pub struct VertexBuffer {
+    pub size: u32,
     wgpu: wgpu::Buffer,
+}
+
+impl Drawable for VertexBuffer {
+    fn draw(&self, pass: &mut Pass) {
+        pass.set_vertex_buffer(&self);
+        pass.draw_buffer(0..self.size, 0..1);
+    }
 }
 
 pub struct IndexBuffer {
@@ -294,19 +304,114 @@ pub struct PipelineLayout {
     pub sets: Vec<UniformsLayout>,
 }
 
+// NOTE: This trait is not needed maybe.
+pub trait PipelineLike<'a> {
+    type PrepareContext;
+    type Uniforms: Copy + 'static;
+
+    fn apply(&self, pass: &mut Pass);
+    fn resize(&mut self, w: u32, h: u32);
+    fn prepare(
+        &'a self,
+        t: Self::PrepareContext,
+    ) -> (std::rc::Rc<UniformBuffer>, Vec<Self::Uniforms>);
+}
+
+pub trait PipelineDescriptionLike<'a> {
+    type ConcretePipeline: PipelineLike<'a>;
+    type Uniforms;
+
+    fn setup(&mut self, pip: Pipeline, dev: &Device, w: u32, h: u32) -> Self::ConcretePipeline;
+    fn description(&self) -> &PipelineDescription;
+}
+
+pub struct PipelineDescription<'a> {
+    pub vertex_layout: &'a [VertexFormat],
+    pub pipeline_layout: &'a [Set<'a>],
+    pub vertex_shader: &'static str,
+    pub fragment_shader: &'static str,
+}
+
+pub trait Drawable {
+    fn draw(&self, pass: &mut Pass);
+}
+
+pub struct Frame<'a> {
+    encoder: mem::ManuallyDrop<wgpu::CommandEncoder>,
+    texture: wgpu::SwapChainOutput<'a>,
+    device: &'a mut Device,
+}
+
+impl<'a> Drop for Frame<'a> {
+    fn drop(&mut self) {
+        let e = unsafe { mem::ManuallyDrop::into_inner(ptr::read(&self.encoder)) };
+        self.device.submit(&[e.finish()]);
+    }
+}
+
+impl<'a> Frame<'a> {
+    pub fn new(
+        encoder: wgpu::CommandEncoder,
+        texture: wgpu::SwapChainOutput<'a>,
+        device: &'a mut Device,
+    ) -> Frame<'a> {
+        Frame {
+            texture,
+            device,
+            encoder: mem::ManuallyDrop::new(encoder),
+        }
+    }
+
+    pub fn prepare<T>(&mut self, pip: &'a T, p: T::PrepareContext)
+    where
+        T: PipelineLike<'a>,
+    {
+        let (buf, unifs) = pip.prepare(p);
+        self.update_uniform_buffer(buf.clone(), unifs.as_slice());
+    }
+
+    pub fn pass(&mut self, clear: Rgba) -> Pass {
+        Pass::begin(&mut self.encoder, &self.texture.view, clear)
+    }
+
+    fn update_uniform_buffer<T>(&mut self, u: Rc<UniformBuffer>, buf: &[T])
+    where
+        T: 'static + Copy,
+    {
+        let src = self
+            .device
+            .device
+            .create_buffer_mapped::<T>(
+                buf.len(),
+                wgpu::BufferUsageFlags::UNIFORM
+                    | wgpu::BufferUsageFlags::TRANSFER_SRC
+                    | wgpu::BufferUsageFlags::MAP_WRITE,
+            )
+            .fill_from_slice(buf);
+
+        self.encoder.copy_buffer_to_buffer(
+            &src,
+            0,
+            &u.wgpu,
+            0,
+            (std::mem::size_of::<T>() * buf.len()) as u32,
+        );
+    }
+}
+
 pub struct Pass<'a> {
     wgpu: wgpu::RenderPass<'a>,
 }
 
 impl<'a> Pass<'a> {
-    pub fn new(
+    pub fn begin(
         encoder: &'a mut wgpu::CommandEncoder,
         view: &wgpu::TextureView,
         clear_color: Rgba,
     ) -> Self {
         let pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                attachment: view,
+                attachment: &view,
                 load_op: wgpu::LoadOp::Clear,
                 store_op: wgpu::StoreOp::Store,
                 clear_color: clear_color.to_wgpu(),
@@ -314,6 +419,12 @@ impl<'a> Pass<'a> {
             depth_stencil_attachment: None,
         });
         Pass { wgpu: pass }
+    }
+    pub fn apply<T>(&mut self, pipeline: &T)
+    where
+        T: PipelineLike<'a>,
+    {
+        pipeline.apply(self);
     }
     pub fn apply_pipeline(&mut self, pipeline: &Pipeline) {
         self.wgpu.set_pipeline(&pipeline.wgpu)
@@ -328,7 +439,10 @@ impl<'a> Pass<'a> {
     pub fn set_vertex_buffer(&mut self, vertex_buf: &VertexBuffer) {
         self.wgpu.set_vertex_buffers(&[(&vertex_buf.wgpu, 0)])
     }
-    pub fn draw(&mut self, indices: Range<u32>, instances: Range<u32>) {
+    pub fn draw<T: Drawable>(&mut self, drawable: &T) {
+        drawable.draw(self);
+    }
+    pub fn draw_buffer(&mut self, indices: Range<u32>, instances: Range<u32>) {
         self.wgpu.draw(indices, instances)
     }
     pub fn draw_indexed(&mut self, indices: Range<u32>, instances: Range<u32>) {
@@ -336,41 +450,174 @@ impl<'a> Pass<'a> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////////
-/// Context
-///////////////////////////////////////////////////////////////////////////////
+pub fn frame<'a>(swap_chain: &'a mut wgpu::SwapChain, device: &'a mut Device) -> Frame<'a> {
+    let texture = swap_chain.get_next_texture();
+    let encoder = device.create_command_encoder();
+    Frame::new(encoder, texture, device)
+}
 
-pub struct Context {
-    device: wgpu::Device,
-    surface: wgpu::Surface,
+fn swap_chain_descriptor(width: u32, height: u32) -> wgpu::SwapChainDescriptor {
+    wgpu::SwapChainDescriptor {
+        usage: wgpu::TextureUsageFlags::OUTPUT_ATTACHMENT,
+        format: wgpu::TextureFormat::Bgra8Unorm,
+        width,
+        height,
+    }
+}
+
+pub struct Renderer {
+    pub device: Device,
     swap_chain: wgpu::SwapChain,
 }
 
-impl Context {
+impl Renderer {
+    pub fn new(window: &wgpu::winit::Window) -> Self {
+        let size = window
+            .get_inner_size()
+            .unwrap()
+            .to_physical(window.get_hidpi_factor());
+        let device = Device::new(window);
+        let swap_chain = device.create_swap_chain(size.width as u32, size.height as u32);
+
+        Self { device, swap_chain }
+    }
+
+    pub fn resize(&mut self, w: u32, h: u32) {
+        self.swap_chain = self.device.create_swap_chain(w, h);
+    }
+
+    pub fn frame(&mut self) -> Frame {
+        frame(&mut self.swap_chain, &mut self.device)
+    }
+
+    pub fn pipeline<T>(&self, mut pip: T, w: u32, h: u32) -> T::ConcretePipeline
+    where
+        T: PipelineDescriptionLike<'static>,
+    {
+        let desc = pip.description();
+        let pip_layout = self.device.create_pipeline_layout(desc.pipeline_layout);
+        let vertex_layout = VertexLayout::from(desc.vertex_layout);
+        let vs = self
+            .device
+            .create_shader("shader.vert", desc.vertex_shader, ShaderStage::Vertex);
+        let fs =
+            self.device
+                .create_shader("shader.frag", desc.fragment_shader, ShaderStage::Fragment);
+
+        pip.setup(
+            self.device
+                .create_pipeline(pip_layout, vertex_layout, &vs, &fs),
+            &self.device,
+            w,
+            h,
+        )
+    }
+}
+
+pub struct Device {
+    device: wgpu::Device,
+    surface: wgpu::Surface,
+}
+
+impl Device {
     pub fn new(window: &wgpu::winit::Window) -> Self {
         let instance = wgpu::Instance::new();
         let adapter = instance.get_adapter(&wgpu::AdapterDescriptor {
             power_preference: wgpu::PowerPreference::LowPower,
         });
-        let device = adapter.create_device(&wgpu::DeviceDescriptor {
-            extensions: wgpu::Extensions {
-                anisotropic_filtering: false,
-            },
-        });
         let surface = instance.create_surface(&window);
 
-        let size = window
-            .get_inner_size()
-            .unwrap()
-            .to_physical(window.get_hidpi_factor());
-        let swap_chain_desc =
-            swap_chain_descriptor(size.width.round() as u32, size.height.round() as u32);
-        let swap_chain = device.create_swap_chain(&surface, &swap_chain_desc);
-
         Self {
-            device,
+            device: adapter.create_device(&wgpu::DeviceDescriptor {
+                extensions: wgpu::Extensions {
+                    anisotropic_filtering: false,
+                },
+            }),
             surface,
-            swap_chain,
+        }
+    }
+
+    pub fn create_command_encoder(&self) -> wgpu::CommandEncoder {
+        self.device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 })
+    }
+
+    pub fn create_swap_chain(&self, w: u32, h: u32) -> wgpu::SwapChain {
+        let desc = swap_chain_descriptor(w, h);
+        self.device.create_swap_chain(&self.surface, &desc)
+    }
+
+    pub fn create_pipeline_layout(&self, ss: &[Set]) -> PipelineLayout {
+        let mut sets = Vec::new();
+        for (i, s) in ss.iter().enumerate() {
+            sets.push(self.create_uniforms_layout(i as u32, s.0))
+        }
+        PipelineLayout { sets }
+    }
+
+    fn create_pipeline(
+        &self,
+        pipeline_layout: PipelineLayout,
+        vertex_layout: VertexLayout,
+        vs: &Shader,
+        fs: &Shader,
+    ) -> Pipeline {
+        let vertex_attrs = vertex_layout.to_wgpu();
+
+        let mut sets = Vec::new();
+        for s in pipeline_layout.sets.iter() {
+            sets.push(&s.wgpu);
+        }
+        let layout = &self
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                bind_group_layouts: sets.as_slice(),
+            });
+
+        let wgpu = self
+            .device
+            .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                layout,
+                vertex_stage: wgpu::PipelineStageDescriptor {
+                    module: &vs.module,
+                    entry_point: "main",
+                },
+                fragment_stage: wgpu::PipelineStageDescriptor {
+                    module: &fs.module,
+                    entry_point: "main",
+                },
+                rasterization_state: wgpu::RasterizationStateDescriptor {
+                    front_face: wgpu::FrontFace::Ccw,
+                    cull_mode: wgpu::CullMode::None,
+                    depth_bias: 0,
+                    depth_bias_slope_scale: 0.0,
+                    depth_bias_clamp: 0.0,
+                },
+                primitive_topology: wgpu::PrimitiveTopology::TriangleList,
+                color_states: &[wgpu::ColorStateDescriptor {
+                    format: wgpu::TextureFormat::Bgra8Unorm,
+                    color: wgpu::BlendDescriptor {
+                        src_factor: wgpu::BlendFactor::SrcAlpha,
+                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                        operation: wgpu::BlendOperation::Add,
+                    },
+                    alpha: wgpu::BlendDescriptor {
+                        src_factor: wgpu::BlendFactor::SrcAlpha,
+                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                        operation: wgpu::BlendOperation::Add,
+                    },
+                    write_mask: wgpu::ColorWriteFlags::ALL,
+                }],
+                depth_stencil_state: None,
+                index_format: wgpu::IndexFormat::Uint16,
+                vertex_buffers: &[vertex_attrs],
+                sample_count: 1,
+            });
+
+        Pipeline {
+            layout: pipeline_layout,
+            vertex_layout,
+            wgpu,
         }
     }
 
@@ -403,41 +650,6 @@ impl Context {
     pub fn create_encoder(&self) -> wgpu::CommandEncoder {
         self.device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 })
-    }
-    pub fn submit_encoder(&mut self, bufs: &[wgpu::CommandBuffer]) {
-        self.device.get_queue().submit(bufs);
-    }
-
-    pub fn create_pass<'a>(
-        &'a mut self,
-        encoder: &'a mut wgpu::CommandEncoder,
-        clear_color: Rgba,
-    ) -> Pass<'a> {
-        let chain_out = self.swap_chain.get_next_texture();
-        Pass::new(encoder, &chain_out.view, clear_color)
-    }
-
-    pub fn create_framebuffer_texture(&mut self, w: u32, h: u32) -> Texture {
-        let texture_extent = wgpu::Extent3d {
-            width: w,
-            height: h,
-            depth: 1,
-        };
-        let texture = self.device.create_texture(&wgpu::TextureDescriptor {
-            size: texture_extent,
-            array_size: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Bgra8Unorm,
-            usage: wgpu::TextureUsageFlags::SAMPLED | wgpu::TextureUsageFlags::OUTPUT_ATTACHMENT,
-        });
-        let texture_view = texture.create_default_view();
-
-        Texture {
-            wgpu: texture,
-            view: texture_view,
-            w,
-            h,
-        }
     }
 
     pub fn create_texture(&mut self, texels: &[u8], w: u32, h: u32) -> Texture {
@@ -483,6 +695,7 @@ impl Context {
             texture_extent,
         );
 
+        // XXX: Shouldn't take place here.
         self.device.get_queue().submit(&[encoder.finish()]);
         Texture {
             wgpu: texture,
@@ -490,6 +703,14 @@ impl Context {
             w,
             h,
         }
+    }
+
+    pub fn create_binding(&self, layout: &UniformsLayout, us: &[Uniform]) -> Uniforms {
+        let mut binding = UniformsBinding::from(layout);
+        for (i, u) in us.iter().enumerate() {
+            binding[i] = u.clone();
+        }
+        self.create_uniforms(&binding)
     }
 
     pub fn create_buffer<T>(&self, vertices: &[T]) -> VertexBuffer
@@ -501,6 +722,7 @@ impl Context {
                 .device
                 .create_buffer_mapped(vertices.len(), wgpu::BufferUsageFlags::VERTEX)
                 .fill_from_slice(vertices),
+            size: vertices.len() as u32,
         }
     }
 
@@ -518,33 +740,6 @@ impl Context {
                 )
                 .fill_from_slice(buf),
         }
-    }
-
-    pub fn update_uniform_buffer<T>(
-        &mut self,
-        u: Rc<UniformBuffer>,
-        buf: &[T],
-        encoder: &mut wgpu::CommandEncoder,
-    ) where
-        T: 'static + Copy,
-    {
-        let src = self
-            .device
-            .create_buffer_mapped::<T>(
-                buf.len(),
-                wgpu::BufferUsageFlags::UNIFORM
-                    | wgpu::BufferUsageFlags::TRANSFER_SRC
-                    | wgpu::BufferUsageFlags::MAP_WRITE,
-            )
-            .fill_from_slice(buf);
-
-        encoder.copy_buffer_to_buffer(
-            &src,
-            0,
-            &u.wgpu,
-            0,
-            (std::mem::size_of::<T>() * buf.len()) as u32,
-        );
     }
 
     pub fn create_index(&self, indices: &[u16]) -> IndexBuffer {
@@ -626,105 +821,9 @@ impl Context {
         )
     }
 
-    pub fn create_binding(&self, layout: &UniformsLayout, us: &[Uniform]) -> Uniforms {
-        let mut binding = UniformsBinding::from(layout);
-        for (i, u) in us.iter().enumerate() {
-            binding[i] = u.clone();
-        }
-        self.create_uniforms(&binding)
-    }
+    // MUTABLE API ////////////////////////////////////////////////////////////
 
-    pub fn create_pipeline_layout(&self, ss: &[Set]) -> PipelineLayout {
-        let mut sets = Vec::new();
-        for (i, s) in ss.iter().enumerate() {
-            sets.push(self.create_uniforms_layout(i as u32, s.0))
-        }
-        PipelineLayout { sets }
-    }
-
-    pub fn create_pipeline(
-        &self,
-        pipeline_layout: PipelineLayout,
-        vertex_layout: VertexLayout,
-        vs: &Shader,
-        fs: &Shader,
-    ) -> Pipeline {
-        let vertex_attrs = vertex_layout.to_wgpu();
-
-        let mut sets = Vec::new();
-        for s in pipeline_layout.sets.iter() {
-            sets.push(&s.wgpu);
-        }
-        let layout = &self
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                bind_group_layouts: sets.as_slice(),
-            });
-
-        let wgpu = self
-            .device
-            .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                layout,
-                vertex_stage: wgpu::PipelineStageDescriptor {
-                    module: &vs.module,
-                    entry_point: "main",
-                },
-                fragment_stage: wgpu::PipelineStageDescriptor {
-                    module: &fs.module,
-                    entry_point: "main",
-                },
-                rasterization_state: wgpu::RasterizationStateDescriptor {
-                    front_face: wgpu::FrontFace::Ccw,
-                    cull_mode: wgpu::CullMode::None,
-                    depth_bias: 0,
-                    depth_bias_slope_scale: 0.0,
-                    depth_bias_clamp: 0.0,
-                },
-                primitive_topology: wgpu::PrimitiveTopology::TriangleList,
-                color_states: &[wgpu::ColorStateDescriptor {
-                    format: wgpu::TextureFormat::Bgra8Unorm,
-                    color: wgpu::BlendDescriptor {
-                        src_factor: wgpu::BlendFactor::SrcAlpha,
-                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                        operation: wgpu::BlendOperation::Add,
-                    },
-                    alpha: wgpu::BlendDescriptor {
-                        src_factor: wgpu::BlendFactor::SrcAlpha,
-                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                        operation: wgpu::BlendOperation::Add,
-                    },
-                    write_mask: wgpu::ColorWriteFlags::ALL,
-                }],
-                depth_stencil_state: None,
-                index_format: wgpu::IndexFormat::Uint16,
-                vertex_buffers: &[vertex_attrs],
-                sample_count: 1,
-            });
-
-        Pipeline {
-            layout: pipeline_layout,
-            vertex_layout,
-            wgpu,
-        }
-    }
-
-    pub fn resize(&mut self, physical: wgpu::winit::dpi::PhysicalSize) {
-        let swap_chain_descriptor = swap_chain_descriptor(
-            physical.width.round() as u32,
-            physical.height.round() as u32,
-        );
-
-        self.swap_chain = self
-            .device
-            .create_swap_chain(&self.surface, &swap_chain_descriptor);
-    }
-}
-
-fn swap_chain_descriptor(width: u32, height: u32) -> wgpu::SwapChainDescriptor {
-    wgpu::SwapChainDescriptor {
-        usage: wgpu::TextureUsageFlags::OUTPUT_ATTACHMENT,
-        format: wgpu::TextureFormat::Bgra8Unorm,
-        width,
-        height,
+    pub fn submit(&mut self, cmds: &[wgpu::CommandBuffer]) {
+        self.device.get_queue().submit(cmds);
     }
 }

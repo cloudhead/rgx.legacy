@@ -6,7 +6,11 @@ extern crate env_logger;
 extern crate rgx;
 
 use rgx::core::*;
+use rgx::kit;
 use rgx::kit::*;
+
+use cgmath::prelude::*;
+use cgmath::Matrix4;
 
 use image::ImageDecoder;
 
@@ -23,16 +27,23 @@ fn main() {
     let window = Window::new(&events_loop).unwrap();
 
     ///////////////////////////////////////////////////////////////////////////
-    // Setup rgx context
+    // Setup renderer
     ///////////////////////////////////////////////////////////////////////////
 
-    let mut kit = Kit::new(&window);
+    let mut r = Renderer::new(&window);
+
+    let size = window
+        .get_inner_size()
+        .unwrap()
+        .to_physical(window.get_hidpi_factor());
+
+    let mut pip = r.pipeline(kit::SPRITE2D, size.width as u32, size.height as u32);
 
     ///////////////////////////////////////////////////////////////////////////
     // Setup sampler & load texture
     ///////////////////////////////////////////////////////////////////////////
 
-    let sampler = kit.sampler(Filter::Nearest, Filter::Nearest);
+    let sampler = r.device.create_sampler(Filter::Nearest, Filter::Nearest);
 
     let sprite = {
         let bytes = include_bytes!("data/sprite.tga");
@@ -41,12 +52,9 @@ fn main() {
         let (w, h) = decoder.dimensions();
         let pixels = decoder.read_image().unwrap();
 
-        kit.texture(pixels.as_slice(), w as u32, h as u32)
+        r.device
+            .create_texture(pixels.as_slice(), w as u32, h as u32)
     };
-
-    ///////////////////////////////////////////////////////////////////////////
-    // Render loop
-    ///////////////////////////////////////////////////////////////////////////
 
     let w = 50.0;
 
@@ -75,6 +83,10 @@ fn main() {
 
     let mut running = true;
 
+    ///////////////////////////////////////////////////////////////////////////
+    // Render loop
+    ///////////////////////////////////////////////////////////////////////////
+
     while running {
         events_loop.poll_events(|event| {
             if let Event::WindowEvent { event, .. } = event {
@@ -94,17 +106,16 @@ fn main() {
                         running = false;
                     }
                     WindowEvent::Resized(size) => {
-                        kit.resize(size.to_physical(window.get_hidpi_factor()));
+                        let physical = size.to_physical(window.get_hidpi_factor());
+                        let (w, h) = (physical.width as u32, physical.height as u32);
+
+                        pip.resize(w, h);
+                        r.resize(w, h);
                     }
                     _ => {}
                 }
             }
         });
-
-        let win = window
-            .get_inner_size()
-            .unwrap()
-            .to_physical(window.get_hidpi_factor());
 
         {
             let now = Instant::now();
@@ -120,10 +131,15 @@ fn main() {
         fps.push(delta as f64);
 
         ///////////////////////////////////////////////////////////////////////////
-        // Prepare frame
+        // Prepare sprite batch
         ///////////////////////////////////////////////////////////////////////////
 
-        let mut sb = SpriteBatch::new(&sprite, &sampler);
+        let win = window
+            .get_inner_size()
+            .unwrap()
+            .to_physical(window.get_hidpi_factor());
+
+        let mut sb = pip.sprite_batch(&r, &sprite, &sampler);
         let (sw, sh) = (w * 2.0, sprite.h as f32 * 2.0);
 
         let rows = (win.height as f32 / sh) as u32;
@@ -156,20 +172,35 @@ fn main() {
                 );
             }
         }
-        sb.finish(&kit);
+
+        let (buffer, binding) = sb.finish(&r);
+
+        ///////////////////////////////////////////////////////////////////////////
+        // Create frame
+        ///////////////////////////////////////////////////////////////////////////
+
+        let mut frame = r.frame();
+
+        ///////////////////////////////////////////////////////////////////////////
+        // Prepare pipeline
+        ///////////////////////////////////////////////////////////////////////////
+
+        frame.prepare(&pip, Matrix4::identity());
 
         ///////////////////////////////////////////////////////////////////////////
         // Draw frame
         ///////////////////////////////////////////////////////////////////////////
 
-        kit.frame(|pass| {
-            pass.draw(&sb);
-        });
+        let pass = &mut frame.pass(Rgba::TRANSPARENT);
+
+        pass.apply(&pip);
+        pass.apply_uniforms(&binding, &[]);
+        pass.draw(&buffer);
     }
 
     println!("frames rendered: {}", fps.len());
     println!(
-        "average fps: {:.2}",
+        "average frame time: {:.2}",
         fps.iter().sum::<f64>() / fps.len() as f64
     );
 }

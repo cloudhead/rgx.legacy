@@ -6,7 +6,7 @@ extern crate env_logger;
 extern crate rgx;
 
 use rgx::core::*;
-use rgx::kit::*;
+use rgx::kit;
 
 use cgmath::{Matrix4, Vector3};
 
@@ -21,85 +21,71 @@ fn main() {
     let window = Window::new(&events_loop).unwrap();
 
     ///////////////////////////////////////////////////////////////////////////
-    // Setup rgx context
+    // Setup renderer
     ///////////////////////////////////////////////////////////////////////////
 
-    let mut kit = Kit::new(&window);
+    let mut renderer = Renderer::new(&window);
 
     ///////////////////////////////////////////////////////////////////////////
-    // Setup sampler & texture & sampler
+    // Setup render pipeline
     ///////////////////////////////////////////////////////////////////////////
 
-    let sampler = kit.sampler(Filter::Nearest, Filter::Nearest);
+    let size = window
+        .get_inner_size()
+        .unwrap()
+        .to_physical(window.get_hidpi_factor());
+
+    let mut pipeline = renderer.pipeline(kit::SPRITE2D, size.width as u32, size.height as u32);
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Setup texture & sampler
+    ///////////////////////////////////////////////////////////////////////////
 
     #[rustfmt::skip]
-    let bg_texels: [u32; 16] = [
+    let texels: [u32; 16] = [
         0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
         0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
         0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
         0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
     ];
-    let bg_buffer: [u8; 64] = unsafe { std::mem::transmute(bg_texels) };
-    let bg_texture = kit.texture(&bg_buffer, 4, 4);
+    let buf: [u8; 64] = unsafe { std::mem::transmute(texels) };
 
-    #[rustfmt::skip]
-    let fg_texels: [u32; 16] = [
-        0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
-        0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
-        0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
-        0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
-    ];
-    let fg_buffer: [u8; 64] = unsafe { std::mem::transmute(fg_texels) };
-    let fg_texture = kit.texture(&fg_buffer, 4, 4);
+    // Create 4 by 4 texture and sampler.
+    let texture = renderer.device.create_texture(&buf, 4, 4);
+    let sampler = renderer
+        .device
+        .create_sampler(Filter::Nearest, Filter::Nearest);
 
     ///////////////////////////////////////////////////////////////////////////
-    // Setup sprite batches
+    // Setup sprites
     ///////////////////////////////////////////////////////////////////////////
 
-    // Background batch
-    let mut bg = SpriteBatch::new(&bg_texture, &sampler);
-    let (sw, sh) = (128.0, 128.0);
+    let (buffer_bg, binding_bg) = pipeline.sprite(
+        &renderer,
+        &texture,
+        &sampler,
+        texture.rect(),
+        kit::Rect::new(0., 0., size.width as f32, size.height as f32),
+        Rgba::TRANSPARENT,
+        kit::Repeat::new(24. * (size.width / size.height) as f32, 24.),
+    );
 
-    for i in 0..16 {
-        for j in 0..16 {
-            let x = i as f32 * sw;
-            let y = j as f32 * sh;
-
-            bg.add(
-                bg_texture.rect(),
-                Rect::new(x, y, x + sw, y + sh),
-                Rgba::new(0.25, 0.25, 0.5, 0.5),
-                Repeat::default(),
-            );
-        }
-    }
-    bg.finish(&kit);
-
-    ///////////////////////////////////////////////////////////////////////////
-
-    // Foreground batch
-    let mut fg = SpriteBatch::new(&fg_texture, &sampler);
-    let (sw, sh) = (64.0, 64.0);
-
-    for i in 0..16 {
-        for j in 0..16 {
-            let x = i as f32 * sw * 2.0;
-            let y = j as f32 * sh * 2.0;
-
-            fg.add(
-                fg_texture.rect(),
-                Rect::new(x, y, x + sw, y + sh),
-                Rgba::new(0.5, 0.25, 0.5, 0.5),
-                Repeat::default(),
-            );
-        }
-    }
-    fg.finish(&kit);
+    let (buffer_fg, binding_fg) = pipeline.sprite(
+        &renderer,
+        &texture,
+        &sampler,
+        texture.rect(),
+        kit::Rect::new(0.0, 0.0, 160.0, 160.0),
+        Rgba::new(1.0, 1.0, 0.0, 0.5),
+        kit::Repeat::default(),
+    );
 
     let mut x: f32 = 0.0;
     let mut y: f32 = 0.0;
 
     let mut running = true;
+
+    let mut transform;
 
     ///////////////////////////////////////////////////////////////////////////
     // Render loop
@@ -108,6 +94,8 @@ fn main() {
     while running {
         x += 1.0;
         y += 1.0;
+
+        transform = Matrix4::from_translation(Vector3::new(x, y, 0.0));
 
         ///////////////////////////////////////////////////////////////////////////
         // Process events
@@ -119,19 +107,25 @@ fn main() {
                     WindowEvent::KeyboardInput {
                         input:
                             KeyboardInput {
-                                virtual_keycode: Some(VirtualKeyCode::Escape),
+                                virtual_keycode: Some(code),
                                 state: ElementState::Pressed,
                                 ..
                             },
                         ..
                     } => {
-                        running = false;
+                        if let VirtualKeyCode::Escape = code {
+                            running = false;
+                        }
                     }
                     WindowEvent::CloseRequested => {
                         running = false;
                     }
                     WindowEvent::Resized(size) => {
-                        kit.resize(size.to_physical(window.get_hidpi_factor()));
+                        let physical = size.to_physical(window.get_hidpi_factor());
+                        let (w, h) = (physical.width as u32, physical.height as u32);
+
+                        pipeline.resize(w, h);
+                        renderer.resize(w, h);
                     }
                     _ => {}
                 }
@@ -139,19 +133,29 @@ fn main() {
         });
 
         ///////////////////////////////////////////////////////////////////////////
-        // Update transform & clear color
+        // Create frame
         ///////////////////////////////////////////////////////////////////////////
 
-        kit.transform = Matrix4::from_translation(Vector3::new(x, y, 0.0));
-        kit.clear = Rgba::new(0.8, 0.3, 0.1, 1.0);
+        let mut frame = renderer.frame();
+
+        ///////////////////////////////////////////////////////////////////////////
+        // Prepare pipeline
+        ///////////////////////////////////////////////////////////////////////////
+
+        frame.prepare(&pipeline, transform);
 
         ///////////////////////////////////////////////////////////////////////////
         // Draw frame
         ///////////////////////////////////////////////////////////////////////////
 
-        kit.frame(|pass| {
-            pass.draw(&bg);
-            pass.draw(&fg);
-        });
+        let pass = &mut frame.pass(Rgba::TRANSPARENT);
+
+        pass.apply(&pipeline);
+
+        pass.apply_uniforms(&binding_bg, &[]);
+        pass.draw(&buffer_bg);
+
+        pass.apply_uniforms(&binding_fg, &[]);
+        pass.draw(&buffer_fg);
     }
 }
