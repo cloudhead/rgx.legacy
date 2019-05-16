@@ -75,6 +75,14 @@ impl ShaderStage {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+/// Resource
+///////////////////////////////////////////////////////////////////////////////
+
+pub trait Resource {
+    fn prepare(&self, encoder: &mut wgpu::CommandEncoder);
+}
+
+///////////////////////////////////////////////////////////////////////////////
 /// Uniforms
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -121,9 +129,35 @@ pub struct UniformBuffer {
 pub struct Texture {
     wgpu: wgpu::Texture,
     view: wgpu::TextureView,
+    extent: wgpu::Extent3d,
+    buffer: wgpu::Buffer,
 
     pub w: u32,
     pub h: u32,
+}
+
+impl Resource for &Texture {
+    fn prepare(&self, encoder: &mut wgpu::CommandEncoder) {
+        encoder.copy_buffer_to_texture(
+            wgpu::BufferCopyView {
+                buffer: &self.buffer,
+                offset: 0,
+                row_pitch: 4 * self.w,
+                image_height: self.h,
+            },
+            wgpu::TextureCopyView {
+                texture: &self.wgpu,
+                level: 0,
+                slice: 0,
+                origin: wgpu::Origin3d {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+            },
+            self.extent,
+        );
+    }
 }
 
 pub struct Sampler {
@@ -512,6 +546,14 @@ impl Renderer {
             h,
         )
     }
+
+    pub fn prepare<T: Resource>(&mut self, resources: &[T]) {
+        let mut encoder = self.device.create_command_encoder();
+        for r in resources.iter() {
+            r.prepare(&mut encoder);
+        }
+        self.device.submit(&[encoder.finish()]);
+    }
 }
 
 pub struct Device {
@@ -652,7 +694,13 @@ impl Device {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 })
     }
 
-    pub fn create_texture(&mut self, texels: &[u8], w: u32, h: u32) -> Texture {
+    pub fn create_texture(&self, texels: &[u8], w: u32, h: u32) -> Texture {
+        assert_eq!(
+            texels.len() as u32,
+            w * h * 4,
+            "wrong texture width or height given"
+        );
+
         let texture_extent = wgpu::Extent3d {
             width: w,
             height: h,
@@ -666,40 +714,17 @@ impl Device {
             usage: wgpu::TextureUsageFlags::SAMPLED | wgpu::TextureUsageFlags::TRANSFER_DST,
         });
         let texture_view = texture.create_default_view();
-        let temp_buf = self
+
+        let buf = self
             .device
             .create_buffer_mapped(texels.len(), wgpu::BufferUsageFlags::TRANSFER_SRC)
             .fill_from_slice(&texels);
 
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
-
-        encoder.copy_buffer_to_texture(
-            wgpu::BufferCopyView {
-                buffer: &temp_buf,
-                offset: 0,
-                row_pitch: 4 * w,
-                image_height: h,
-            },
-            wgpu::TextureCopyView {
-                texture: &texture,
-                level: 0,
-                slice: 0,
-                origin: wgpu::Origin3d {
-                    x: 0.0,
-                    y: 0.0,
-                    z: 0.0,
-                },
-            },
-            texture_extent,
-        );
-
-        // XXX: Shouldn't take place here.
-        self.device.get_queue().submit(&[encoder.finish()]);
         Texture {
             wgpu: texture,
             view: texture_view,
+            extent: texture_extent,
+            buffer: buf,
             w,
             h,
         }
