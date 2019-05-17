@@ -524,6 +524,14 @@ impl Renderer {
         frame(&mut self.swap_chain, &mut self.device)
     }
 
+    pub fn texture(&self, texels: &[u8], w: u32, h: u32) -> Texture {
+        self.device.create_texture(texels, w, h)
+    }
+
+    pub fn sampler(&self, min_filter: Filter, mag_filter: Filter) -> Sampler {
+        self.device.create_sampler(min_filter, mag_filter)
+    }
+
     pub fn pipeline<T>(&self, mut pip: T, w: u32, h: u32) -> T::ConcretePipeline
     where
         T: PipelineDescriptionLike<'static>,

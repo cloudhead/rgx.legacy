@@ -51,10 +51,8 @@ fn main() {
     let buf: [u8; 64] = unsafe { std::mem::transmute(texels) };
 
     // Create 4 by 4 texture and sampler.
-    let texture = renderer.device.create_texture(&buf, 4, 4);
-    let sampler = renderer
-        .device
-        .create_sampler(Filter::Nearest, Filter::Nearest);
+    let texture = renderer.texture(&buf, 4, 4);
+    let sampler = renderer.sampler(Filter::Nearest, Filter::Nearest);
 
     ///////////////////////////////////////////////////////////////////////////
     // Setup sprites
