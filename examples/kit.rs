@@ -58,20 +58,20 @@ fn main() {
     // Setup sprites
     ///////////////////////////////////////////////////////////////////////////
 
-    let (buffer_bg, binding_bg) = pipeline.sprite(
+    let binding = pipeline.binding(&renderer, &texture, &sampler);
+
+    let buffer_bg = pipeline.sprite(
         &renderer,
         &texture,
-        &sampler,
         texture.rect(),
         kit::Rect::new(0., 0., size.width as f32, size.height as f32),
         Rgba::TRANSPARENT,
         kit::Repeat::new(24. * (size.width / size.height) as f32, 24.),
     );
 
-    let (buffer_fg, binding_fg) = pipeline.sprite(
+    let buffer_fg = pipeline.sprite(
         &renderer,
         &texture,
-        &sampler,
         texture.rect(),
         kit::Rect::new(0.0, 0.0, 160.0, 160.0),
         Rgba::new(1.0, 1.0, 0.0, 0.5),
@@ -154,11 +154,8 @@ fn main() {
         let pass = &mut frame.pass(Rgba::TRANSPARENT);
 
         pass.apply(&pipeline);
-
-        pass.apply_uniforms(&binding_bg, &[]);
+        pass.apply_uniforms(&binding, &[]);
         pass.draw(&buffer_bg);
-
-        pass.apply_uniforms(&binding_fg, &[]);
         pass.draw(&buffer_fg);
     }
 }

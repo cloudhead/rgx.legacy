@@ -241,42 +241,39 @@ pub struct Pipeline2d {
 }
 
 impl Pipeline2d {
+    pub fn binding(
+        &self,
+        renderer: &core::Renderer,
+        texture: &core::Texture,
+        sampler: &core::Sampler,
+    ) -> core::Uniforms {
+        renderer.device.create_binding(
+            &self.pipeline.layout.sets[1],
+            &[
+                core::Uniform::Texture(&texture),
+                core::Uniform::Sampler(&sampler),
+            ],
+        )
+    }
+
     pub fn sprite<'a>(
         &self,
         renderer: &'a core::Renderer,
         texture: &'a core::Texture,
-        sampler: &'a core::Sampler,
         src: Rect<f32>,
         dst: Rect<f32>,
         color: Rgba,
         rep: Repeat,
-    ) -> (core::VertexBuffer, core::Uniforms) {
-        #[rustfmt::skip]
-        let binding = renderer.device.create_binding(
-            &self.pipeline.layout.sets[1],
-            &[
-                core::Uniform::Texture(&texture),
-                core::Uniform::Sampler(&sampler)
-            ],
-        );
-        Sprite::new(texture, sampler, binding).build(&renderer, src, dst, color, rep)
+    ) -> core::VertexBuffer {
+        Sprite::new(texture).build(&renderer, src, dst, color, rep)
     }
 
     pub fn sprite_batch<'a>(
         &self,
-        renderer: &'a core::Renderer,
         texture: &'a core::Texture,
         sampler: &'a core::Sampler,
     ) -> SpriteBatch<'a> {
-        #[rustfmt::skip]
-        let binding = renderer.device.create_binding(
-            &self.pipeline.layout.sets[1],
-            &[
-                core::Uniform::Texture(&texture),
-                core::Uniform::Sampler(&sampler)
-            ],
-        );
-        SpriteBatch::new(texture, sampler, binding)
+        SpriteBatch::new(texture, sampler)
     }
 }
 
@@ -373,17 +370,11 @@ trait VertexLike<'a> {
 
 pub struct Sprite<'a> {
     pub texture: &'a Texture,
-    pub sampler: &'a Sampler,
-    pub binding: core::Uniforms,
 }
 
 impl<'a> Sprite<'a> {
-    pub fn new(t: &'a Texture, s: &'a Sampler, binding: core::Uniforms) -> Self {
-        Self {
-            texture: t,
-            sampler: s,
-            binding,
-        }
+    pub fn new(t: &'a Texture) -> Self {
+        Self { texture: t }
     }
 
     pub fn build(
@@ -393,7 +384,7 @@ impl<'a> Sprite<'a> {
         dst: Rect<f32>,
         color: Rgba,
         rep: Repeat,
-    ) -> (core::VertexBuffer, core::Uniforms) {
+    ) -> core::VertexBuffer {
         let (tw, th) = (self.texture.w, self.texture.h);
 
         // Relative texture coordinates
@@ -414,10 +405,7 @@ impl<'a> Sprite<'a> {
             Vertex::new(dst.x2, dst.y2, rx2 * rep.x, ry1 * rep.y, c),
         ];
 
-        (
-            renderer.device.create_buffer(verts.as_slice()),
-            self.binding,
-        )
+        renderer.device.create_buffer(verts.as_slice())
     }
 }
 
@@ -425,17 +413,15 @@ pub struct SpriteBatch<'a> {
     pub texture: &'a Texture,
     pub sampler: &'a Sampler,
     pub vertices: Vec<Vertex>,
-    pub binding: core::Uniforms,
     pub size: usize,
 }
 
 impl<'a> SpriteBatch<'a> {
-    fn new(t: &'a Texture, s: &'a Sampler, binding: core::Uniforms) -> Self {
+    fn new(t: &'a Texture, s: &'a Sampler) -> Self {
         Self {
             texture: t,
             sampler: s,
             vertices: Vec::with_capacity(6),
-            binding,
             size: 0,
         }
     }
@@ -464,11 +450,8 @@ impl<'a> SpriteBatch<'a> {
         self.size += 1;
     }
 
-    pub fn finish(self, rend: &core::Renderer) -> (core::VertexBuffer, core::Uniforms) {
-        (
-            rend.device.create_buffer(self.vertices.as_slice()),
-            self.binding,
-        )
+    pub fn finish(self, r: &core::Renderer) -> core::VertexBuffer {
+        r.device.create_buffer(self.vertices.as_slice())
     }
 }
 

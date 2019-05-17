@@ -43,7 +43,7 @@ fn main() {
     // Setup sampler & load texture
     ///////////////////////////////////////////////////////////////////////////
 
-    let sampler = r.device.create_sampler(Filter::Nearest, Filter::Nearest);
+    let sampler = r.sampler(Filter::Nearest, Filter::Nearest);
 
     let sprite = {
         let bytes = include_bytes!("data/sprite.tga");
@@ -52,9 +52,10 @@ fn main() {
         let (w, h) = decoder.dimensions();
         let pixels = decoder.read_image().unwrap();
 
-        r.device
-            .create_texture(pixels.as_slice(), w as u32, h as u32)
+        r.texture(pixels.as_slice(), w as u32, h as u32)
     };
+
+    let binding = pip.binding(&r, &sprite, &sampler); // Texture binding
 
     let w = 50.0;
 
@@ -145,7 +146,7 @@ fn main() {
             .unwrap()
             .to_physical(window.get_hidpi_factor());
 
-        let mut sb = pip.sprite_batch(&r, &sprite, &sampler);
+        let mut sb = pip.sprite_batch(&sprite, &sampler);
         let (sw, sh) = (w * 2.0, sprite.h as f32 * 2.0);
 
         let rows = (win.height as f32 / sh) as u32;
@@ -179,7 +180,7 @@ fn main() {
             }
         }
 
-        let (buffer, binding) = sb.finish(&r);
+        let buffer = sb.finish(&r);
 
         ///////////////////////////////////////////////////////////////////////////
         // Create frame
