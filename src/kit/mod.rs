@@ -285,14 +285,14 @@ impl<'a> core::PipelineLike<'a> for Pipeline2d {
     fn prepare(
         &'a self,
         transform: Matrix4<f32>,
-    ) -> (&'a core::UniformBuffer, Vec<self::Uniforms>) {
-        (
+    ) -> Option<(&'a core::UniformBuffer, Vec<self::Uniforms>)> {
+        Some((
             &self.buf,
             vec![self::Uniforms {
                 transform,
                 ortho: self.ortho,
             }],
-        )
+        ))
     }
 }
 

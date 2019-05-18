@@ -200,7 +200,7 @@ fn main() {
 
         let pass = &mut frame.pass(Rgba::TRANSPARENT);
 
-        pass.apply(&pip);
+        pass.apply_pipeline(&pip);
         pass.apply_binding(&binding, &[]);
         pass.draw(&buffer);
     }
