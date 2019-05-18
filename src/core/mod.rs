@@ -78,6 +78,7 @@ impl ShaderStage {
 /// Resource
 ///////////////////////////////////////////////////////////////////////////////
 
+/// Anything that needs to be submitted to the GPU before the frame starts.
 pub trait Resource {
     fn prepare(&self, encoder: &mut wgpu::CommandEncoder);
 }
@@ -86,27 +87,26 @@ pub trait Resource {
 /// BindingGroup
 ///////////////////////////////////////////////////////////////////////////////
 
+/// A group of bindings.
 pub struct BindingGroup {
     wgpu: wgpu::BindGroup,
     set_index: u32,
 }
 
 impl BindingGroup {
-    fn new(set_index: u32, layout: wgpu::BindGroup) -> Self {
-        Self {
-            set_index,
-            wgpu: layout,
-        }
+    fn new(set_index: u32, wgpu: wgpu::BindGroup) -> Self {
+        Self { set_index, wgpu }
     }
 }
 
-pub struct UniformsLayout {
+/// The layout of a 'BindingGroup'.
+pub struct BindingGroupLayout {
     wgpu: wgpu::BindGroupLayout,
     size: usize,
     set_index: u32,
 }
 
-impl UniformsLayout {
+impl BindingGroupLayout {
     fn new(set_index: u32, layout: wgpu::BindGroupLayout, size: usize) -> Self {
         Self {
             wgpu: layout,
@@ -116,6 +116,7 @@ impl UniformsLayout {
     }
 }
 
+/// A uniform buffer that can be bound in a 'BindingGroup'.
 pub struct UniformBuffer {
     wgpu: wgpu::Buffer,
     size: usize,
@@ -231,6 +232,7 @@ impl VertexFormat {
     }
 }
 
+/// Describes a 'VertexBuffer' layout.
 #[derive(Default)]
 pub struct VertexLayout {
     wgpu_attrs: Vec<wgpu::VertexAttributeDescriptor>,
@@ -295,11 +297,11 @@ pub struct Binding {
 
 pub struct UniformsBinding<'a> {
     slots: Vec<Uniform<'a>>,
-    layout: &'a UniformsLayout,
+    layout: &'a BindingGroupLayout,
 }
 
 impl<'a> UniformsBinding<'a> {
-    pub fn from(layout: &'a UniformsLayout) -> UniformsBinding<'a> {
+    pub fn from(layout: &'a BindingGroupLayout) -> UniformsBinding<'a> {
         UniformsBinding {
             slots: vec![Uniform::Unbound(); layout.size],
             layout,
@@ -335,7 +337,7 @@ pub struct Pipeline {
 pub struct Set<'a>(pub &'a [Binding]);
 
 pub struct PipelineLayout {
-    pub sets: Vec<UniformsLayout>,
+    pub sets: Vec<BindingGroupLayout>,
 }
 
 // NOTE: This trait is not needed maybe.
@@ -737,7 +739,7 @@ impl Device {
         }
     }
 
-    pub fn create_binding(&self, layout: &UniformsLayout, us: &[Uniform]) -> BindingGroup {
+    pub fn create_binding(&self, layout: &BindingGroupLayout, us: &[Uniform]) -> BindingGroup {
         let mut binding = UniformsBinding::from(layout);
         for (i, u) in us.iter().enumerate() {
             binding[i] = u.clone();
@@ -800,7 +802,7 @@ impl Device {
         }
     }
 
-    pub fn create_uniforms_layout(&self, index: u32, slots: &[Binding]) -> UniformsLayout {
+    pub fn create_uniforms_layout(&self, index: u32, slots: &[Binding]) -> BindingGroupLayout {
         let mut bindings = Vec::new();
 
         for s in slots {
@@ -815,7 +817,7 @@ impl Device {
             .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 bindings: bindings.as_slice(),
             });
-        UniformsLayout::new(index, layout, bindings.len())
+        BindingGroupLayout::new(index, layout, bindings.len())
     }
 
     pub fn create_uniforms(&self, bs: &UniformsBinding) -> BindingGroup {
