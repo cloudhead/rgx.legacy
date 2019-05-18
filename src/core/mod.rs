@@ -520,6 +520,10 @@ fn swap_chain_descriptor(width: u32, height: u32) -> wgpu::SwapChainDescriptor {
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////
+/// Renderer
+///////////////////////////////////////////////////////////////////////////////
+
 pub struct Renderer {
     pub device: Device,
     swap_chain: wgpu::SwapChain,
@@ -535,14 +539,6 @@ impl Renderer {
         let swap_chain = device.create_swap_chain(size.width as u32, size.height as u32);
 
         Self { device, swap_chain }
-    }
-
-    pub fn resize(&mut self, w: u32, h: u32) {
-        self.swap_chain = self.device.create_swap_chain(w, h);
-    }
-
-    pub fn frame(&mut self) -> Frame {
-        frame(&mut self.swap_chain, &mut self.device)
     }
 
     pub fn texture(&self, texels: &[u8], w: u32, h: u32) -> Texture {
@@ -575,6 +571,16 @@ impl Renderer {
         )
     }
 
+    // MUTABLE API ////////////////////////////////////////////////////////////
+
+    pub fn resize(&mut self, w: u32, h: u32) {
+        self.swap_chain = self.device.create_swap_chain(w, h);
+    }
+
+    pub fn frame(&mut self) -> Frame {
+        frame(&mut self.swap_chain, &mut self.device)
+    }
+
     pub fn prepare<T: Resource>(&mut self, resources: &[T]) {
         let mut encoder = self.device.create_command_encoder();
         for r in resources.iter() {
@@ -583,6 +589,10 @@ impl Renderer {
         self.device.submit(&[encoder.finish()]);
     }
 }
+
+///////////////////////////////////////////////////////////////////////////////
+/// Device
+///////////////////////////////////////////////////////////////////////////////
 
 pub struct Device {
     device: wgpu::Device,
@@ -623,72 +633,6 @@ impl Device {
             sets.push(self.create_binding_group_layout(i as u32, s.0))
         }
         PipelineLayout { sets }
-    }
-
-    fn create_pipeline(
-        &self,
-        pipeline_layout: PipelineLayout,
-        vertex_layout: VertexLayout,
-        vs: &Shader,
-        fs: &Shader,
-    ) -> Pipeline {
-        let vertex_attrs = vertex_layout.to_wgpu();
-
-        let mut sets = Vec::new();
-        for s in pipeline_layout.sets.iter() {
-            sets.push(&s.wgpu);
-        }
-        let layout = &self
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                bind_group_layouts: sets.as_slice(),
-            });
-
-        let wgpu = self
-            .device
-            .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                layout,
-                vertex_stage: wgpu::PipelineStageDescriptor {
-                    module: &vs.module,
-                    entry_point: "main",
-                },
-                fragment_stage: wgpu::PipelineStageDescriptor {
-                    module: &fs.module,
-                    entry_point: "main",
-                },
-                rasterization_state: wgpu::RasterizationStateDescriptor {
-                    front_face: wgpu::FrontFace::Ccw,
-                    cull_mode: wgpu::CullMode::None,
-                    depth_bias: 0,
-                    depth_bias_slope_scale: 0.0,
-                    depth_bias_clamp: 0.0,
-                },
-                primitive_topology: wgpu::PrimitiveTopology::TriangleList,
-                color_states: &[wgpu::ColorStateDescriptor {
-                    format: wgpu::TextureFormat::Bgra8Unorm,
-                    color: wgpu::BlendDescriptor {
-                        src_factor: wgpu::BlendFactor::SrcAlpha,
-                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                        operation: wgpu::BlendOperation::Add,
-                    },
-                    alpha: wgpu::BlendDescriptor {
-                        src_factor: wgpu::BlendFactor::SrcAlpha,
-                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                        operation: wgpu::BlendOperation::Add,
-                    },
-                    write_mask: wgpu::ColorWriteFlags::ALL,
-                }],
-                depth_stencil_state: None,
-                index_format: wgpu::IndexFormat::Uint16,
-                vertex_buffers: &[vertex_attrs],
-                sample_count: 1,
-            });
-
-        Pipeline {
-            layout: pipeline_layout,
-            vertex_layout,
-            wgpu,
-        }
     }
 
     pub fn create_shader(&self, name: &str, source: &str, stage: ShaderStage) -> Shader {
@@ -861,5 +805,73 @@ impl Device {
 
     pub fn submit(&mut self, cmds: &[wgpu::CommandBuffer]) {
         self.device.get_queue().submit(cmds);
+    }
+
+    // PRIVATE API ////////////////////////////////////////////////////////////
+
+    fn create_pipeline(
+        &self,
+        pipeline_layout: PipelineLayout,
+        vertex_layout: VertexLayout,
+        vs: &Shader,
+        fs: &Shader,
+    ) -> Pipeline {
+        let vertex_attrs = vertex_layout.to_wgpu();
+
+        let mut sets = Vec::new();
+        for s in pipeline_layout.sets.iter() {
+            sets.push(&s.wgpu);
+        }
+        let layout = &self
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                bind_group_layouts: sets.as_slice(),
+            });
+
+        let wgpu = self
+            .device
+            .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                layout,
+                vertex_stage: wgpu::PipelineStageDescriptor {
+                    module: &vs.module,
+                    entry_point: "main",
+                },
+                fragment_stage: wgpu::PipelineStageDescriptor {
+                    module: &fs.module,
+                    entry_point: "main",
+                },
+                rasterization_state: wgpu::RasterizationStateDescriptor {
+                    front_face: wgpu::FrontFace::Ccw,
+                    cull_mode: wgpu::CullMode::None,
+                    depth_bias: 0,
+                    depth_bias_slope_scale: 0.0,
+                    depth_bias_clamp: 0.0,
+                },
+                primitive_topology: wgpu::PrimitiveTopology::TriangleList,
+                color_states: &[wgpu::ColorStateDescriptor {
+                    format: wgpu::TextureFormat::Bgra8Unorm,
+                    color: wgpu::BlendDescriptor {
+                        src_factor: wgpu::BlendFactor::SrcAlpha,
+                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                        operation: wgpu::BlendOperation::Add,
+                    },
+                    alpha: wgpu::BlendDescriptor {
+                        src_factor: wgpu::BlendFactor::SrcAlpha,
+                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                        operation: wgpu::BlendOperation::Add,
+                    },
+                    write_mask: wgpu::ColorWriteFlags::ALL,
+                }],
+                depth_stencil_state: None,
+                index_format: wgpu::IndexFormat::Uint16,
+                vertex_buffers: &[vertex_attrs],
+                sample_count: 1,
+            });
+
+        Pipeline {
+            layout: pipeline_layout,
+            vertex_layout,
+            wgpu,
+        }
     }
 }
