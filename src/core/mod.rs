@@ -13,7 +13,7 @@ use std::{mem, ptr};
 ///////////////////////////////////////////////////////////////////////////////
 
 pub trait Draw {
-    fn draw(&self, pass: &mut Pass);
+    fn draw(&self, binding: &BindingGroup, pass: &mut Pass);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -235,7 +235,8 @@ pub struct VertexBuffer {
 }
 
 impl Draw for VertexBuffer {
-    fn draw(&self, pass: &mut Pass) {
+    fn draw(&self, binding: &BindingGroup, pass: &mut Pass) {
+        pass.apply_binding(binding, &[]);
         pass.set_vertex_buffer(&self);
         pass.draw_buffer(0..self.size, 0..1);
     }
@@ -334,7 +335,7 @@ pub struct Binding {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-/// Pipeline, Pass
+/// Pipeline
 ///////////////////////////////////////////////////////////////////////////////
 
 pub struct Pipeline {
@@ -457,6 +458,10 @@ impl<'a> Frame<'a> {
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////
+/// Pass
+///////////////////////////////////////////////////////////////////////////////
+
 pub struct Pass<'a> {
     wgpu: wgpu::RenderPass<'a>,
 }
@@ -494,8 +499,8 @@ impl<'a> Pass<'a> {
     pub fn set_vertex_buffer(&mut self, vertex_buf: &VertexBuffer) {
         self.wgpu.set_vertex_buffers(&[(&vertex_buf.wgpu, 0)])
     }
-    pub fn draw<T: Draw>(&mut self, drawable: &T) {
-        drawable.draw(self);
+    pub fn draw<T: Draw>(&mut self, drawable: &T, binding: &BindingGroup) {
+        drawable.draw(binding, self);
     }
     pub fn draw_buffer(&mut self, indices: Range<u32>, instances: Range<u32>) {
         self.wgpu.draw(indices, instances)

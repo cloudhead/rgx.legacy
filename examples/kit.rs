@@ -155,8 +155,7 @@ fn main() {
         let pass = &mut frame.pass(Rgba::TRANSPARENT);
 
         pass.apply_pipeline(&pipeline);
-        pass.apply_binding(&binding, &[]);
-        pass.draw(&buffer_bg);
-        pass.draw(&buffer_fg);
+        pass.draw(&buffer_bg, &binding);
+        pass.draw(&buffer_fg, &binding);
     }
 }
