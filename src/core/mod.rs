@@ -83,15 +83,15 @@ pub trait Resource {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-/// Uniforms
+/// BindingGroup
 ///////////////////////////////////////////////////////////////////////////////
 
-pub struct Uniforms {
+pub struct BindingGroup {
     wgpu: wgpu::BindGroup,
     set_index: u32,
 }
 
-impl Uniforms {
+impl BindingGroup {
     fn new(set_index: u32, layout: wgpu::BindGroup) -> Self {
         Self {
             set_index,
@@ -353,7 +353,6 @@ pub trait PipelineLike<'a> {
 
 pub trait PipelineDescriptionLike<'a> {
     type ConcretePipeline: PipelineLike<'a>;
-    type Uniforms;
 
     fn setup(&mut self, pip: Pipeline, dev: &Device, w: u32, h: u32) -> Self::ConcretePipeline;
     fn description(&self) -> &PipelineDescription;
@@ -463,9 +462,9 @@ impl<'a> Pass<'a> {
     pub fn apply_pipeline(&mut self, pipeline: &Pipeline) {
         self.wgpu.set_pipeline(&pipeline.wgpu)
     }
-    pub fn apply_uniforms(&mut self, uniforms: &Uniforms, offsets: &[u32]) {
+    pub fn apply_uniforms(&mut self, group: &BindingGroup, offsets: &[u32]) {
         self.wgpu
-            .set_bind_group(uniforms.set_index, &uniforms.wgpu, offsets)
+            .set_bind_group(group.set_index, &group.wgpu, offsets)
     }
     pub fn set_index_buffer(&mut self, index_buf: &IndexBuffer) {
         self.wgpu.set_index_buffer(&index_buf.wgpu, 0)
@@ -738,7 +737,7 @@ impl Device {
         }
     }
 
-    pub fn create_binding(&self, layout: &UniformsLayout, us: &[Uniform]) -> Uniforms {
+    pub fn create_binding(&self, layout: &UniformsLayout, us: &[Uniform]) -> BindingGroup {
         let mut binding = UniformsBinding::from(layout);
         for (i, u) in us.iter().enumerate() {
             binding[i] = u.clone();
@@ -819,7 +818,7 @@ impl Device {
         UniformsLayout::new(index, layout, bindings.len())
     }
 
-    pub fn create_uniforms(&self, bs: &UniformsBinding) -> Uniforms {
+    pub fn create_uniforms(&self, bs: &UniformsBinding) -> BindingGroup {
         let layout = bs.layout;
         let mut bindings = Vec::new();
 
@@ -845,7 +844,7 @@ impl Device {
                 Uniform::Unbound() => panic!("binding slot {} is unbound", i),
             };
         }
-        Uniforms::new(
+        BindingGroup::new(
             layout.set_index,
             self.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 layout: &layout.wgpu,

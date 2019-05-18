@@ -209,14 +209,13 @@ pub struct Pipeline2dDescription<'a> {
 
 impl<'a> core::PipelineDescriptionLike<'static> for Pipeline2dDescription<'a> {
     type ConcretePipeline = Pipeline2d;
-    type Uniforms = self::Uniforms;
 
     fn setup(&mut self, pip: core::Pipeline, dev: &core::Device, w: u32, h: u32) -> Pipeline2d {
         let ortho = ortho(w, h);
         let transform = Matrix4::identity();
 
         let buf =
-            std::rc::Rc::new(dev.create_uniform_buffer(&[Self::Uniforms { ortho, transform }]));
+            std::rc::Rc::new(dev.create_uniform_buffer(&[self::Uniforms { ortho, transform }]));
 
         let binding = dev.create_binding(&pip.layout.sets[0], &[core::Uniform::Buffer(&buf)]);
 
@@ -235,7 +234,7 @@ impl<'a> core::PipelineDescriptionLike<'static> for Pipeline2dDescription<'a> {
 
 pub struct Pipeline2d {
     pipeline: core::Pipeline,
-    binding: core::Uniforms,
+    binding: core::BindingGroup,
     buf: std::rc::Rc<core::UniformBuffer>,
     ortho: Matrix4<f32>,
 }
@@ -246,7 +245,7 @@ impl Pipeline2d {
         renderer: &core::Renderer,
         texture: &core::Texture,
         sampler: &core::Sampler,
-    ) -> core::Uniforms {
+    ) -> core::BindingGroup {
         renderer.device.create_binding(
             &self.pipeline.layout.sets[1],
             &[
@@ -341,7 +340,7 @@ pub struct Framebuffer {
     pub texture: Texture,
     pub sampler: Sampler,
     pub buffer: core::VertexBuffer,
-    pub binding: core::Uniforms,
+    pub binding: core::BindingGroup,
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
