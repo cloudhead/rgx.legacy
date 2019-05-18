@@ -5,7 +5,6 @@ extern crate shaderc;
 extern crate wgpu;
 
 use std::ops::Range;
-use std::rc::*;
 
 use std::{mem, ptr};
 
@@ -137,6 +136,39 @@ pub struct Texture {
     pub h: u32,
 }
 
+pub trait Bind {
+    fn binding(&self, index: u32) -> wgpu::Binding;
+}
+
+impl Bind for Texture {
+    fn binding(&self, index: u32) -> wgpu::Binding {
+        wgpu::Binding {
+            binding: index as u32,
+            resource: wgpu::BindingResource::TextureView(&self.view),
+        }
+    }
+}
+impl Bind for Sampler {
+    fn binding(&self, index: u32) -> wgpu::Binding {
+        wgpu::Binding {
+            binding: index as u32,
+            resource: wgpu::BindingResource::Sampler(&self.wgpu),
+        }
+    }
+}
+
+impl Bind for UniformBuffer {
+    fn binding(&self, index: u32) -> wgpu::Binding {
+        wgpu::Binding {
+            binding: index as u32,
+            resource: wgpu::BindingResource::Buffer {
+                buffer: &self.wgpu,
+                range: 0..(self.size as u32),
+            },
+        }
+    }
+}
+
 impl Resource for &Texture {
     fn prepare(&self, encoder: &mut wgpu::CommandEncoder) {
         encoder.copy_buffer_to_texture(
@@ -266,14 +298,6 @@ impl VertexLayout {
 /// Uniform Bindings
 ///////////////////////////////////////////////////////////////////////////////
 
-#[derive(Clone)]
-pub enum Uniform<'a> {
-    Buffer(&'a UniformBuffer),
-    Texture(&'a Texture),
-    Sampler(&'a Sampler),
-    Unbound(),
-}
-
 pub enum BindingType {
     UniformBuffer,
     Sampler,
@@ -293,35 +317,6 @@ impl BindingType {
 pub struct Binding {
     pub binding: BindingType,
     pub stage: ShaderStage,
-}
-
-pub struct UniformsBinding<'a> {
-    slots: Vec<Uniform<'a>>,
-    layout: &'a BindingGroupLayout,
-}
-
-impl<'a> UniformsBinding<'a> {
-    pub fn from(layout: &'a BindingGroupLayout) -> UniformsBinding<'a> {
-        UniformsBinding {
-            slots: vec![Uniform::Unbound(); layout.size],
-            layout,
-        }
-    }
-}
-
-impl<'a> std::ops::Index<usize> for UniformsBinding<'a> {
-    type Output = Uniform<'a>;
-
-    fn index(&self, index: usize) -> &Uniform<'a> {
-        self.slots.index(index)
-    }
-}
-
-impl<'a> std::ops::IndexMut<usize> for UniformsBinding<'a> {
-    fn index_mut(&mut self, index: usize) -> &mut Uniform<'a> {
-        // TODO: Better error when out of bounds.
-        self.slots.index_mut(index)
-    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -347,10 +342,7 @@ pub trait PipelineLike<'a> {
 
     fn apply(&self, pass: &mut Pass);
     fn resize(&mut self, w: u32, h: u32);
-    fn prepare(
-        &'a self,
-        t: Self::PrepareContext,
-    ) -> (std::rc::Rc<UniformBuffer>, Vec<Self::Uniforms>);
+    fn prepare(&'a self, t: Self::PrepareContext) -> (&'a UniformBuffer, Vec<Self::Uniforms>);
 }
 
 pub trait PipelineDescriptionLike<'a> {
@@ -402,14 +394,14 @@ impl<'a> Frame<'a> {
         T: PipelineLike<'a>,
     {
         let (buf, unifs) = pip.prepare(p);
-        self.update_uniform_buffer(buf.clone(), unifs.as_slice());
+        self.update_uniform_buffer(buf, unifs.as_slice());
     }
 
     pub fn pass(&mut self, clear: Rgba) -> Pass {
         Pass::begin(&mut self.encoder, &self.texture.view, clear)
     }
 
-    fn update_uniform_buffer<T>(&mut self, u: Rc<UniformBuffer>, buf: &[T])
+    fn update_uniform_buffer<T>(&mut self, u: &UniformBuffer, buf: &[T])
     where
         T: 'static + Copy,
     {
@@ -739,12 +731,20 @@ impl Device {
         }
     }
 
-    pub fn create_binding(&self, layout: &BindingGroupLayout, us: &[Uniform]) -> BindingGroup {
-        let mut binding = UniformsBinding::from(layout);
-        for (i, u) in us.iter().enumerate() {
-            binding[i] = u.clone();
+    pub fn create_binding(&self, layout: &BindingGroupLayout, us: &[&dyn Bind]) -> BindingGroup {
+        let mut bindings = Vec::new();
+
+        for (i, b) in us.iter().enumerate() {
+            bindings.push(b.binding(i as u32));
         }
-        self.create_uniforms(&binding)
+
+        BindingGroup::new(
+            layout.set_index,
+            self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                layout: &layout.wgpu,
+                bindings: bindings.as_slice(),
+            }),
+        )
     }
 
     pub fn create_buffer<T>(&self, vertices: &[T]) -> VertexBuffer
@@ -818,41 +818,6 @@ impl Device {
                 bindings: bindings.as_slice(),
             });
         BindingGroupLayout::new(index, layout, bindings.len())
-    }
-
-    pub fn create_uniforms(&self, bs: &UniformsBinding) -> BindingGroup {
-        let layout = bs.layout;
-        let mut bindings = Vec::new();
-
-        for (i, s) in bs.slots.iter().enumerate() {
-            match s {
-                Uniform::Buffer(unif) => {
-                    bindings.push(wgpu::Binding {
-                        binding: i as u32,
-                        resource: wgpu::BindingResource::Buffer {
-                            buffer: &unif.wgpu,
-                            range: 0..(unif.size as u32),
-                        },
-                    });
-                }
-                Uniform::Texture(tex) => bindings.push(wgpu::Binding {
-                    binding: i as u32,
-                    resource: wgpu::BindingResource::TextureView(&tex.view),
-                }),
-                Uniform::Sampler(sam) => bindings.push(wgpu::Binding {
-                    binding: i as u32,
-                    resource: wgpu::BindingResource::Sampler(&sam.wgpu),
-                }),
-                Uniform::Unbound() => panic!("binding slot {} is unbound", i),
-            };
-        }
-        BindingGroup::new(
-            layout.set_index,
-            self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                layout: &layout.wgpu,
-                bindings: bindings.as_slice(),
-            }),
-        )
     }
 
     // MUTABLE API ////////////////////////////////////////////////////////////

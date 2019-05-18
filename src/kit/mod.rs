@@ -213,11 +213,8 @@ impl<'a> core::PipelineDescriptionLike<'static> for Pipeline2dDescription<'a> {
     fn setup(&mut self, pip: core::Pipeline, dev: &core::Device, w: u32, h: u32) -> Pipeline2d {
         let ortho = ortho(w, h);
         let transform = Matrix4::identity();
-
-        let buf =
-            std::rc::Rc::new(dev.create_uniform_buffer(&[self::Uniforms { ortho, transform }]));
-
-        let binding = dev.create_binding(&pip.layout.sets[0], &[core::Uniform::Buffer(&buf)]);
+        let buf = dev.create_uniform_buffer(&[self::Uniforms { ortho, transform }]);
+        let binding = dev.create_binding(&pip.layout.sets[0], &[&buf]);
 
         Pipeline2d {
             pipeline: pip,
@@ -235,7 +232,7 @@ impl<'a> core::PipelineDescriptionLike<'static> for Pipeline2dDescription<'a> {
 pub struct Pipeline2d {
     pipeline: core::Pipeline,
     binding: core::BindingGroup,
-    buf: std::rc::Rc<core::UniformBuffer>,
+    buf: core::UniformBuffer,
     ortho: Matrix4<f32>,
 }
 
@@ -246,13 +243,9 @@ impl Pipeline2d {
         texture: &core::Texture,
         sampler: &core::Sampler,
     ) -> core::BindingGroup {
-        renderer.device.create_binding(
-            &self.pipeline.layout.sets[1],
-            &[
-                core::Uniform::Texture(&texture),
-                core::Uniform::Sampler(&sampler),
-            ],
-        )
+        renderer
+            .device
+            .create_binding(&self.pipeline.layout.sets[1], &[texture, sampler])
     }
 
     pub fn sprite<'a>(
@@ -292,9 +285,9 @@ impl<'a> core::PipelineLike<'a> for Pipeline2d {
     fn prepare(
         &'a self,
         transform: Matrix4<f32>,
-    ) -> (std::rc::Rc<core::UniformBuffer>, Vec<self::Uniforms>) {
+    ) -> (&'a core::UniformBuffer, Vec<self::Uniforms>) {
         (
-            self.buf.clone(),
+            &self.buf,
             vec![self::Uniforms {
                 transform,
                 ortho: self.ortho,
