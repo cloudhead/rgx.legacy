@@ -9,6 +9,14 @@ use std::ops::Range;
 use std::{mem, ptr};
 
 ///////////////////////////////////////////////////////////////////////////////
+/// Draw
+///////////////////////////////////////////////////////////////////////////////
+
+pub trait Drawable {
+    fn draw(&self, pass: &mut Pass);
+}
+
+///////////////////////////////////////////////////////////////////////////////
 /// Rgba
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -115,10 +123,31 @@ impl BindingGroupLayout {
     }
 }
 
+/// A trait representing a resource that can be bound.
+pub trait Bind {
+    fn binding(&self, index: u32) -> wgpu::Binding;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// Uniforms
+///////////////////////////////////////////////////////////////////////////////
+
 /// A uniform buffer that can be bound in a 'BindingGroup'.
 pub struct UniformBuffer {
     wgpu: wgpu::Buffer,
     size: usize,
+}
+
+impl Bind for UniformBuffer {
+    fn binding(&self, index: u32) -> wgpu::Binding {
+        wgpu::Binding {
+            binding: index as u32,
+            resource: wgpu::BindingResource::Buffer {
+                buffer: &self.wgpu,
+                range: 0..(self.size as u32),
+            },
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -136,10 +165,6 @@ pub struct Texture {
     pub h: u32,
 }
 
-pub trait Bind {
-    fn binding(&self, index: u32) -> wgpu::Binding;
-}
-
 impl Bind for Texture {
     fn binding(&self, index: u32) -> wgpu::Binding {
         wgpu::Binding {
@@ -148,27 +173,6 @@ impl Bind for Texture {
         }
     }
 }
-impl Bind for Sampler {
-    fn binding(&self, index: u32) -> wgpu::Binding {
-        wgpu::Binding {
-            binding: index as u32,
-            resource: wgpu::BindingResource::Sampler(&self.wgpu),
-        }
-    }
-}
-
-impl Bind for UniformBuffer {
-    fn binding(&self, index: u32) -> wgpu::Binding {
-        wgpu::Binding {
-            binding: index as u32,
-            resource: wgpu::BindingResource::Buffer {
-                buffer: &self.wgpu,
-                range: 0..(self.size as u32),
-            },
-        }
-    }
-}
-
 impl Resource for &Texture {
     fn prepare(&self, encoder: &mut wgpu::CommandEncoder) {
         encoder.copy_buffer_to_texture(
@@ -195,6 +199,15 @@ impl Resource for &Texture {
 
 pub struct Sampler {
     wgpu: wgpu::Sampler,
+}
+
+impl Bind for Sampler {
+    fn binding(&self, index: u32) -> wgpu::Binding {
+        wgpu::Binding {
+            binding: index as u32,
+            resource: wgpu::BindingResource::Sampler(&self.wgpu),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -295,9 +308,10 @@ impl VertexLayout {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-/// Uniform Bindings
+/// Pipeline Bindings
 ///////////////////////////////////////////////////////////////////////////////
 
+/// A binding type.
 pub enum BindingType {
     UniformBuffer,
     Sampler,
@@ -325,6 +339,7 @@ pub struct Binding {
 
 pub struct Pipeline {
     wgpu: wgpu::RenderPipeline,
+
     pub layout: PipelineLayout,
     pub vertex_layout: VertexLayout,
 }
@@ -359,9 +374,9 @@ pub struct PipelineDescription<'a> {
     pub fragment_shader: &'static str,
 }
 
-pub trait Drawable {
-    fn draw(&self, pass: &mut Pass);
-}
+///////////////////////////////////////////////////////////////////////////////
+/// Frame
+///////////////////////////////////////////////////////////////////////////////
 
 pub struct Frame<'a> {
     encoder: mem::ManuallyDrop<wgpu::CommandEncoder>,
@@ -456,7 +471,7 @@ impl<'a> Pass<'a> {
     pub fn apply_pipeline(&mut self, pipeline: &Pipeline) {
         self.wgpu.set_pipeline(&pipeline.wgpu)
     }
-    pub fn apply_uniforms(&mut self, group: &BindingGroup, offsets: &[u32]) {
+    pub fn apply_binding(&mut self, group: &BindingGroup, offsets: &[u32]) {
         self.wgpu
             .set_bind_group(group.set_index, &group.wgpu, offsets)
     }
@@ -593,7 +608,7 @@ impl Device {
     pub fn create_pipeline_layout(&self, ss: &[Set]) -> PipelineLayout {
         let mut sets = Vec::new();
         for (i, s) in ss.iter().enumerate() {
-            sets.push(self.create_uniforms_layout(i as u32, s.0))
+            sets.push(self.create_binding_group_layout(i as u32, s.0))
         }
         PipelineLayout { sets }
     }
@@ -731,10 +746,20 @@ impl Device {
         }
     }
 
-    pub fn create_binding(&self, layout: &BindingGroupLayout, us: &[&dyn Bind]) -> BindingGroup {
+    pub fn create_binding_group(
+        &self,
+        layout: &BindingGroupLayout,
+        binds: &[&dyn Bind],
+    ) -> BindingGroup {
+        assert_eq!(
+            binds.len(),
+            layout.size,
+            "layout slot count does not match bindings"
+        );
+
         let mut bindings = Vec::new();
 
-        for (i, b) in us.iter().enumerate() {
+        for (i, b) in binds.iter().enumerate() {
             bindings.push(b.binding(i as u32));
         }
 
@@ -802,7 +827,7 @@ impl Device {
         }
     }
 
-    pub fn create_uniforms_layout(&self, index: u32, slots: &[Binding]) -> BindingGroupLayout {
+    pub fn create_binding_group_layout(&self, index: u32, slots: &[Binding]) -> BindingGroupLayout {
         let mut bindings = Vec::new();
 
         for s in slots {
