@@ -6,7 +6,7 @@ rgx
 Introduction
 ------------
 **rgx** is a Rust library built on top of [wgpu], a [WebGPU] implementation in Rust. This library
-aims to be "mid-level" in that exposes an API one level above [wgpu], while still allowing
+aims to be "mid-level" in that it exposes an API one level above [wgpu], while still allowing
 the user to work with concepts such as *pipelines* and *buffers*. See the `examples` directory
 to get a feel.
 
