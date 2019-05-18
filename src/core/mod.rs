@@ -348,6 +348,10 @@ impl<'a> PipelineLike<'a> for Pipeline {
     type PrepareContext = ();
     type Uniforms = ();
 
+    fn setup(pipeline: Self, _dev: &Device, _w: u32, _h: u32) -> Self {
+        pipeline
+    }
+
     fn apply(&self, pass: &mut Pass) {
         pass.wgpu.set_pipeline(&self.wgpu);
     }
@@ -369,19 +373,13 @@ pub trait PipelineLike<'a> {
     type PrepareContext;
     type Uniforms: Copy + 'static;
 
+    fn setup(pip: Pipeline, dev: &Device, w: u32, h: u32) -> Self;
     fn apply(&self, pass: &mut Pass);
     fn resize(&mut self, w: u32, h: u32);
     fn prepare(
         &'a self,
         t: Self::PrepareContext,
     ) -> Option<(&'a UniformBuffer, Vec<Self::Uniforms>)>;
-}
-
-pub trait PipelineDescriptionLike<'a> {
-    type ConcretePipeline: PipelineLike<'a>;
-
-    fn setup(&mut self, pip: Pipeline, dev: &Device, w: u32, h: u32) -> Self::ConcretePipeline;
-    fn description(&self) -> &PipelineDescription;
 }
 
 pub struct PipelineDescription<'a> {
@@ -555,11 +553,10 @@ impl Renderer {
         self.device.create_sampler(min_filter, mag_filter)
     }
 
-    pub fn pipeline<T>(&self, mut pip: T, w: u32, h: u32) -> T::ConcretePipeline
+    pub fn pipeline<T>(&self, desc: PipelineDescription, w: u32, h: u32) -> T
     where
-        T: PipelineDescriptionLike<'static>,
+        T: PipelineLike<'static>,
     {
-        let desc = pip.description();
         let pip_layout = self.device.create_pipeline_layout(desc.pipeline_layout);
         let vertex_layout = VertexLayout::from(desc.vertex_layout);
         let vs = self
@@ -569,7 +566,7 @@ impl Renderer {
             self.device
                 .create_shader("shader.frag", desc.fragment_shader, ShaderStage::Fragment);
 
-        pip.setup(
+        T::setup(
             self.device
                 .create_pipeline(pip_layout, vertex_layout, &vs, &fs),
             &self.device,

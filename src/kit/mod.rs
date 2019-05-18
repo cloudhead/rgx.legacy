@@ -203,32 +203,6 @@ impl<T> Animation<T> {
     }
 }
 
-pub struct Pipeline2dDescription<'a> {
-    description: core::PipelineDescription<'a>,
-}
-
-impl<'a> core::PipelineDescriptionLike<'static> for Pipeline2dDescription<'a> {
-    type ConcretePipeline = Pipeline2d;
-
-    fn setup(&mut self, pip: core::Pipeline, dev: &core::Device, w: u32, h: u32) -> Pipeline2d {
-        let ortho = ortho(w, h);
-        let transform = Matrix4::identity();
-        let buf = dev.create_uniform_buffer(&[self::Uniforms { ortho, transform }]);
-        let bindings = dev.create_binding_group(&pip.layout.sets[0], &[&buf]);
-
-        Pipeline2d {
-            pipeline: pip,
-            buf,
-            bindings,
-            ortho,
-        }
-    }
-
-    fn description(&self) -> &core::PipelineDescription {
-        &self.description
-    }
-}
-
 pub struct Pipeline2d {
     pipeline: core::Pipeline,
     bindings: core::BindingGroup,
@@ -273,6 +247,20 @@ impl<'a> core::PipelineLike<'a> for Pipeline2d {
     type PrepareContext = Matrix4<f32>;
     type Uniforms = self::Uniforms;
 
+    fn setup(pipeline: core::Pipeline, dev: &core::Device, w: u32, h: u32) -> Self {
+        let ortho = ortho(w, h);
+        let transform = Matrix4::identity();
+        let buf = dev.create_uniform_buffer(&[self::Uniforms { ortho, transform }]);
+        let bindings = dev.create_binding_group(&pipeline.layout.sets[0], &[&buf]);
+
+        Pipeline2d {
+            pipeline,
+            buf,
+            bindings,
+            ortho,
+        }
+    }
+
     fn resize(&mut self, w: u32, h: u32) {
         self.ortho = ortho(w, h);
     }
@@ -296,33 +284,31 @@ impl<'a> core::PipelineLike<'a> for Pipeline2d {
     }
 }
 
-pub const SPRITE2D: Pipeline2dDescription = Pipeline2dDescription {
-    description: core::PipelineDescription {
-        vertex_layout: &[
-            core::VertexFormat::Float2,
-            core::VertexFormat::Float2,
-            core::VertexFormat::UByte4,
-        ],
-        pipeline_layout: &[
-            Set(&[Binding {
-                binding: BindingType::UniformBuffer,
-                stage: ShaderStage::Vertex,
-            }]),
-            Set(&[
-                Binding {
-                    binding: BindingType::SampledTexture,
-                    stage: ShaderStage::Fragment,
-                },
-                Binding {
-                    binding: BindingType::Sampler,
-                    stage: ShaderStage::Fragment,
-                },
-            ]),
-        ],
-        // TODO: Use `env("CARGO_MANIFEST_DIR")`
-        vertex_shader: include_str!("data/sprite.vert"),
-        fragment_shader: include_str!("data/sprite.frag"),
-    },
+pub const SPRITE2D: core::PipelineDescription = core::PipelineDescription {
+    vertex_layout: &[
+        core::VertexFormat::Float2,
+        core::VertexFormat::Float2,
+        core::VertexFormat::UByte4,
+    ],
+    pipeline_layout: &[
+        Set(&[Binding {
+            binding: BindingType::UniformBuffer,
+            stage: ShaderStage::Vertex,
+        }]),
+        Set(&[
+            Binding {
+                binding: BindingType::SampledTexture,
+                stage: ShaderStage::Fragment,
+            },
+            Binding {
+                binding: BindingType::Sampler,
+                stage: ShaderStage::Fragment,
+            },
+        ]),
+    ],
+    // TODO: Use `env("CARGO_MANIFEST_DIR")`
+    vertex_shader: include_str!("data/sprite.vert"),
+    fragment_shader: include_str!("data/sprite.frag"),
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
