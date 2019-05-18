@@ -214,12 +214,12 @@ impl<'a> core::PipelineDescriptionLike<'static> for Pipeline2dDescription<'a> {
         let ortho = ortho(w, h);
         let transform = Matrix4::identity();
         let buf = dev.create_uniform_buffer(&[self::Uniforms { ortho, transform }]);
-        let binding = dev.create_binding(&pip.layout.sets[0], &[&buf]);
+        let bindings = dev.create_binding_group(&pip.layout.sets[0], &[&buf]);
 
         Pipeline2d {
             pipeline: pip,
             buf,
-            binding,
+            bindings,
             ortho,
         }
     }
@@ -231,7 +231,7 @@ impl<'a> core::PipelineDescriptionLike<'static> for Pipeline2dDescription<'a> {
 
 pub struct Pipeline2d {
     pipeline: core::Pipeline,
-    binding: core::BindingGroup,
+    bindings: core::BindingGroup,
     buf: core::UniformBuffer,
     ortho: Matrix4<f32>,
 }
@@ -245,7 +245,7 @@ impl Pipeline2d {
     ) -> core::BindingGroup {
         renderer
             .device
-            .create_binding(&self.pipeline.layout.sets[1], &[texture, sampler])
+            .create_binding_group(&self.pipeline.layout.sets[1], &[texture, sampler])
     }
 
     pub fn sprite<'a>(
@@ -279,7 +279,7 @@ impl<'a> core::PipelineLike<'a> for Pipeline2d {
 
     fn apply(&self, pass: &mut core::Pass) {
         pass.apply_pipeline(&self.pipeline);
-        pass.apply_uniforms(&self.binding, &[0]);
+        pass.apply_binding(&self.bindings, &[0]);
     }
 
     fn prepare(
