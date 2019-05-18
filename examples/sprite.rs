@@ -201,8 +201,7 @@ fn main() {
         let pass = &mut frame.pass(Rgba::TRANSPARENT);
 
         pass.apply_pipeline(&pip);
-        pass.apply_binding(&binding, &[]);
-        pass.draw(&buffer);
+        pass.draw(&buffer, &binding);
     }
 
     println!("frames rendered: {}", fps.len());
