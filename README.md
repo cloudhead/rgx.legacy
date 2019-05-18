@@ -26,5 +26,5 @@ See [examples/helloworld.rs](examples/helloworld.rs) for a simple usage example.
 
 Copyright
 ---------
-(c) 2019 Alexis Sellier
+(c) 2019 Alexis Sellier\
 Licensed under the MIT license.
