@@ -22,7 +22,7 @@ useful building blocks for various use-cases.
 
 Usage
 -----
-See [examples/kit.rs](examples/kit.rs) for a simple usage example.
+See [examples/helloworld.rs](examples/helloworld.rs) for a simple usage example.
 
 Copyright
 ---------
