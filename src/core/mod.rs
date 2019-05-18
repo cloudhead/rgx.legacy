@@ -344,20 +344,37 @@ pub struct Pipeline {
     pub vertex_layout: VertexLayout,
 }
 
+impl<'a> PipelineLike<'a> for Pipeline {
+    type PrepareContext = ();
+    type Uniforms = ();
+
+    fn apply(&self, pass: &mut Pass) {
+        pass.wgpu.set_pipeline(&self.wgpu);
+    }
+
+    fn resize(&mut self, _w: u32, _h: u32) {}
+
+    fn prepare(&'a self, _unused: ()) -> Option<(&'a UniformBuffer, Vec<()>)> {
+        None
+    }
+}
+
 pub struct Set<'a>(pub &'a [Binding]);
 
 pub struct PipelineLayout {
     pub sets: Vec<BindingGroupLayout>,
 }
 
-// NOTE: This trait is not needed maybe.
 pub trait PipelineLike<'a> {
     type PrepareContext;
     type Uniforms: Copy + 'static;
 
     fn apply(&self, pass: &mut Pass);
     fn resize(&mut self, w: u32, h: u32);
-    fn prepare(&'a self, t: Self::PrepareContext) -> (&'a UniformBuffer, Vec<Self::Uniforms>);
+    fn prepare(
+        &'a self,
+        t: Self::PrepareContext,
+    ) -> Option<(&'a UniformBuffer, Vec<Self::Uniforms>)>;
 }
 
 pub trait PipelineDescriptionLike<'a> {
@@ -408,8 +425,9 @@ impl<'a> Frame<'a> {
     where
         T: PipelineLike<'a>,
     {
-        let (buf, unifs) = pip.prepare(p);
-        self.update_uniform_buffer(buf, unifs.as_slice());
+        if let Some((buf, unifs)) = pip.prepare(p) {
+            self.update_uniform_buffer(buf, unifs.as_slice());
+        }
     }
 
     pub fn pass(&mut self, clear: Rgba) -> Pass {
@@ -462,18 +480,15 @@ impl<'a> Pass<'a> {
         });
         Pass { wgpu: pass }
     }
-    pub fn apply<T>(&mut self, pipeline: &T)
+    pub fn apply_pipeline<T>(&mut self, pipeline: &T)
     where
         T: PipelineLike<'a>,
     {
         pipeline.apply(self);
     }
-    pub fn apply_pipeline(&mut self, pipeline: &Pipeline) {
-        self.wgpu.set_pipeline(&pipeline.wgpu)
-    }
     pub fn apply_binding(&mut self, group: &BindingGroup, offsets: &[u32]) {
         self.wgpu
-            .set_bind_group(group.set_index, &group.wgpu, offsets)
+            .set_bind_group(group.set_index, &group.wgpu, offsets);
     }
     pub fn set_index_buffer(&mut self, index_buf: &IndexBuffer) {
         self.wgpu.set_index_buffer(&index_buf.wgpu, 0)
