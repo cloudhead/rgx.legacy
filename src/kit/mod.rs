@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use crate::core;
-use crate::core::{Binding, BindingType, Sampler, Set, ShaderStage, Texture, VertexLayout};
+use crate::core::{Binding, BindingType, Rect, Sampler, Set, ShaderStage, Texture, VertexLayout};
 
 pub use crate::core::Rgba;
 
@@ -61,20 +61,6 @@ impl Repeat {
 impl Default for Repeat {
     fn default() -> Self {
         Repeat { x: 1.0, y: 1.0 }
-    }
-}
-
-#[derive(Copy, Clone)]
-pub struct Rect<T> {
-    pub x1: T,
-    pub y1: T,
-    pub x2: T,
-    pub y2: T,
-}
-
-impl<T> Rect<T> {
-    pub fn new(x1: T, y1: T, x2: T, y2: T) -> Rect<T> {
-        Rect { x1, y1, x2, y2 }
     }
 }
 

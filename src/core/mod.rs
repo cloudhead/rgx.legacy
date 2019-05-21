@@ -9,6 +9,24 @@ use std::ops::Range;
 use std::{mem, ptr};
 
 ///////////////////////////////////////////////////////////////////////////////
+/// Rect
+///////////////////////////////////////////////////////////////////////////////
+
+#[derive(Copy, Clone)]
+pub struct Rect<T> {
+    pub x1: T,
+    pub y1: T,
+    pub x2: T,
+    pub y2: T,
+}
+
+impl<T> Rect<T> {
+    pub fn new(x1: T, y1: T, x2: T, y2: T) -> Rect<T> {
+        Rect { x1, y1, x2, y2 }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
 /// Draw
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -156,6 +174,7 @@ impl Bind for UniformBuffer {
 
 #[allow(dead_code)]
 pub struct Framebuffer {
+    buffer: VertexBuffer,
     texture: wgpu::Texture,
     texture_view: wgpu::TextureView,
     extent: wgpu::Extent3d,
@@ -443,7 +462,7 @@ impl<'a> Frame<'a> {
         }
     }
 
-    pub fn offscreen_pass(&mut self, fb: &Framebuffer, clear: Rgba) -> Pass {
+    pub fn offscreen_pass(&mut self, clear: Rgba, fb: &Framebuffer) -> Pass {
         Pass::begin(&mut self.encoder, &fb.texture_view, clear)
     }
 
@@ -750,7 +769,28 @@ impl Device {
         });
         let texture_view = texture.create_default_view();
 
+        let rect = Rect::new(0., 0., w as f32, h as f32);
+
+        // Relative texture coordinates
+        let rx1: f32 = rect.x1 / w as f32;
+        let ry1: f32 = rect.y1 / h as f32;
+        let rx2: f32 = rect.x2 / w as f32;
+        let ry2: f32 = rect.y2 / h as f32;
+
+        #[rustfmt::skip]
+        let vertices: &[f32] = &[
+            rect.x1, rect.y1, rx1, ry2,
+            rect.x2, rect.y1, rx2, ry2,
+            rect.x2, rect.y2, rx2, ry1,
+            rect.x1, rect.y1, rx1, ry2,
+            rect.x1, rect.y2, rx1, ry1,
+            rect.x2, rect.y2, rx2, ry1,
+        ];
+
+        let buffer = self.create_buffer(vertices);
+
         Framebuffer {
+            buffer,
             texture,
             texture_view,
             extent: texture_extent,
