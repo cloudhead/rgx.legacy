@@ -151,6 +151,20 @@ impl Bind for UniformBuffer {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+/// Framebuffer
+///////////////////////////////////////////////////////////////////////////////
+
+#[allow(dead_code)]
+pub struct Framebuffer {
+    texture: wgpu::Texture,
+    texture_view: wgpu::TextureView,
+    extent: wgpu::Extent3d,
+
+    pub w: u32,
+    pub h: u32,
+}
+
+///////////////////////////////////////////////////////////////////////////////
 /// Texturing
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -429,6 +443,10 @@ impl<'a> Frame<'a> {
         }
     }
 
+    pub fn offscreen_pass(&mut self, fb: &Framebuffer, clear: Rgba) -> Pass {
+        Pass::begin(&mut self.encoder, &fb.texture_view, clear)
+    }
+
     pub fn pass(&mut self, clear: Rgba) -> Pass {
         Pass::begin(&mut self.encoder, &self.texture.view, clear)
     }
@@ -549,6 +567,10 @@ impl Renderer {
 
     pub fn texture(&self, texels: &[u8], w: u32, h: u32) -> Texture {
         self.device.create_texture(texels, w, h)
+    }
+
+    pub fn framebuffer(&self, w: u32, h: u32) -> Framebuffer {
+        self.device.create_framebuffer(w, h)
     }
 
     pub fn sampler(&self, min_filter: Filter, mag_filter: Filter) -> Sampler {
@@ -706,6 +728,32 @@ impl Device {
             view: texture_view,
             extent: texture_extent,
             buffer: buf,
+            w,
+            h,
+        }
+    }
+
+    pub fn create_framebuffer(&self, w: u32, h: u32) -> Framebuffer {
+        let texture_extent = wgpu::Extent3d {
+            width: w,
+            height: h,
+            depth: 1,
+        };
+        let texture = self.device.create_texture(&wgpu::TextureDescriptor {
+            size: texture_extent,
+            array_layer_count: 1,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Bgra8Unorm,
+            usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+        });
+        let texture_view = texture.create_default_view();
+
+        Framebuffer {
+            texture,
+            texture_view,
+            extent: texture_extent,
             w,
             h,
         }

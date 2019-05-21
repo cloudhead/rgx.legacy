@@ -273,6 +273,29 @@ pub const SPRITE2D: core::PipelineDescription = core::PipelineDescription {
     fragment_shader: include_str!("data/sprite.frag"),
 };
 
+pub const FRAMEBUFFER: core::PipelineDescription = core::PipelineDescription {
+    vertex_layout: &[core::VertexFormat::Float2, core::VertexFormat::Float2],
+    pipeline_layout: &[
+        Set(&[Binding {
+            binding: BindingType::UniformBuffer,
+            stage: ShaderStage::Vertex,
+        }]),
+        Set(&[
+            Binding {
+                binding: BindingType::SampledTexture,
+                stage: ShaderStage::Fragment,
+            },
+            Binding {
+                binding: BindingType::Sampler,
+                stage: ShaderStage::Fragment,
+            },
+        ]),
+    ],
+    // TODO: Use `env("CARGO_MANIFEST_DIR")`
+    vertex_shader: include_str!("data/post.vert"),
+    fragment_shader: include_str!("data/post.frag"),
+};
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// Framebuffer
 ///////////////////////////////////////////////////////////////////////////////////////////////////
