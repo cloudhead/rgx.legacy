@@ -72,11 +72,11 @@ pub enum ShaderStage {
 }
 
 impl ShaderStage {
-    fn to_wgpu(&self) -> wgpu::ShaderStageFlags {
+    fn to_wgpu(&self) -> wgpu::ShaderStage {
         match self {
-            ShaderStage::Vertex => wgpu::ShaderStageFlags::VERTEX,
-            ShaderStage::Fragment => wgpu::ShaderStageFlags::FRAGMENT,
-            ShaderStage::Compute => wgpu::ShaderStageFlags::COMPUTE,
+            ShaderStage::Vertex => wgpu::ShaderStage::VERTEX,
+            ShaderStage::Fragment => wgpu::ShaderStage::FRAGMENT,
+            ShaderStage::Compute => wgpu::ShaderStage::COMPUTE,
         }
     }
 }
@@ -144,7 +144,7 @@ impl Bind for UniformBuffer {
             binding: index as u32,
             resource: wgpu::BindingResource::Buffer {
                 buffer: &self.wgpu,
-                range: 0..(self.size as u32),
+                range: 0..(self.size as u64),
             },
         }
     }
@@ -184,8 +184,8 @@ impl Resource for &Texture {
             },
             wgpu::TextureCopyView {
                 texture: &self.wgpu,
-                level: 0,
-                slice: 0,
+                mip_level: 0,
+                array_layer: 0,
                 origin: wgpu::Origin3d {
                     x: 0.0,
                     y: 0.0,
@@ -290,8 +290,8 @@ impl VertexLayout {
         let mut vl = Self::default();
         for vf in formats {
             vl.wgpu_attrs.push(wgpu::VertexAttributeDescriptor {
-                attribute_index: vl.wgpu_attrs.len() as u32,
-                offset: vl.size as u32,
+                shader_location: vl.wgpu_attrs.len() as u32,
+                offset: vl.size as u64,
                 format: vf.to_wgpu(),
             });
             vl.size += vf.bytesize();
@@ -301,7 +301,7 @@ impl VertexLayout {
 
     fn to_wgpu(&self) -> wgpu::VertexBufferDescriptor {
         wgpu::VertexBufferDescriptor {
-            stride: self.size as u32,
+            stride: self.size as u64,
             step_mode: wgpu::InputStepMode::Vertex,
             attributes: self.wgpu_attrs.as_slice(),
         }
@@ -442,9 +442,9 @@ impl<'a> Frame<'a> {
             .device
             .create_buffer_mapped::<T>(
                 buf.len(),
-                wgpu::BufferUsageFlags::UNIFORM
-                    | wgpu::BufferUsageFlags::TRANSFER_SRC
-                    | wgpu::BufferUsageFlags::MAP_WRITE,
+                wgpu::BufferUsage::UNIFORM
+                    | wgpu::BufferUsage::TRANSFER_SRC
+                    | wgpu::BufferUsage::MAP_WRITE,
             )
             .fill_from_slice(buf);
 
@@ -453,7 +453,7 @@ impl<'a> Frame<'a> {
             0,
             &u.wgpu,
             0,
-            (std::mem::size_of::<T>() * buf.len()) as u32,
+            (std::mem::size_of::<T>() * buf.len()) as u64,
         );
     }
 }
@@ -478,6 +478,7 @@ impl<'a> Pass<'a> {
                 load_op: wgpu::LoadOp::Clear,
                 store_op: wgpu::StoreOp::Store,
                 clear_color: clear_color.to_wgpu(),
+                resolve_target: None,
             }],
             depth_stencil_attachment: None,
         });
@@ -518,7 +519,7 @@ pub fn frame<'a>(swap_chain: &'a mut wgpu::SwapChain, device: &'a mut Device) ->
 
 fn swap_chain_descriptor(width: u32, height: u32) -> wgpu::SwapChainDescriptor {
     wgpu::SwapChainDescriptor {
-        usage: wgpu::TextureUsageFlags::OUTPUT_ATTACHMENT,
+        usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
         format: wgpu::TextureFormat::Bgra8Unorm,
         width,
         height,
@@ -613,10 +614,11 @@ impl Device {
         let surface = instance.create_surface(&window);
 
         Self {
-            device: adapter.create_device(&wgpu::DeviceDescriptor {
+            device: adapter.request_device(&wgpu::DeviceDescriptor {
                 extensions: wgpu::Extensions {
                     anisotropic_filtering: false,
                 },
+                limits: wgpu::Limits::default(),
             }),
             surface,
         }
@@ -685,16 +687,18 @@ impl Device {
         };
         let texture = self.device.create_texture(&wgpu::TextureDescriptor {
             size: texture_extent,
-            array_size: 1,
+            array_layer_count: 1,
+            mip_level_count: 1,
+            sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::Rgba8Unorm,
-            usage: wgpu::TextureUsageFlags::SAMPLED | wgpu::TextureUsageFlags::TRANSFER_DST,
+            usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::TRANSFER_DST,
         });
         let texture_view = texture.create_default_view();
 
         let buf = self
             .device
-            .create_buffer_mapped(texels.len(), wgpu::BufferUsageFlags::TRANSFER_SRC)
+            .create_buffer_mapped(texels.len(), wgpu::BufferUsage::TRANSFER_SRC)
             .fill_from_slice(&texels);
 
         Texture {
@@ -740,7 +744,7 @@ impl Device {
         VertexBuffer {
             wgpu: self
                 .device
-                .create_buffer_mapped(vertices.len(), wgpu::BufferUsageFlags::VERTEX)
+                .create_buffer_mapped(vertices.len(), wgpu::BufferUsage::VERTEX)
                 .fill_from_slice(vertices),
             size: vertices.len() as u32,
         }
@@ -756,7 +760,7 @@ impl Device {
                 .device
                 .create_buffer_mapped::<T>(
                     buf.len(),
-                    wgpu::BufferUsageFlags::UNIFORM | wgpu::BufferUsageFlags::TRANSFER_DST,
+                    wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::TRANSFER_DST,
                 )
                 .fill_from_slice(buf),
         }
@@ -765,7 +769,7 @@ impl Device {
     pub fn create_index(&self, indices: &[u16]) -> IndexBuffer {
         let index_buf = self
             .device
-            .create_buffer_mapped(indices.len(), wgpu::BufferUsageFlags::INDEX)
+            .create_buffer_mapped(indices.len(), wgpu::BufferUsage::INDEX)
             .fill_from_slice(indices);
         IndexBuffer { wgpu: index_buf }
     }
@@ -773,17 +777,15 @@ impl Device {
     pub fn create_sampler(&self, min_filter: Filter, mag_filter: Filter) -> Sampler {
         Sampler {
             wgpu: self.device.create_sampler(&wgpu::SamplerDescriptor {
-                r_address_mode: wgpu::AddressMode::Repeat,
-                s_address_mode: wgpu::AddressMode::Repeat,
-                t_address_mode: wgpu::AddressMode::Repeat,
+                address_mode_u: wgpu::AddressMode::Repeat,
+                address_mode_v: wgpu::AddressMode::Repeat,
+                address_mode_w: wgpu::AddressMode::Repeat,
                 mag_filter: mag_filter.to_wgpu(),
                 min_filter: min_filter.to_wgpu(),
                 mipmap_filter: wgpu::FilterMode::Nearest,
                 lod_min_clamp: -100.0,
                 lod_max_clamp: 100.0,
-                max_anisotropy: 0,
                 compare_function: wgpu::CompareFunction::Always,
-                border_color: wgpu::BorderColor::TransparentBlack,
             }),
         }
     }
@@ -841,10 +843,10 @@ impl Device {
                     module: &vs.module,
                     entry_point: "main",
                 },
-                fragment_stage: wgpu::PipelineStageDescriptor {
+                fragment_stage: Some(wgpu::PipelineStageDescriptor {
                     module: &fs.module,
                     entry_point: "main",
-                },
+                }),
                 rasterization_state: wgpu::RasterizationStateDescriptor {
                     front_face: wgpu::FrontFace::Ccw,
                     cull_mode: wgpu::CullMode::None,
@@ -855,17 +857,17 @@ impl Device {
                 primitive_topology: wgpu::PrimitiveTopology::TriangleList,
                 color_states: &[wgpu::ColorStateDescriptor {
                     format: wgpu::TextureFormat::Bgra8Unorm,
-                    color: wgpu::BlendDescriptor {
+                    color_blend: wgpu::BlendDescriptor {
                         src_factor: wgpu::BlendFactor::SrcAlpha,
                         dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
                         operation: wgpu::BlendOperation::Add,
                     },
-                    alpha: wgpu::BlendDescriptor {
+                    alpha_blend: wgpu::BlendDescriptor {
                         src_factor: wgpu::BlendFactor::SrcAlpha,
                         dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
                         operation: wgpu::BlendOperation::Add,
                     },
-                    write_mask: wgpu::ColorWriteFlags::ALL,
+                    write_mask: wgpu::ColorWrite::ALL,
                 }],
                 depth_stencil_state: None,
                 index_format: wgpu::IndexFormat::Uint16,
