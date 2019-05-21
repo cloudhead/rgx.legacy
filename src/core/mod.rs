@@ -144,7 +144,7 @@ impl Bind for UniformBuffer {
             binding: index as u32,
             resource: wgpu::BindingResource::Buffer {
                 buffer: &self.wgpu,
-                range: 0..(self.size as u64),
+                range: 0..(self.size as wgpu::BufferAddress),
             },
         }
     }
@@ -291,7 +291,7 @@ impl VertexLayout {
         for vf in formats {
             vl.wgpu_attrs.push(wgpu::VertexAttributeDescriptor {
                 shader_location: vl.wgpu_attrs.len() as u32,
-                offset: vl.size as u64,
+                offset: vl.size as wgpu::BufferAddress,
                 format: vf.to_wgpu(),
             });
             vl.size += vf.bytesize();
@@ -301,7 +301,7 @@ impl VertexLayout {
 
     fn to_wgpu(&self) -> wgpu::VertexBufferDescriptor {
         wgpu::VertexBufferDescriptor {
-            stride: self.size as u64,
+            stride: self.size as wgpu::BufferAddress,
             step_mode: wgpu::InputStepMode::Vertex,
             attributes: self.wgpu_attrs.as_slice(),
         }
@@ -453,7 +453,7 @@ impl<'a> Frame<'a> {
             0,
             &u.wgpu,
             0,
-            (std::mem::size_of::<T>() * buf.len()) as u64,
+            (std::mem::size_of::<T>() * buf.len()) as wgpu::BufferAddress,
         );
     }
 }
