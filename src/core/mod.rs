@@ -174,13 +174,21 @@ impl Bind for UniformBuffer {
 
 #[allow(dead_code)]
 pub struct Framebuffer {
-    buffer: VertexBuffer,
     texture: wgpu::Texture,
     texture_view: wgpu::TextureView,
     extent: wgpu::Extent3d,
 
     pub w: u32,
     pub h: u32,
+}
+
+impl Bind for Framebuffer {
+    fn binding(&self, index: u32) -> wgpu::Binding {
+        wgpu::Binding {
+            binding: index as u32,
+            resource: wgpu::BindingResource::TextureView(&self.texture_view),
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -206,6 +214,7 @@ impl Bind for Texture {
         }
     }
 }
+
 impl Resource for &Texture {
     fn prepare(&self, encoder: &mut wgpu::CommandEncoder) {
         encoder.copy_buffer_to_texture(
@@ -463,11 +472,51 @@ impl<'a> Frame<'a> {
     }
 
     pub fn offscreen_pass(&mut self, clear: Rgba, fb: &Framebuffer) -> Pass {
-        Pass::begin(&mut self.encoder, &fb.texture_view, clear)
+        Pass::begin(
+            &mut self.encoder,
+            &fb.texture_view,
+            clear,
+            wgpu::LoadOp::Clear,
+        )
     }
 
     pub fn pass(&mut self, clear: Rgba) -> Pass {
-        Pass::begin(&mut self.encoder, &self.texture.view, clear)
+        Pass::begin(
+            &mut self.encoder,
+            &self.texture.view,
+            clear,
+            wgpu::LoadOp::Clear,
+        )
+    }
+
+    pub fn transfer(&mut self, from: &Framebuffer, to: &Framebuffer) {
+        self.encoder.copy_texture_to_texture(
+            wgpu::TextureCopyView {
+                texture: &from.texture,
+                mip_level: 0,
+                array_layer: 0,
+                origin: wgpu::Origin3d {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+            },
+            wgpu::TextureCopyView {
+                texture: &to.texture,
+                mip_level: 0,
+                array_layer: 0,
+                origin: wgpu::Origin3d {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+            },
+            wgpu::Extent3d {
+                width: from.w,
+                height: from.h,
+                depth: 1,
+            },
+        );
     }
 
     fn update_uniform_buffer<T>(&mut self, u: &UniformBuffer, buf: &[T])
@@ -508,11 +557,12 @@ impl<'a> Pass<'a> {
         encoder: &'a mut wgpu::CommandEncoder,
         view: &wgpu::TextureView,
         clear_color: Rgba,
+        load_op: wgpu::LoadOp,
     ) -> Self {
         let pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
                 attachment: &view,
-                load_op: wgpu::LoadOp::Clear,
+                load_op,
                 store_op: wgpu::StoreOp::Store,
                 clear_color: clear_color.to_wgpu(),
                 resolve_target: None,
@@ -590,6 +640,13 @@ impl Renderer {
 
     pub fn framebuffer(&self, w: u32, h: u32) -> Framebuffer {
         self.device.create_framebuffer(w, h)
+    }
+
+    pub fn vertexbuffer<T>(&self, verts: &[T]) -> VertexBuffer
+    where
+        T: 'static + Copy,
+    {
+        self.device.create_buffer(verts)
     }
 
     pub fn sampler(&self, min_filter: Filter, mag_filter: Filter) -> Sampler {
@@ -769,28 +826,7 @@ impl Device {
         });
         let texture_view = texture.create_default_view();
 
-        let rect = Rect::new(0., 0., w as f32, h as f32);
-
-        // Relative texture coordinates
-        let rx1: f32 = rect.x1 / w as f32;
-        let ry1: f32 = rect.y1 / h as f32;
-        let rx2: f32 = rect.x2 / w as f32;
-        let ry2: f32 = rect.y2 / h as f32;
-
-        #[rustfmt::skip]
-        let vertices: &[f32] = &[
-            rect.x1, rect.y1, rx1, ry2,
-            rect.x2, rect.y1, rx2, ry2,
-            rect.x2, rect.y2, rx2, ry1,
-            rect.x1, rect.y1, rx1, ry2,
-            rect.x1, rect.y2, rx1, ry1,
-            rect.x2, rect.y2, rx2, ry1,
-        ];
-
-        let buffer = self.create_buffer(vertices);
-
         Framebuffer {
-            buffer,
             texture,
             texture_view,
             extent: texture_extent,

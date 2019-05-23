@@ -18,8 +18,6 @@ use wgpu::winit::{
     ElementState, Event, EventsLoop, KeyboardInput, VirtualKeyCode, Window, WindowEvent,
 };
 
-use std::time::Instant;
-
 fn main() {
     env_logger::init();
 
@@ -37,12 +35,11 @@ fn main() {
         .unwrap()
         .to_physical(window.get_hidpi_factor());
 
-    let mut pip_2d: kit::Pipeline2d =
-        r.pipeline(kit::SPRITE2D, size.width as u32, size.height as u32);
-    let mut pip_post: kit::Pipeline2d =
-        r.pipeline(kit::FRAMEBUFFER, size.width as u32, size.height as u32);
+    let (sw, sh) = (size.width as u32, size.height as u32);
+    let mut offscreen: kit::Pipeline2d = r.pipeline(kit::SPRITE2D, sw, sh);
+    let mut onscreen: kit::PipelinePost = r.pipeline(kit::FRAMEBUFFER, sw, sh);
 
-    let mut framebuffer = r.framebuffer(w, h);
+    let framebuffer = onscreen.framebuffer(&r);
 
     ///////////////////////////////////////////////////////////////////////////
     // Setup sampler & load texture
@@ -60,15 +57,16 @@ fn main() {
         r.texture(pixels.as_slice(), w as u32, h as u32)
     };
 
-    let binding = pip_2d.binding(&r, &texture, &sampler); // Texture binding
+    let offscreen_binding = offscreen.binding(&r, &texture, &sampler); // Texture binding
+    let onscreen_binding = onscreen.binding(&r, &framebuffer, &sampler);
 
     let w = 50.0;
     let rect = Rect::new(w * 1.0, 0.0, w * 2.0, texture.h as f32);
-    let buffer = pip_2d.sprite(
+    let buffer = offscreen.sprite(
         &r,
         &texture,
         rect,
-        rect,
+        Rect::new(0., 0., sw as f32, sh as f32),
         Rgba::TRANSPARENT,
         Repeat::default(),
     );
@@ -107,10 +105,9 @@ fn main() {
                         let physical = size.to_physical(window.get_hidpi_factor());
                         let (w, h) = (physical.width as u32, physical.height as u32);
 
-                        pip_2d.resize(w, h);
-                        pip_post.resize(w, h);
+                        offscreen.resize(w, h);
+                        onscreen.resize(w, h);
                         r.resize(w, h);
-                        framebuffer = r.framebuffer(w, h); // TODO: Call 'resize'
                     }
                     _ => {}
                 }
@@ -127,21 +124,23 @@ fn main() {
         // Prepare pipeline
         ///////////////////////////////////////////////////////////////////////////
 
-        frame.prepare(&pip_2d, Matrix4::identity());
-        frame.prepare(&pip_post, Matrix4::identity());
+        frame.prepare(&offscreen, Matrix4::identity());
+        frame.prepare(&onscreen, Rgba::new(0.2, 0.2, 0.0, 1.0));
 
         ///////////////////////////////////////////////////////////////////////////
         // Draw frame
         ///////////////////////////////////////////////////////////////////////////
 
-        let offscreen = &mut frame.offscreen_pass(Rgba::TRANSPARENT, &framebuffer);
-        offscreen.apply_pipeline(&pip_2d);
-        offscreen.draw(&buffer, &binding);
+        {
+            let pass = &mut frame.offscreen_pass(Rgba::TRANSPARENT, &framebuffer.target);
+            pass.apply_pipeline(&offscreen);
+            pass.draw(&buffer, &offscreen_binding);
+        }
 
-        let onscreen = &mut frame.pass(Rgba::TRANSPARENT);
-        onscreen.apply_pipeline(&pip_post);
-
-        onscreen.apply_pipeline(&pip_post);
-        onscreen.draw(&framebuffer, &binding);
+        {
+            let pass = &mut frame.pass(Rgba::TRANSPARENT);
+            pass.apply_pipeline(&onscreen);
+            pass.draw(&framebuffer, &onscreen_binding);
+        }
     }
 }

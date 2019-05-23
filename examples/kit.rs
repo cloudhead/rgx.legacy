@@ -65,7 +65,7 @@ fn main() {
         &renderer,
         &texture,
         texture.rect(),
-        kit::Rect::new(0., 0., size.width as f32, size.height as f32),
+        Rect::new(0., 0., size.width as f32, size.height as f32),
         Rgba::TRANSPARENT,
         kit::Repeat::new(24. * (size.width / size.height) as f32, 24.),
     );
@@ -74,7 +74,7 @@ fn main() {
         &renderer,
         &texture,
         texture.rect(),
-        kit::Rect::new(0.0, 0.0, 160.0, 160.0),
+        Rect::new(0.0, 0.0, 160.0, 160.0),
         Rgba::new(1.0, 1.0, 0.0, 0.5),
         kit::Repeat::default(),
     );
