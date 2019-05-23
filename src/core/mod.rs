@@ -472,51 +472,11 @@ impl<'a> Frame<'a> {
     }
 
     pub fn offscreen_pass(&mut self, clear: Rgba, fb: &Framebuffer) -> Pass {
-        Pass::begin(
-            &mut self.encoder,
-            &fb.texture_view,
-            clear,
-            wgpu::LoadOp::Clear,
-        )
+        Pass::begin(&mut self.encoder, &fb.texture_view, clear)
     }
 
     pub fn pass(&mut self, clear: Rgba) -> Pass {
-        Pass::begin(
-            &mut self.encoder,
-            &self.texture.view,
-            clear,
-            wgpu::LoadOp::Clear,
-        )
-    }
-
-    pub fn transfer(&mut self, from: &Framebuffer, to: &Framebuffer) {
-        self.encoder.copy_texture_to_texture(
-            wgpu::TextureCopyView {
-                texture: &from.texture,
-                mip_level: 0,
-                array_layer: 0,
-                origin: wgpu::Origin3d {
-                    x: 0.0,
-                    y: 0.0,
-                    z: 0.0,
-                },
-            },
-            wgpu::TextureCopyView {
-                texture: &to.texture,
-                mip_level: 0,
-                array_layer: 0,
-                origin: wgpu::Origin3d {
-                    x: 0.0,
-                    y: 0.0,
-                    z: 0.0,
-                },
-            },
-            wgpu::Extent3d {
-                width: from.w,
-                height: from.h,
-                depth: 1,
-            },
-        );
+        Pass::begin(&mut self.encoder, &self.texture.view, clear)
     }
 
     fn update_uniform_buffer<T>(&mut self, u: &UniformBuffer, buf: &[T])
@@ -557,12 +517,11 @@ impl<'a> Pass<'a> {
         encoder: &'a mut wgpu::CommandEncoder,
         view: &wgpu::TextureView,
         clear_color: Rgba,
-        load_op: wgpu::LoadOp,
     ) -> Self {
         let pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
                 attachment: &view,
-                load_op,
+                load_op: wgpu::LoadOp::Clear,
                 store_op: wgpu::StoreOp::Store,
                 clear_color: clear_color.to_wgpu(),
                 resolve_target: None,
