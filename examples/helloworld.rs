@@ -49,7 +49,7 @@ fn main() {
         &renderer,
         &texture,
         texture.rect(),
-        kit::Rect::new(0., 0., size.width as f32, size.height as f32),
+        Rect::new(0., 0., size.width as f32, size.height as f32),
         Rgba::new(0.5, 0.6, 0.8, 1.0),
         kit::Repeat::new(24. * (size.width / size.height) as f32, 24.),
     );

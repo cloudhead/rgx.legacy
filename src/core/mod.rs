@@ -9,6 +9,24 @@ use std::ops::Range;
 use std::{mem, ptr};
 
 ///////////////////////////////////////////////////////////////////////////////
+/// Rect
+///////////////////////////////////////////////////////////////////////////////
+
+#[derive(Copy, Clone)]
+pub struct Rect<T> {
+    pub x1: T,
+    pub y1: T,
+    pub x2: T,
+    pub y2: T,
+}
+
+impl<T> Rect<T> {
+    pub fn new(x1: T, y1: T, x2: T, y2: T) -> Rect<T> {
+        Rect { x1, y1, x2, y2 }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
 /// Draw
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -151,6 +169,29 @@ impl Bind for UniformBuffer {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+/// Framebuffer
+///////////////////////////////////////////////////////////////////////////////
+
+#[allow(dead_code)]
+pub struct Framebuffer {
+    texture: wgpu::Texture,
+    texture_view: wgpu::TextureView,
+    extent: wgpu::Extent3d,
+
+    pub w: u32,
+    pub h: u32,
+}
+
+impl Bind for Framebuffer {
+    fn binding(&self, index: u32) -> wgpu::Binding {
+        wgpu::Binding {
+            binding: index as u32,
+            resource: wgpu::BindingResource::TextureView(&self.texture_view),
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
 /// Texturing
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -173,6 +214,7 @@ impl Bind for Texture {
         }
     }
 }
+
 impl Resource for &Texture {
     fn prepare(&self, encoder: &mut wgpu::CommandEncoder) {
         encoder.copy_buffer_to_texture(
@@ -429,6 +471,10 @@ impl<'a> Frame<'a> {
         }
     }
 
+    pub fn offscreen_pass(&mut self, clear: Rgba, fb: &Framebuffer) -> Pass {
+        Pass::begin(&mut self.encoder, &fb.texture_view, clear)
+    }
+
     pub fn pass(&mut self, clear: Rgba) -> Pass {
         Pass::begin(&mut self.encoder, &self.texture.view, clear)
     }
@@ -549,6 +595,17 @@ impl Renderer {
 
     pub fn texture(&self, texels: &[u8], w: u32, h: u32) -> Texture {
         self.device.create_texture(texels, w, h)
+    }
+
+    pub fn framebuffer(&self, w: u32, h: u32) -> Framebuffer {
+        self.device.create_framebuffer(w, h)
+    }
+
+    pub fn vertexbuffer<T>(&self, verts: &[T]) -> VertexBuffer
+    where
+        T: 'static + Copy,
+    {
+        self.device.create_buffer(verts)
     }
 
     pub fn sampler(&self, min_filter: Filter, mag_filter: Filter) -> Sampler {
@@ -706,6 +763,32 @@ impl Device {
             view: texture_view,
             extent: texture_extent,
             buffer: buf,
+            w,
+            h,
+        }
+    }
+
+    pub fn create_framebuffer(&self, w: u32, h: u32) -> Framebuffer {
+        let texture_extent = wgpu::Extent3d {
+            width: w,
+            height: h,
+            depth: 1,
+        };
+        let texture = self.device.create_texture(&wgpu::TextureDescriptor {
+            size: texture_extent,
+            array_layer_count: 1,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Bgra8Unorm,
+            usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+        });
+        let texture_view = texture.create_default_view();
+
+        Framebuffer {
+            texture,
+            texture_view,
+            extent: texture_extent,
             w,
             h,
         }

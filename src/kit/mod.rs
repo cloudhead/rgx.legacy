@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use crate::core;
-use crate::core::{Binding, BindingType, Sampler, Set, ShaderStage, Texture, VertexLayout};
+use crate::core::{Binding, BindingType, Rect, Sampler, Set, ShaderStage, Texture, VertexLayout};
 
 pub use crate::core::Rgba;
 
@@ -61,20 +61,6 @@ impl Repeat {
 impl Default for Repeat {
     fn default() -> Self {
         Repeat { x: 1.0, y: 1.0 }
-    }
-}
-
-#[derive(Copy, Clone)]
-pub struct Rect<T> {
-    pub x1: T,
-    pub y1: T,
-    pub x2: T,
-    pub y2: T,
-}
-
-impl<T> Rect<T> {
-    pub fn new(x1: T, y1: T, x2: T, y2: T) -> Rect<T> {
-        Rect { x1, y1, x2, y2 }
     }
 }
 
@@ -162,6 +148,95 @@ impl<T> Animation<T> {
             AnimationState::Paused(cursor, _) => cursor,
             AnimationState::Stopped => 0,
         }
+    }
+}
+
+pub struct Framebuffer {
+    pub target: core::Framebuffer,
+
+    vb: core::VertexBuffer,
+}
+
+impl core::Draw for Framebuffer {
+    fn draw(&self, binding: &core::BindingGroup, pass: &mut core::Pass) {
+        pass.draw(&self.vb, binding);
+    }
+}
+
+pub struct PipelinePost {
+    pipeline: core::Pipeline,
+    bindings: core::BindingGroup,
+    buf: core::UniformBuffer,
+    color: core::Rgba,
+    width: u32,
+    height: u32,
+}
+
+impl PipelinePost {
+    pub fn binding(
+        &self,
+        renderer: &core::Renderer,
+        framebuffer: &Framebuffer,
+        sampler: &core::Sampler,
+    ) -> core::BindingGroup {
+        renderer.device.create_binding_group(
+            &self.pipeline.layout.sets[1],
+            &[&framebuffer.target, sampler],
+        )
+    }
+
+    pub fn framebuffer(&self, r: &core::Renderer) -> Framebuffer {
+        #[derive(Copy, Clone)]
+        struct Vertex(f32, f32, f32, f32);
+
+        #[rustfmt::skip]
+        let vertices: &[Vertex] = &[
+            Vertex(-1.0, -1.0, 0.0, 1.0),
+            Vertex( 1.0, -1.0, 1.0, 1.0),
+            Vertex( 1.0,  1.0, 1.0, 0.0),
+            Vertex(-1.0, -1.0, 0.0, 1.0),
+            Vertex(-1.0,  1.0, 0.0, 0.0),
+            Vertex( 1.0,  1.0, 1.0, 0.0),
+        ];
+
+        Framebuffer {
+            target: r.framebuffer(self.width, self.height),
+            vb: r.vertexbuffer(vertices),
+        }
+    }
+}
+
+impl<'a> core::PipelineLike<'a> for PipelinePost {
+    type PrepareContext = core::Rgba;
+    type Uniforms = core::Rgba;
+
+    fn setup(pipeline: core::Pipeline, dev: &core::Device, width: u32, height: u32) -> Self {
+        let color = core::Rgba::new(0.0, 0.0, 0.0, 0.0);
+        let buf = dev.create_uniform_buffer(&[color]);
+        let bindings = dev.create_binding_group(&pipeline.layout.sets[0], &[&buf]);
+
+        PipelinePost {
+            pipeline,
+            buf,
+            bindings,
+            color,
+            width,
+            height,
+        }
+    }
+
+    fn resize(&mut self, w: u32, h: u32) {
+        self.width = w;
+        self.height = h;
+    }
+
+    fn apply(&self, pass: &mut core::Pass) {
+        pass.apply_pipeline(&self.pipeline);
+        pass.apply_binding(&self.bindings, &[0]);
+    }
+
+    fn prepare(&'a self, ctx: core::Rgba) -> Option<(&'a core::UniformBuffer, Vec<core::Rgba>)> {
+        Some((&self.buf, vec![ctx]))
     }
 }
 
@@ -273,16 +348,28 @@ pub const SPRITE2D: core::PipelineDescription = core::PipelineDescription {
     fragment_shader: include_str!("data/sprite.frag"),
 };
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-/// Framebuffer
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-pub struct Framebuffer {
-    pub texture: Texture,
-    pub sampler: Sampler,
-    pub buffer: core::VertexBuffer,
-    pub binding: core::BindingGroup,
-}
+pub const FRAMEBUFFER: core::PipelineDescription = core::PipelineDescription {
+    vertex_layout: &[core::VertexFormat::Float2, core::VertexFormat::Float2],
+    pipeline_layout: &[
+        Set(&[Binding {
+            binding: BindingType::UniformBuffer,
+            stage: ShaderStage::Vertex,
+        }]),
+        Set(&[
+            Binding {
+                binding: BindingType::SampledTexture,
+                stage: ShaderStage::Fragment,
+            },
+            Binding {
+                binding: BindingType::Sampler,
+                stage: ShaderStage::Fragment,
+            },
+        ]),
+    ],
+    // TODO: Use `env("CARGO_MANIFEST_DIR")`
+    vertex_shader: include_str!("data/post.vert"),
+    fragment_shader: include_str!("data/post.frag"),
+};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// RenderBatch

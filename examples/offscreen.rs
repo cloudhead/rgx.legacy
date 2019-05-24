@@ -7,8 +7,12 @@ extern crate rgx;
 
 use rgx::core::*;
 use rgx::kit;
+use rgx::kit::*;
 
-use cgmath::{Matrix4, Vector3};
+use cgmath::prelude::*;
+use cgmath::Matrix4;
+
+use image::ImageDecoder;
 
 use wgpu::winit::{
     ElementState, Event, EventsLoop, KeyboardInput, VirtualKeyCode, Window, WindowEvent,
@@ -24,102 +28,75 @@ fn main() {
     // Setup renderer
     ///////////////////////////////////////////////////////////////////////////
 
-    let mut renderer = Renderer::new(&window);
-
-    ///////////////////////////////////////////////////////////////////////////
-    // Setup render pipeline
-    ///////////////////////////////////////////////////////////////////////////
+    let mut r = Renderer::new(&window);
 
     let size = window
         .get_inner_size()
         .unwrap()
         .to_physical(window.get_hidpi_factor());
 
-    let mut pipeline: kit::Pipeline2d =
-        renderer.pipeline(kit::SPRITE2D, size.width as u32, size.height as u32);
+    let (sw, sh) = (size.width as u32, size.height as u32);
+    let mut offscreen: kit::Pipeline2d = r.pipeline(kit::SPRITE2D, sw, sh);
+    let mut onscreen: kit::PipelinePost = r.pipeline(kit::FRAMEBUFFER, sw, sh);
+
+    let framebuffer = onscreen.framebuffer(&r);
 
     ///////////////////////////////////////////////////////////////////////////
-    // Setup texture & sampler
+    // Setup sampler & load texture
     ///////////////////////////////////////////////////////////////////////////
 
-    #[rustfmt::skip]
-    let texels: [u32; 16] = [
-        0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
-        0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
-        0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
-        0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
-    ];
-    let buf: [u8; 64] = unsafe { std::mem::transmute(texels) };
+    let sampler = r.sampler(Filter::Nearest, Filter::Nearest);
 
-    // Create 4 by 4 texture and sampler.
-    let texture = renderer.texture(&buf, 4, 4);
-    let sampler = renderer.sampler(Filter::Nearest, Filter::Nearest);
+    let texture = {
+        let bytes = include_bytes!("data/sprite.tga");
+        let tga = std::io::Cursor::new(bytes.as_ref());
+        let decoder = image::tga::TGADecoder::new(tga).unwrap();
+        let (w, h) = decoder.dimensions();
+        let pixels = decoder.read_image().unwrap();
 
-    ///////////////////////////////////////////////////////////////////////////
-    // Setup sprites
-    ///////////////////////////////////////////////////////////////////////////
+        r.texture(pixels.as_slice(), w as u32, h as u32)
+    };
 
-    let binding = pipeline.binding(&renderer, &texture, &sampler);
+    let offscreen_binding = offscreen.binding(&r, &texture, &sampler); // Texture binding
+    let onscreen_binding = onscreen.binding(&r, &framebuffer, &sampler);
 
-    let buffer_bg = pipeline.sprite(
-        &renderer,
+    let w = 50.0;
+    let rect = Rect::new(w * 1.0, 0.0, w * 2.0, texture.h as f32);
+    let buffer = offscreen.sprite(
+        &r,
         &texture,
-        texture.rect(),
-        Rect::new(0., 0., size.width as f32, size.height as f32),
+        rect,
+        Rect::new(0., 0., sw as f32, sh as f32),
         Rgba::TRANSPARENT,
-        kit::Repeat::new(24. * (size.width / size.height) as f32, 24.),
+        Repeat::default(),
     );
-
-    let buffer_fg = pipeline.sprite(
-        &renderer,
-        &texture,
-        texture.rect(),
-        Rect::new(0.0, 0.0, 160.0, 160.0),
-        Rgba::new(1.0, 1.0, 0.0, 0.5),
-        kit::Repeat::default(),
-    );
-
-    let mut x: f32 = 0.0;
-    let mut y: f32 = 0.0;
 
     let mut running = true;
-    let mut transform;
 
     ///////////////////////////////////////////////////////////////////////////
     // Prepare resources
     ///////////////////////////////////////////////////////////////////////////
 
-    renderer.prepare(&[&texture]);
+    r.prepare(&[&texture]);
 
     ///////////////////////////////////////////////////////////////////////////
     // Render loop
     ///////////////////////////////////////////////////////////////////////////
 
     while running {
-        x += 1.0;
-        y += 1.0;
-
-        transform = Matrix4::from_translation(Vector3::new(x, y, 0.0));
-
-        ///////////////////////////////////////////////////////////////////////////
-        // Process events
-        ///////////////////////////////////////////////////////////////////////////
-
         events_loop.poll_events(|event| {
             if let Event::WindowEvent { event, .. } = event {
                 match event {
                     WindowEvent::KeyboardInput {
                         input:
                             KeyboardInput {
-                                virtual_keycode: Some(code),
+                                virtual_keycode: Some(VirtualKeyCode::Escape),
                                 state: ElementState::Pressed,
                                 ..
                             },
                         ..
                     } => {
-                        if let VirtualKeyCode::Escape = code {
-                            running = false;
-                        }
+                        running = false;
                     }
                     WindowEvent::CloseRequested => {
                         running = false;
@@ -128,8 +105,9 @@ fn main() {
                         let physical = size.to_physical(window.get_hidpi_factor());
                         let (w, h) = (physical.width as u32, physical.height as u32);
 
-                        pipeline.resize(w, h);
-                        renderer.resize(w, h);
+                        offscreen.resize(w, h);
+                        onscreen.resize(w, h);
+                        r.resize(w, h);
                     }
                     _ => {}
                 }
@@ -140,22 +118,29 @@ fn main() {
         // Create frame
         ///////////////////////////////////////////////////////////////////////////
 
-        let mut frame = renderer.frame();
+        let mut frame = r.frame();
 
         ///////////////////////////////////////////////////////////////////////////
         // Prepare pipeline
         ///////////////////////////////////////////////////////////////////////////
 
-        frame.prepare(&pipeline, transform);
+        frame.prepare(&offscreen, Matrix4::identity());
+        frame.prepare(&onscreen, Rgba::new(0.2, 0.2, 0.0, 1.0));
 
         ///////////////////////////////////////////////////////////////////////////
         // Draw frame
         ///////////////////////////////////////////////////////////////////////////
 
-        let pass = &mut frame.pass(Rgba::TRANSPARENT);
+        {
+            let pass = &mut frame.offscreen_pass(Rgba::TRANSPARENT, &framebuffer.target);
+            pass.apply_pipeline(&offscreen);
+            pass.draw(&buffer, &offscreen_binding);
+        }
 
-        pass.apply_pipeline(&pipeline);
-        pass.draw(&buffer_bg, &binding);
-        pass.draw(&buffer_fg, &binding);
+        {
+            let pass = &mut frame.pass(Rgba::TRANSPARENT);
+            pass.apply_pipeline(&onscreen);
+            pass.draw(&framebuffer, &onscreen_binding);
+        }
     }
 }
