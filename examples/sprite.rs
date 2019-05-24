@@ -146,7 +146,7 @@ fn main() {
             .unwrap()
             .to_physical(window.get_hidpi_factor());
 
-        let mut sb = pip.sprite_batch(&sprite, &sampler);
+        let mut sb = pip.sprite_batch(sprite.w, sprite.h);
         let (sw, sh) = (w * 2.0, sprite.h as f32 * 2.0);
 
         let rows = (win.height as f32 / sh) as u32;
