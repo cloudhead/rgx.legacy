@@ -21,8 +21,20 @@ pub struct Rect<T> {
 }
 
 impl<T> Rect<T> {
-    pub fn new(x1: T, y1: T, x2: T, y2: T) -> Rect<T> {
-        Rect { x1, y1, x2, y2 }
+    pub fn new(x1: T, y1: T, x2: T, y2: T) -> Self {
+        Self { x1, y1, x2, y2 }
+    }
+
+    pub fn translate(&self, x: T, y: T) -> Self
+    where
+        T: std::ops::Add<Output = T> + Copy,
+    {
+        Self {
+            x1: self.x1 + x,
+            y1: self.y1 + y,
+            x2: self.x2 + x,
+            y2: self.y2 + y,
+        }
     }
 }
 
