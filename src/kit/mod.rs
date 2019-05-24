@@ -435,8 +435,9 @@ impl<'a> Sprite<'a> {
 pub struct SpriteBatch {
     pub w: u32,
     pub h: u32,
-    pub vertices: Vec<Vertex>,
     pub size: usize,
+
+    views: Vec<(Rect<f32>, Rect<f32>, Rgba, Repeat)>,
 }
 
 impl SpriteBatch {
@@ -444,37 +445,40 @@ impl SpriteBatch {
         Self {
             w,
             h,
-            vertices: Vec::with_capacity(6),
+            views: Vec::new(),
             size: 0,
         }
     }
 
     pub fn add(&mut self, src: Rect<f32>, dst: Rect<f32>, rgba: Rgba, rep: Repeat) {
-        let c: Rgba8 = rgba.into();
-        let (tw, th) = (self.w, self.h);
-
-        // Relative texture coordinates
-        let rx1: f32 = src.x1 / tw as f32;
-        let ry1: f32 = src.y1 / th as f32;
-        let rx2: f32 = src.x2 / tw as f32;
-        let ry2: f32 = src.y2 / th as f32;
-
-        // TODO: Use an index buffer
-        let mut verts: Vec<Vertex> = vec![
-            Vertex::new(dst.x1, dst.y1, rx1 * rep.x, ry2 * rep.y, c),
-            Vertex::new(dst.x2, dst.y1, rx2 * rep.x, ry2 * rep.y, c),
-            Vertex::new(dst.x2, dst.y2, rx2 * rep.x, ry1 * rep.y, c),
-            Vertex::new(dst.x1, dst.y1, rx1 * rep.x, ry2 * rep.y, c),
-            Vertex::new(dst.x1, dst.y2, rx1 * rep.x, ry1 * rep.y, c),
-            Vertex::new(dst.x2, dst.y2, rx2 * rep.x, ry1 * rep.y, c),
-        ];
-
-        self.vertices.append(&mut verts);
+        self.views.push((src, dst, rgba, rep));
         self.size += 1;
     }
 
     pub fn finish(self, r: &core::Renderer) -> core::VertexBuffer {
-        r.device.create_buffer(self.vertices.as_slice())
+        let mut buf = Vec::<Vertex>::new();
+
+        for (src, dst, rgba, rep) in self.views.iter() {
+            // Relative texture coordinates
+            let rx1: f32 = src.x1 / self.w as f32;
+            let ry1: f32 = src.y1 / self.h as f32;
+            let rx2: f32 = src.x2 / self.w as f32;
+            let ry2: f32 = src.y2 / self.h as f32;
+
+            let c: Rgba8 = (*rgba).into();
+
+            // TODO: Use an index buffer
+            let mut verts = vec![
+                Vertex::new(dst.x1, dst.y1, rx1 * rep.x, ry2 * rep.y, c),
+                Vertex::new(dst.x2, dst.y1, rx2 * rep.x, ry2 * rep.y, c),
+                Vertex::new(dst.x2, dst.y2, rx2 * rep.x, ry1 * rep.y, c),
+                Vertex::new(dst.x1, dst.y1, rx1 * rep.x, ry2 * rep.y, c),
+                Vertex::new(dst.x1, dst.y2, rx1 * rep.x, ry1 * rep.y, c),
+                Vertex::new(dst.x2, dst.y2, rx2 * rep.x, ry1 * rep.y, c),
+            ];
+            buf.append(&mut verts);
+        }
+        r.device.create_buffer(buf.as_slice())
     }
 }
 
