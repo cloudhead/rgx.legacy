@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use crate::core;
-use crate::core::{Binding, BindingType, Rect, Sampler, Set, ShaderStage, Texture, VertexLayout};
+use crate::core::{Binding, BindingType, Rect, Set, ShaderStage, Texture, VertexLayout};
 
 pub use crate::core::Rgba;
 
@@ -271,12 +271,8 @@ impl Pipeline2d {
         Sprite::new(texture).build(&renderer, src, dst, color, rep)
     }
 
-    pub fn sprite_batch<'a>(
-        &self,
-        texture: &'a core::Texture,
-        sampler: &'a core::Sampler,
-    ) -> SpriteBatch<'a> {
-        SpriteBatch::new(texture, sampler)
+    pub fn sprite_batch(&self, w: u32, h: u32) -> SpriteBatch {
+        SpriteBatch::new(w, h)
     }
 }
 
@@ -436,18 +432,18 @@ impl<'a> Sprite<'a> {
     }
 }
 
-pub struct SpriteBatch<'a> {
-    pub texture: &'a Texture,
-    pub sampler: &'a Sampler,
+pub struct SpriteBatch {
+    pub w: u32,
+    pub h: u32,
     pub vertices: Vec<Vertex>,
     pub size: usize,
 }
 
-impl<'a> SpriteBatch<'a> {
-    fn new(t: &'a Texture, s: &'a Sampler) -> Self {
+impl SpriteBatch {
+    fn new(w: u32, h: u32) -> Self {
         Self {
-            texture: t,
-            sampler: s,
+            w,
+            h,
             vertices: Vec::with_capacity(6),
             size: 0,
         }
@@ -455,7 +451,7 @@ impl<'a> SpriteBatch<'a> {
 
     pub fn add(&mut self, src: Rect<f32>, dst: Rect<f32>, rgba: Rgba, rep: Repeat) {
         let c: Rgba8 = rgba.into();
-        let (tw, th) = (self.texture.w, self.texture.h);
+        let (tw, th) = (self.w, self.h);
 
         // Relative texture coordinates
         let rx1: f32 = src.x1 / tw as f32;
