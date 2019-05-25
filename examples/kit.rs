@@ -7,6 +7,7 @@ extern crate rgx;
 
 use rgx::core::*;
 use rgx::kit;
+use rgx::kit::sprite2d::TextureView;
 
 use cgmath::{Matrix4, Vector3};
 
@@ -61,23 +62,25 @@ fn main() {
 
     let binding = pipeline.binding(&renderer, &texture, &sampler);
 
-    let buffer_bg = pipeline.sprite(
-        &renderer,
-        &texture,
+    let view_bg = TextureView::singleton(
+        texture.w,
+        texture.h,
         texture.rect(),
         Rect::new(0., 0., size.width as f32, size.height as f32),
         Rgba::TRANSPARENT,
         kit::Repeat::new(24. * (size.width / size.height) as f32, 24.),
     );
+    let buffer_bg = view_bg.finish(&renderer);
 
-    let buffer_fg = pipeline.sprite(
-        &renderer,
-        &texture,
+    let view_fg = TextureView::singleton(
+        texture.w,
+        texture.h,
         texture.rect(),
-        Rect::new(0.0, 0.0, 160.0, 160.0),
+        Rect::origin(160.0, 160.0),
         Rgba::new(1.0, 1.0, 0.0, 0.5),
         kit::Repeat::default(),
     );
+    let buffer_fg = view_fg.finish(&renderer);
 
     let mut x: f32 = 0.0;
     let mut y: f32 = 0.0;

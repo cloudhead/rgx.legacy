@@ -7,6 +7,7 @@ extern crate rgx;
 
 use rgx::core::*;
 use rgx::kit;
+use rgx::kit::sprite2d::TextureView;
 
 use cgmath::prelude::*;
 use cgmath::Matrix4;
@@ -45,14 +46,15 @@ fn main() {
 
     // Setup sprite
     let binding = pipeline.binding(&renderer, &texture, &sampler);
-    let buffer = pipeline.sprite(
-        &renderer,
-        &texture,
+    let view = TextureView::singleton(
+        texture.w,
+        texture.h,
         texture.rect(),
         Rect::new(0., 0., size.width as f32, size.height as f32),
         Rgba::new(0.5, 0.6, 0.8, 1.0),
         kit::Repeat::new(24. * (size.width / size.height) as f32, 24.),
     );
+    let buffer = view.finish(&renderer);
 
     let mut running = true;
 

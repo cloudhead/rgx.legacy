@@ -9,6 +9,7 @@ use std::collections::vec_deque::VecDeque;
 
 use rgx::core::*;
 use rgx::kit;
+use rgx::kit::sprite2d::TextureView;
 use rgx::kit::*;
 
 use cgmath::prelude::*;
@@ -182,7 +183,7 @@ fn main() {
             .unwrap()
             .to_physical(window.get_hidpi_factor());
 
-        let mut sb = pip.sprite_batch(sprite.w, sprite.h);
+        let mut tv = TextureView::new(sprite.w, sprite.h);
 
         x += delta as f32 / move_speed;
 
@@ -203,7 +204,7 @@ fn main() {
                     Rect::new(pad + x, y, pad + x + sw, y + sh)
                 };
 
-                sb.add(
+                tv.add(
                     anim.val(),
                     rect,
                     Rgba::new(i as f32 / rows as f32, j as f32 / cols as f32, 0.5, 0.75),
@@ -211,9 +212,9 @@ fn main() {
                 );
             }
         }
-        sb.translate(mx, my);
+        tv.translate(mx, my);
 
-        let buffer = sb.finish(&r);
+        let buffer = tv.finish(&r);
 
         ///////////////////////////////////////////////////////////////////////////
         // Create frame

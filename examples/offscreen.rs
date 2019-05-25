@@ -7,6 +7,7 @@ extern crate rgx;
 
 use rgx::core::*;
 use rgx::kit;
+use rgx::kit::sprite2d::TextureView;
 use rgx::kit::*;
 
 use cgmath::prelude::*;
@@ -62,14 +63,15 @@ fn main() {
 
     let w = 50.0;
     let rect = Rect::new(w * 1.0, 0.0, w * 2.0, texture.h as f32);
-    let buffer = offscreen.sprite(
-        &r,
-        &texture,
+    let tv = TextureView::singleton(
+        texture.w,
+        texture.h,
         rect,
-        Rect::new(0., 0., sw as f32, sh as f32),
+        Rect::origin(sw as f32, sh as f32),
         Rgba::TRANSPARENT,
         Repeat::default(),
     );
+    let buffer = tv.finish(&r);
 
     let mut running = true;
 

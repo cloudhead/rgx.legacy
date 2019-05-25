@@ -25,6 +25,13 @@ impl<T> Rect<T> {
         Self { x1, y1, x2, y2 }
     }
 
+    pub fn origin(w: T, h: T) -> Self
+    where
+        T: cgmath::Zero,
+    {
+        Self::new(T::zero(), T::zero(), w, h)
+    }
+
     pub fn translate(&self, x: T, y: T) -> Self
     where
         T: std::ops::Add<Output = T> + Copy,

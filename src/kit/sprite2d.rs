@@ -94,22 +94,6 @@ impl Pipeline {
             .device
             .create_binding_group(&self.pipeline.layout.sets[1], &[texture, sampler])
     }
-
-    pub fn sprite<'a>(
-        &self,
-        renderer: &'a core::Renderer,
-        texture: &'a core::Texture,
-        src: Rect<f32>,
-        dst: Rect<f32>,
-        color: Rgba,
-        rep: Repeat,
-    ) -> core::VertexBuffer {
-        Sprite::new(texture).build(&renderer, src, dst, color, rep)
-    }
-
-    pub fn sprite_batch(&self, w: u32, h: u32) -> SpriteBatch {
-        SpriteBatch::new(w, h)
-    }
 }
 
 impl<'a> core::PipelineLike<'a> for Pipeline {
@@ -183,55 +167,10 @@ impl<'a> core::PipelineLike<'a> for Pipeline {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-/// Sprite
+/// TextureView
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-pub struct Sprite<'a> {
-    pub texture: &'a Texture,
-}
-
-impl<'a> Sprite<'a> {
-    pub fn new(t: &'a Texture) -> Self {
-        Self { texture: t }
-    }
-
-    pub fn build(
-        self,
-        renderer: &core::Renderer,
-        src: Rect<f32>,
-        dst: Rect<f32>,
-        color: Rgba,
-        rep: Repeat,
-    ) -> core::VertexBuffer {
-        let (tw, th) = (self.texture.w, self.texture.h);
-
-        // Relative texture coordinates
-        let rx1: f32 = src.x1 / tw as f32;
-        let ry1: f32 = src.y1 / th as f32;
-        let rx2: f32 = src.x2 / tw as f32;
-        let ry2: f32 = src.y2 / th as f32;
-
-        let c = color.into();
-
-        // TODO: Use an index buffer
-        let verts: Vec<Vertex> = vec![
-            Vertex::new(dst.x1, dst.y1, rx1 * rep.x, ry2 * rep.y, c),
-            Vertex::new(dst.x2, dst.y1, rx2 * rep.x, ry2 * rep.y, c),
-            Vertex::new(dst.x2, dst.y2, rx2 * rep.x, ry1 * rep.y, c),
-            Vertex::new(dst.x1, dst.y1, rx1 * rep.x, ry2 * rep.y, c),
-            Vertex::new(dst.x1, dst.y2, rx1 * rep.x, ry1 * rep.y, c),
-            Vertex::new(dst.x2, dst.y2, rx2 * rep.x, ry1 * rep.y, c),
-        ];
-
-        renderer.device.create_buffer(verts.as_slice())
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-/// SpriteBatch
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-pub struct SpriteBatch {
+pub struct TextureView {
     pub w: u32,
     pub h: u32,
     pub size: usize,
@@ -239,14 +178,27 @@ pub struct SpriteBatch {
     views: Vec<(Rect<f32>, Rect<f32>, Rgba, Repeat)>,
 }
 
-impl SpriteBatch {
-    fn new(w: u32, h: u32) -> Self {
+impl TextureView {
+    pub fn new(w: u32, h: u32) -> Self {
         Self {
             w,
             h,
             views: Vec::new(),
             size: 0,
         }
+    }
+
+    pub fn singleton(
+        w: u32,
+        h: u32,
+        src: Rect<f32>,
+        dst: Rect<f32>,
+        rgba: Rgba,
+        rep: Repeat,
+    ) -> Self {
+        let mut view = TextureView::new(w, h);
+        view.add(src, dst, rgba, rep);
+        view
     }
 
     pub fn add(&mut self, src: Rect<f32>, dst: Rect<f32>, rgba: Rgba, rep: Repeat) {
