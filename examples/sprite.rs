@@ -5,6 +5,8 @@
 extern crate env_logger;
 extern crate rgx;
 
+use std::collections::vec_deque::VecDeque;
+
 use rgx::core::*;
 use rgx::kit;
 use rgx::kit::*;
@@ -32,12 +34,12 @@ fn main() {
 
     let mut r = Renderer::new(&window);
 
-    let size = window
+    let mut win = window
         .get_inner_size()
         .unwrap()
         .to_physical(window.get_hidpi_factor());
 
-    let mut pip: kit::sprite2d::Pipeline = r.pipeline(size.width as u32, size.height as u32);
+    let mut pip: kit::sprite2d::Pipeline = r.pipeline(win.width as u32, win.height as u32);
 
     ///////////////////////////////////////////////////////////////////////////
     // Setup sampler & load texture
@@ -57,19 +59,20 @@ fn main() {
 
     let binding = pip.binding(&r, &sprite, &sampler); // Texture binding
 
-    let w = 50.0;
+    let sprite_w = 50.0;
+    let sprite_h = sprite.h as f32;
 
     let mut anim = {
         let delay = 160.0; // Frame delay
 
         Animation::new(
             &[
-                Rect::new(w * 0.0, 0.0, w * 1.0, sprite.h as f32),
-                Rect::new(w * 1.0, 0.0, w * 2.0, sprite.h as f32),
-                Rect::new(w * 2.0, 0.0, w * 3.0, sprite.h as f32),
-                Rect::new(w * 3.0, 0.0, w * 4.0, sprite.h as f32),
-                Rect::new(w * 4.0, 0.0, w * 5.0, sprite.h as f32),
-                Rect::new(w * 5.0, 0.0, w * 6.0, sprite.h as f32),
+                Rect::new(sprite_w * 0.0, 0.0, sprite_w * 1.0, sprite_h),
+                Rect::new(sprite_w * 1.0, 0.0, sprite_w * 2.0, sprite_h),
+                Rect::new(sprite_w * 2.0, 0.0, sprite_w * 3.0, sprite_h),
+                Rect::new(sprite_w * 3.0, 0.0, sprite_w * 4.0, sprite_h),
+                Rect::new(sprite_w * 4.0, 0.0, sprite_w * 5.0, sprite_h),
+                Rect::new(sprite_w * 5.0, 0.0, sprite_w * 6.0, sprite_h),
             ],
             delay,
         )
@@ -78,9 +81,12 @@ fn main() {
     let move_speed = 8.0;
     let mut x = 0.0;
 
+    let frame_batch = 120;
     let mut delta: f64;
     let mut last_frame = Instant::now();
-    let mut fps: Vec<f64> = Vec::with_capacity(1024);
+    let mut fts: VecDeque<f64> = VecDeque::with_capacity(frame_batch);
+    let mut average_ft: f64;
+    let mut frames_total = 0;
 
     let mut running = true;
 
@@ -96,6 +102,11 @@ fn main() {
 
     let mut mx: f32 = 0.;
     let mut my: f32 = 0.;
+
+    let mut scale = 1.0;
+    let (mut sw, mut sh);
+    let mut rows: u32;
+    let mut cols: u32;
 
     while running {
         events_loop.poll_events(|event| {
@@ -131,8 +142,9 @@ fn main() {
                         running = false;
                     }
                     WindowEvent::Resized(size) => {
-                        let physical = size.to_physical(window.get_hidpi_factor());
-                        let (w, h) = (physical.width as u32, physical.height as u32);
+                        win = size.to_physical(window.get_hidpi_factor());
+
+                        let (w, h) = (win.width as u32, win.height as u32);
 
                         pip.resize(w, h);
                         r.resize(w, h);
@@ -141,6 +153,11 @@ fn main() {
                 }
             }
         });
+
+        sw = sprite_w as f32 * scale;
+        sh = sprite_h as f32 * scale;
+        rows = (win.height as f32 / sh) as u32;
+        cols = (win.width as f32 / (sw / 2.0)) as u32;
 
         {
             let now = Instant::now();
@@ -153,7 +170,8 @@ fn main() {
         ///////////////////////////////////////////////////////////////////////////
 
         anim.step(delta as f64);
-        fps.push(delta as f64);
+        fts.push_front(delta as f64);
+        fts.truncate(frame_batch);
 
         ///////////////////////////////////////////////////////////////////////////
         // Prepare sprite batch
@@ -165,10 +183,6 @@ fn main() {
             .to_physical(window.get_hidpi_factor());
 
         let mut sb = pip.sprite_batch(sprite.w, sprite.h);
-        let (sw, sh) = (w * 2.0, sprite.h as f32 * 2.0);
-
-        let rows = (win.height as f32 / sh) as u32;
-        let cols = (win.width as f32 / (sw / 2.0)) as u32;
 
         x += delta as f32 / move_speed;
 
@@ -221,11 +235,20 @@ fn main() {
 
         pass.apply_pipeline(&pip);
         pass.draw(&buffer, &binding);
-    }
 
-    println!("frames rendered: {}", fps.len());
-    println!(
-        "average frame time: {:.2}",
-        fps.iter().sum::<f64>() / fps.len() as f64
-    );
+        if frames_total >= frame_batch && frames_total % frame_batch == 0 {
+            average_ft = fts.iter().sum::<f64>() / fts.len() as f64;
+
+            println!("sprites/frame: {}", rows * cols);
+            println!("time/frame:    {:.2}ms\n", average_ft);
+
+            if average_ft as u32 <= 16 && scale > 0.1 {
+                scale -= 0.1;
+                x = 0.;
+            } else {
+                break;
+            }
+        }
+        frames_total += 1;
+    }
 }
