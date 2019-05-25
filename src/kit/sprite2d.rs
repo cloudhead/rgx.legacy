@@ -116,6 +116,35 @@ impl<'a> core::PipelineLike<'a> for Pipeline {
     type PrepareContext = Matrix4<f32>;
     type Uniforms = self::Uniforms;
 
+    fn description() -> core::PipelineDescription<'a> {
+        core::PipelineDescription {
+            vertex_layout: &[
+                core::VertexFormat::Float2,
+                core::VertexFormat::Float2,
+                core::VertexFormat::UByte4,
+            ],
+            pipeline_layout: &[
+                Set(&[Binding {
+                    binding: BindingType::UniformBuffer,
+                    stage: ShaderStage::Vertex,
+                }]),
+                Set(&[
+                    Binding {
+                        binding: BindingType::SampledTexture,
+                        stage: ShaderStage::Fragment,
+                    },
+                    Binding {
+                        binding: BindingType::Sampler,
+                        stage: ShaderStage::Fragment,
+                    },
+                ]),
+            ],
+            // TODO: Use `env("CARGO_MANIFEST_DIR")`
+            vertex_shader: include_str!("data/sprite.vert"),
+            fragment_shader: include_str!("data/sprite.frag"),
+        }
+    }
+
     fn setup(pipeline: core::Pipeline, dev: &core::Device, w: u32, h: u32) -> Self {
         let ortho = kit::ortho(w, h);
         let transform = Matrix4::identity();
@@ -152,33 +181,6 @@ impl<'a> core::PipelineLike<'a> for Pipeline {
         ))
     }
 }
-
-pub const SPRITE2D: core::PipelineDescription = core::PipelineDescription {
-    vertex_layout: &[
-        core::VertexFormat::Float2,
-        core::VertexFormat::Float2,
-        core::VertexFormat::UByte4,
-    ],
-    pipeline_layout: &[
-        Set(&[Binding {
-            binding: BindingType::UniformBuffer,
-            stage: ShaderStage::Vertex,
-        }]),
-        Set(&[
-            Binding {
-                binding: BindingType::SampledTexture,
-                stage: ShaderStage::Fragment,
-            },
-            Binding {
-                binding: BindingType::Sampler,
-                stage: ShaderStage::Fragment,
-            },
-        ]),
-    ],
-    // TODO: Use `env("CARGO_MANIFEST_DIR")`
-    vertex_shader: include_str!("data/sprite.vert"),
-    fragment_shader: include_str!("data/sprite.frag"),
-};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// Sprite

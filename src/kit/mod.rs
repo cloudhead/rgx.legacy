@@ -149,6 +149,31 @@ impl<'a> core::PipelineLike<'a> for PipelinePost {
     type PrepareContext = core::Rgba;
     type Uniforms = core::Rgba;
 
+    fn description() -> core::PipelineDescription<'a> {
+        core::PipelineDescription {
+            vertex_layout: &[core::VertexFormat::Float2, core::VertexFormat::Float2],
+            pipeline_layout: &[
+                Set(&[Binding {
+                    binding: BindingType::UniformBuffer,
+                    stage: ShaderStage::Vertex,
+                }]),
+                Set(&[
+                    Binding {
+                        binding: BindingType::SampledTexture,
+                        stage: ShaderStage::Fragment,
+                    },
+                    Binding {
+                        binding: BindingType::Sampler,
+                        stage: ShaderStage::Fragment,
+                    },
+                ]),
+            ],
+            // TODO: Use `env("CARGO_MANIFEST_DIR")`
+            vertex_shader: include_str!("data/post.vert"),
+            fragment_shader: include_str!("data/post.frag"),
+        }
+    }
+
     fn setup(pipeline: core::Pipeline, dev: &core::Device, width: u32, height: u32) -> Self {
         let color = core::Rgba::new(0.0, 0.0, 0.0, 0.0);
         let buf = dev.create_uniform_buffer(&[color]);
@@ -178,29 +203,6 @@ impl<'a> core::PipelineLike<'a> for PipelinePost {
         Some((&self.buf, vec![ctx]))
     }
 }
-
-pub const FRAMEBUFFER: core::PipelineDescription = core::PipelineDescription {
-    vertex_layout: &[core::VertexFormat::Float2, core::VertexFormat::Float2],
-    pipeline_layout: &[
-        Set(&[Binding {
-            binding: BindingType::UniformBuffer,
-            stage: ShaderStage::Vertex,
-        }]),
-        Set(&[
-            Binding {
-                binding: BindingType::SampledTexture,
-                stage: ShaderStage::Fragment,
-            },
-            Binding {
-                binding: BindingType::Sampler,
-                stage: ShaderStage::Fragment,
-            },
-        ]),
-    ],
-    // TODO: Use `env("CARGO_MANIFEST_DIR")`
-    vertex_shader: include_str!("data/post.vert"),
-    fragment_shader: include_str!("data/post.frag"),
-};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// RenderBatch

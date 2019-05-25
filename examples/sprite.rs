@@ -37,11 +37,7 @@ fn main() {
         .unwrap()
         .to_physical(window.get_hidpi_factor());
 
-    let mut pip: kit::sprite2d::Pipeline = r.pipeline(
-        kit::sprite2d::SPRITE2D,
-        size.width as u32,
-        size.height as u32,
-    );
+    let mut pip: kit::sprite2d::Pipeline = r.pipeline(size.width as u32, size.height as u32);
 
     ///////////////////////////////////////////////////////////////////////////
     // Setup sampler & load texture

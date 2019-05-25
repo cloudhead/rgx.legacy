@@ -26,11 +26,8 @@ fn main() {
     let mut renderer = Renderer::new(&window);
 
     // Setup render pipeline
-    let pipeline: kit::sprite2d::Pipeline = renderer.pipeline(
-        kit::sprite2d::SPRITE2D,
-        size.width as u32,
-        size.height as u32,
-    );
+    let pipeline: kit::sprite2d::Pipeline =
+        renderer.pipeline(size.width as u32, size.height as u32);
 
     // Setup texture & sampler
     #[rustfmt::skip]

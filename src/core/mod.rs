@@ -414,6 +414,15 @@ impl<'a> PipelineLike<'a> for Pipeline {
     type PrepareContext = ();
     type Uniforms = ();
 
+    fn description() -> PipelineDescription<'a> {
+        PipelineDescription {
+            vertex_layout: &[],
+            pipeline_layout: &[],
+            vertex_shader: "",
+            fragment_shader: "",
+        }
+    }
+
     fn setup(pipeline: Self, _dev: &Device, _w: u32, _h: u32) -> Self {
         pipeline
     }
@@ -439,6 +448,7 @@ pub trait PipelineLike<'a> {
     type PrepareContext;
     type Uniforms: Copy + 'static;
 
+    fn description() -> PipelineDescription<'a>;
     fn setup(pip: Pipeline, dev: &Device, w: u32, h: u32) -> Self;
     fn apply(&self, pass: &mut Pass);
     fn resize(&mut self, w: u32, h: u32);
@@ -635,10 +645,11 @@ impl Renderer {
         self.device.create_sampler(min_filter, mag_filter)
     }
 
-    pub fn pipeline<T>(&self, desc: PipelineDescription, w: u32, h: u32) -> T
+    pub fn pipeline<T>(&self, w: u32, h: u32) -> T
     where
         T: PipelineLike<'static>,
     {
+        let desc = T::description();
         let pip_layout = self.device.create_pipeline_layout(desc.pipeline_layout);
         let vertex_layout = VertexLayout::from(desc.vertex_layout);
         let vs = self
