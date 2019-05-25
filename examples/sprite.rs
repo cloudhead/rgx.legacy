@@ -94,6 +94,9 @@ fn main() {
     // Render loop
     ///////////////////////////////////////////////////////////////////////////
 
+    let mut mx: f32 = 0.;
+    let mut my: f32 = 0.;
+
     while running {
         events_loop.poll_events(|event| {
             if let Event::WindowEvent { event, .. } = event {
@@ -101,14 +104,29 @@ fn main() {
                     WindowEvent::KeyboardInput {
                         input:
                             KeyboardInput {
-                                virtual_keycode: Some(VirtualKeyCode::Escape),
+                                virtual_keycode: Some(key),
                                 state: ElementState::Pressed,
                                 ..
                             },
                         ..
-                    } => {
-                        running = false;
-                    }
+                    } => match key {
+                        VirtualKeyCode::Escape => {
+                            running = false;
+                        }
+                        VirtualKeyCode::Up => {
+                            my += 24.;
+                        }
+                        VirtualKeyCode::Down => {
+                            my -= 24.;
+                        }
+                        VirtualKeyCode::Left => {
+                            mx -= 24.;
+                        }
+                        VirtualKeyCode::Right => {
+                            mx += 24.;
+                        }
+                        _ => {}
+                    },
                     WindowEvent::CloseRequested => {
                         running = false;
                     }
@@ -179,6 +197,7 @@ fn main() {
                 );
             }
         }
+        sb.translate(mx, my);
 
         let buffer = sb.finish(&r);
 
