@@ -5,6 +5,7 @@
 extern crate env_logger;
 extern crate rgx;
 
+use rgx::core;
 use rgx::core::*;
 use rgx::kit;
 use rgx::kit::sprite2d::TextureView;
@@ -18,6 +19,102 @@ use image::ImageDecoder;
 use wgpu::winit::{
     ElementState, Event, EventsLoop, KeyboardInput, VirtualKeyCode, Window, WindowEvent,
 };
+
+pub struct Framebuffer {
+    target: core::Framebuffer,
+    vertices: core::VertexBuffer,
+}
+
+impl Framebuffer {
+    fn new(w: u32, h: u32, r: &core::Renderer) -> Self {
+        #[rustfmt::skip]
+        let vertices: &[f32] = &[
+            -1.0, -1.0, 0.0, 1.0,
+             1.0, -1.0, 1.0, 1.0,
+             1.0,  1.0, 1.0, 0.0,
+            -1.0, -1.0, 0.0, 1.0,
+            -1.0,  1.0, 0.0, 0.0,
+             1.0,  1.0, 1.0, 0.0,
+        ];
+
+        Self {
+            target: r.framebuffer(w, h),
+            vertices: r.vertexbuffer(vertices),
+        }
+    }
+}
+
+pub struct FramebufferPipeline {
+    pipeline: core::Pipeline,
+    bindings: core::BindingGroup,
+    buf: core::UniformBuffer,
+}
+
+impl<'a> core::PipelineLike<'a> for FramebufferPipeline {
+    type PrepareContext = core::Rgba;
+    type Uniforms = core::Rgba;
+
+    fn description() -> core::PipelineDescription<'a> {
+        core::PipelineDescription {
+            vertex_layout: &[core::VertexFormat::Float2, core::VertexFormat::Float2],
+            pipeline_layout: &[
+                Set(&[Binding {
+                    binding: BindingType::UniformBuffer,
+                    stage: ShaderStage::Vertex,
+                }]),
+                Set(&[
+                    Binding {
+                        binding: BindingType::SampledTexture,
+                        stage: ShaderStage::Fragment,
+                    },
+                    Binding {
+                        binding: BindingType::Sampler,
+                        stage: ShaderStage::Fragment,
+                    },
+                ]),
+            ],
+            // TODO: Use `env("CARGO_MANIFEST_DIR")`
+            vertex_shader: include_str!("data/framebuffer.vert"),
+            fragment_shader: include_str!("data/framebuffer.frag"),
+        }
+    }
+
+    fn setup(pipeline: core::Pipeline, dev: &core::Device, _w: u32, _h: u32) -> Self {
+        let buf = dev.create_uniform_buffer(&[core::Rgba::TRANSPARENT]);
+        let bindings = dev.create_binding_group(&pipeline.layout.sets[0], &[&buf]);
+
+        FramebufferPipeline {
+            pipeline,
+            buf,
+            bindings,
+        }
+    }
+
+    fn apply(&self, pass: &mut core::Pass) {
+        pass.apply_pipeline(&self.pipeline);
+        pass.apply_binding(&self.bindings, &[0]);
+    }
+
+    fn prepare(&'a self, color: core::Rgba) -> Option<(&'a core::UniformBuffer, Vec<core::Rgba>)> {
+        Some((&self.buf, vec![color]))
+    }
+
+    fn resize(&mut self, _w: u32, _h: u32) {}
+}
+
+impl FramebufferPipeline {
+    pub fn binding(
+        &self,
+        renderer: &core::Renderer,
+        framebuffer: &Framebuffer,
+        sampler: &core::Sampler,
+    ) -> core::BindingGroup {
+        renderer.device.create_binding_group(
+            &self.pipeline.layout.sets[1],
+            &[&framebuffer.target, sampler],
+        )
+    }
+}
 
 fn main() {
     env_logger::init();
@@ -38,9 +135,8 @@ fn main() {
 
     let (sw, sh) = (size.width as u32, size.height as u32);
     let mut offscreen: kit::sprite2d::Pipeline = r.pipeline(sw, sh);
-    let mut onscreen: kit::PipelinePost = r.pipeline(sw, sh);
-
-    let framebuffer = onscreen.framebuffer(&r);
+    let mut onscreen: FramebufferPipeline = r.pipeline(sw, sh);
+    let framebuffer = Framebuffer::new(sw, sh, &r);
 
     ///////////////////////////////////////////////////////////////////////////
     // Setup sampler & load texture
@@ -142,7 +238,7 @@ fn main() {
         {
             let pass = &mut frame.pass(Rgba::TRANSPARENT);
             pass.apply_pipeline(&onscreen);
-            pass.draw(&framebuffer, &onscreen_binding);
+            pass.draw(&framebuffer.vertices, &onscreen_binding);
         }
     }
 }
