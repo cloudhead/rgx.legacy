@@ -218,6 +218,17 @@ pub struct Texture {
     pub h: u32,
 }
 
+impl Texture {
+    pub fn rect(&self) -> Rect<f32> {
+        Rect {
+            x1: 0.0,
+            y1: 0.0,
+            x2: self.w as f32,
+            y2: self.h as f32,
+        }
+    }
+}
+
 impl Bind for Texture {
     fn binding(&self, index: u32) -> wgpu::Binding {
         wgpu::Binding {
