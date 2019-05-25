@@ -429,7 +429,7 @@ pub struct Pipeline {
     pub vertex_layout: VertexLayout,
 }
 
-impl<'a> PipelineLike<'a> for Pipeline {
+impl<'a> AbstractPipeline<'a> for Pipeline {
     type PrepareContext = ();
     type Uniforms = ();
 
@@ -463,7 +463,7 @@ pub struct PipelineLayout {
     pub sets: Vec<BindingGroupLayout>,
 }
 
-pub trait PipelineLike<'a> {
+pub trait AbstractPipeline<'a> {
     type PrepareContext;
     type Uniforms: Copy + 'static;
 
@@ -516,7 +516,7 @@ impl<'a> Frame<'a> {
 
     pub fn prepare<T>(&mut self, pip: &'a T, p: T::PrepareContext)
     where
-        T: PipelineLike<'a>,
+        T: AbstractPipeline<'a>,
     {
         if let Some((buf, unifs)) = pip.prepare(p) {
             self.update_uniform_buffer(buf, unifs.as_slice());
@@ -584,7 +584,7 @@ impl<'a> Pass<'a> {
     }
     pub fn apply_pipeline<T>(&mut self, pipeline: &T)
     where
-        T: PipelineLike<'a>,
+        T: AbstractPipeline<'a>,
     {
         pipeline.apply(self);
     }
@@ -666,7 +666,7 @@ impl Renderer {
 
     pub fn pipeline<T>(&self, w: u32, h: u32) -> T
     where
-        T: PipelineLike<'static>,
+        T: AbstractPipeline<'static>,
     {
         let desc = T::description();
         let pip_layout = self.device.create_pipeline_layout(desc.pipeline_layout);

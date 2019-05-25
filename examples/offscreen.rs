@@ -50,7 +50,7 @@ pub struct FramebufferPipeline {
     buf: core::UniformBuffer,
 }
 
-impl<'a> core::PipelineLike<'a> for FramebufferPipeline {
+impl<'a> core::AbstractPipeline<'a> for FramebufferPipeline {
     type PrepareContext = core::Rgba;
     type Uniforms = core::Rgba;
 

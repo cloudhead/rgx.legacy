@@ -96,7 +96,7 @@ impl Pipeline {
     }
 }
 
-impl<'a> core::PipelineLike<'a> for Pipeline {
+impl<'a> core::AbstractPipeline<'a> for Pipeline {
     type PrepareContext = Matrix4<f32>;
     type Uniforms = self::Uniforms;
 
