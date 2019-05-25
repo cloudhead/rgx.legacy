@@ -24,6 +24,10 @@ Usage
 -----
 See [examples/helloworld.rs](examples/helloworld.rs) for a simple usage example.
 
+Support
+-------
+Support this project by sending ₿ (Bitcoin) to `1HMfp9QFXmVUarNPmHxa1rhecZXyAPiPZd`.
+
 Copyright
 ---------
 (c) 2019 Alexis Sellier\
