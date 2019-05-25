@@ -4,7 +4,7 @@ use cgmath::prelude::*;
 use cgmath::{Matrix4, Vector2};
 
 use crate::core;
-use crate::core::{Binding, BindingType, Rect, Rgba, Set, ShaderStage, Texture};
+use crate::core::{Binding, BindingType, Rect, Rgba, Set, ShaderStage};
 
 use crate::kit;
 use crate::kit::Repeat;

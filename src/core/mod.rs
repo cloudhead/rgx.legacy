@@ -32,6 +32,18 @@ impl<T> Rect<T> {
         Self::new(T::zero(), T::zero(), w, h)
     }
 
+    pub fn scale(&self, x: T, y: T) -> Self
+    where
+        T: std::ops::Mul<Output = T> + Copy,
+    {
+        Self {
+            x1: self.x1,
+            y1: self.y1,
+            x2: self.x2 * x,
+            y2: self.y2 * y,
+        }
+    }
+
     pub fn translate(&self, x: T, y: T) -> Self
     where
         T: std::ops::Add<Output = T> + Copy,
