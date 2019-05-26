@@ -3,6 +3,8 @@
 use std::ops::Range;
 use std::{mem, ptr};
 
+use cgmath::Vector2;
+
 ///////////////////////////////////////////////////////////////////////////////
 /// Rect
 ///////////////////////////////////////////////////////////////////////////////
@@ -41,13 +43,29 @@ impl<T> Rect<T> {
 
     pub fn translate(&self, x: T, y: T) -> Self
     where
-        T: std::ops::Add<Output = T> + Copy,
+        T: std::ops::Add<Output = T> + std::ops::Sub<Output = T> + Copy,
     {
         Self {
-            x1: self.x1 + x,
-            y1: self.y1 + y,
-            x2: self.x2 + x,
-            y2: self.y2 + y,
+            x1: x,
+            y1: y,
+            x2: x + (self.x2 - self.x1),
+            y2: y + (self.y2 - self.y1),
+        }
+    }
+}
+
+impl<T> std::ops::Add<Vector2<T>> for Rect<T>
+where
+    T: std::ops::Add<Output = T> + Copy,
+{
+    type Output = Self;
+
+    fn add(self, vec: Vector2<T>) -> Self {
+        Self {
+            x1: self.x1 + vec.x,
+            y1: self.y1 + vec.y,
+            x2: self.x2 + vec.x,
+            y2: self.y2 + vec.y,
         }
     }
 }
