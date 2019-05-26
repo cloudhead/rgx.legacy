@@ -671,12 +671,14 @@ impl Renderer {
         let desc = T::description();
         let pip_layout = self.device.create_pipeline_layout(desc.pipeline_layout);
         let vertex_layout = VertexLayout::from(desc.vertex_layout);
-        let vs = self
-            .device
-            .create_shader("shader.vert", desc.vertex_shader, ShaderStage::Vertex);
-        let fs =
+        let vs =
             self.device
-                .create_shader("shader.frag", desc.fragment_shader, ShaderStage::Fragment);
+                .create_shader("vertex shader", desc.vertex_shader, ShaderStage::Vertex);
+        let fs = self.device.create_shader(
+            "fragment shader",
+            desc.fragment_shader,
+            ShaderStage::Fragment,
+        );
 
         T::setup(
             self.device
