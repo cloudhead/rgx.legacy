@@ -7,6 +7,7 @@ pub mod sprite2d;
 
 use cgmath::{Matrix4, Ortho};
 
+#[derive(Clone)]
 pub struct Repeat {
     pub x: f32,
     pub y: f32,
@@ -24,12 +25,14 @@ impl Default for Repeat {
     }
 }
 
+#[derive(Clone)]
 pub enum AnimationState {
     Playing(u32, f64),
     Paused(u32, f64),
     Stopped,
 }
 
+#[derive(Clone)]
 pub struct Animation<T> {
     pub state: AnimationState,
     pub delay: f64,

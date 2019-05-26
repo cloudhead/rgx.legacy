@@ -170,6 +170,7 @@ impl<'a> core::AbstractPipeline<'a> for Pipeline {
 /// TextureView
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#[derive(Clone)]
 pub struct TextureView {
     pub w: u32,
     pub h: u32,

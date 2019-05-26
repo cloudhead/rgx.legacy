@@ -9,7 +9,7 @@ use cgmath::Vector2;
 /// Rect
 ///////////////////////////////////////////////////////////////////////////////
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Rect<T> {
     pub x1: T,
     pub y1: T,
@@ -82,7 +82,7 @@ pub trait Draw {
 /// Rgba
 ///////////////////////////////////////////////////////////////////////////////
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct Rgba {
     pub r: f32,
     pub g: f32,
@@ -126,7 +126,7 @@ pub struct Shader {
     module: wgpu::ShaderModule,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ShaderStage {
     Vertex,
     Fragment,
