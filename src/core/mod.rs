@@ -1,11 +1,6 @@
 #![deny(clippy::all, clippy::use_self)]
 
-extern crate cgmath;
-extern crate shaderc;
-extern crate wgpu;
-
 use std::ops::Range;
-
 use std::{mem, ptr};
 
 ///////////////////////////////////////////////////////////////////////////////
