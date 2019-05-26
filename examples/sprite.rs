@@ -2,9 +2,6 @@
 #![allow(clippy::unreadable_literal)]
 #![allow(clippy::single_match)]
 
-extern crate env_logger;
-extern crate rgx;
-
 use std::collections::vec_deque::VecDeque;
 
 use rgx::core::*;
