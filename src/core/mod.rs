@@ -9,7 +9,7 @@ use cgmath::Vector2;
 /// Rect
 ///////////////////////////////////////////////////////////////////////////////
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Rect<T> {
     pub x1: T,
     pub y1: T,
