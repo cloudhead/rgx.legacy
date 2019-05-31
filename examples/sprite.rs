@@ -209,7 +209,7 @@ fn main() {
                 );
             }
         }
-        tv.translate(mx, my);
+        tv.offset(mx, my);
 
         let buffer = tv.finish(&r);
 

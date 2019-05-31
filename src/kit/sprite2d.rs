@@ -197,7 +197,7 @@ impl TextureView {
         rgba: Rgba,
         rep: Repeat,
     ) -> Self {
-        let mut view = TextureView::new(w, h);
+        let mut view = Self::new(w, h);
         view.add(src, dst, rgba, rep);
         view
     }
@@ -233,9 +233,9 @@ impl TextureView {
         r.device.create_buffer(buf.as_slice())
     }
 
-    pub fn translate(&mut self, x: f32, y: f32) {
+    pub fn offset(&mut self, x: f32, y: f32) {
         for (_, dst, _, _) in self.views.iter_mut() {
-            *dst = dst.translate(x, y);
+            *dst = *dst + Vector2::new(x, y);
         }
     }
 }
