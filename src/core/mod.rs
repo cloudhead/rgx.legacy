@@ -556,7 +556,7 @@ impl<'a> Frame<'a> {
         Pass::begin(&mut self.encoder, &self.texture.view, clear)
     }
 
-    fn update_uniform_buffer<T>(&mut self, u: &UniformBuffer, buf: &[T])
+    pub fn update_uniform_buffer<T>(&mut self, u: &UniformBuffer, buf: &[T])
     where
         T: 'static + Copy,
     {
@@ -613,7 +613,7 @@ impl<'a> Pass<'a> {
     {
         pipeline.apply(self);
     }
-    pub fn apply_binding(&mut self, group: &BindingGroup, offsets: &[u32]) {
+    pub fn apply_binding(&mut self, group: &BindingGroup, offsets: &[u64]) {
         self.wgpu
             .set_bind_group(group.set_index, &group.wgpu, offsets);
     }
@@ -677,6 +677,17 @@ impl Renderer {
         T: 'static + Copy,
     {
         self.device.create_buffer(verts)
+    }
+
+    pub fn uniform_buffer<T>(&self, buf: &[T]) -> UniformBuffer
+    where
+        T: 'static + Copy,
+    {
+        self.device.create_uniform_buffer(buf)
+    }
+
+    pub fn binding_group(&self, layout: &BindingGroupLayout, binds: &[&dyn Bind]) -> BindingGroup {
+        self.device.create_binding_group(layout, binds)
     }
 
     pub fn sampler(&self, min_filter: Filter, mag_filter: Filter) -> Sampler {

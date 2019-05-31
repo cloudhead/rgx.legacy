@@ -1,27 +1,28 @@
 #[derive(Clone)]
-struct NonEmpty<T>(T, Vec<T>);
+pub struct NonEmpty<T>(T, Vec<T>);
 
+#[allow(clippy::len_without_is_empty)]
 impl<T> NonEmpty<T>
 where
     T: Clone,
 {
-    fn singleton(e: T) -> Self {
+    pub fn singleton(e: T) -> Self {
         NonEmpty(e, Vec::new())
     }
 
-    fn push(&mut self, e: T) {
+    pub fn push(&mut self, e: T) {
         self.1.push(e)
     }
 
-    fn pop(&mut self) -> Option<T> {
+    pub fn pop(&mut self) -> Option<T> {
         self.1.pop()
     }
 
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.1.len() + 1
     }
 
-    fn last(&self) -> &T {
+    pub fn last(&self) -> &T {
         match self.1.last() {
             None => &self.0,
             Some(e) => e,
