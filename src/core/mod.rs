@@ -22,6 +22,18 @@ impl<T> Rect<T> {
         Self { x1, y1, x2, y2 }
     }
 
+    pub fn empty() -> Self
+    where
+        T: cgmath::Zero,
+    {
+        Self {
+            x1: T::zero(),
+            x2: T::zero(),
+            y1: T::zero(),
+            y2: T::zero(),
+        }
+    }
+
     pub fn origin(w: T, h: T) -> Self
     where
         T: cgmath::Zero,
