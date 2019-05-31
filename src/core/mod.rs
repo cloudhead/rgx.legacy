@@ -634,12 +634,6 @@ impl<'a> Pass<'a> {
     }
 }
 
-pub fn frame<'a>(swap_chain: &'a mut wgpu::SwapChain, device: &'a mut Device) -> Frame<'a> {
-    let texture = swap_chain.get_next_texture();
-    let encoder = device.create_command_encoder();
-    Frame::new(encoder, texture, device)
-}
-
 fn swap_chain_descriptor(width: u32, height: u32) -> wgpu::SwapChainDescriptor {
     wgpu::SwapChainDescriptor {
         usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
@@ -721,7 +715,9 @@ impl Renderer {
     }
 
     pub fn frame(&mut self) -> Frame {
-        frame(&mut self.swap_chain, &mut self.device)
+        let texture = self.swap_chain.get_next_texture();
+        let encoder = self.device.create_command_encoder();
+        Frame::new(encoder, texture, &mut self.device)
     }
 
     pub fn prepare<T: Resource>(&mut self, resources: &[T]) {

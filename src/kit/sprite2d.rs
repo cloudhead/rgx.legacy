@@ -24,7 +24,7 @@ pub struct Uniforms {
 ///////////////////////////////////////////////////////////////////////////
 
 #[derive(Copy, Clone)]
-struct Rgba8 {
+pub struct Rgba8 {
     r: u8,
     g: u8,
     b: u8,
@@ -32,11 +32,41 @@ struct Rgba8 {
 }
 
 impl Rgba8 {
-    const TRANSPARENT: Self = Self {
+    pub const TRANSPARENT: Self = Self {
         r: 0,
         g: 0,
         b: 0,
         a: 0,
+    };
+    pub const WHITE: Self = Self {
+        r: 0xff,
+        g: 0xff,
+        b: 0xff,
+        a: 0xff,
+    };
+    pub const BLACK: Self = Self {
+        r: 0,
+        g: 0,
+        b: 0,
+        a: 0xff,
+    };
+    pub const RED: Self = Self {
+        r: 0xff,
+        g: 0,
+        b: 0,
+        a: 0xff,
+    };
+    pub const GREEN: Self = Self {
+        r: 0,
+        g: 0xff,
+        b: 0,
+        a: 0xff,
+    };
+    pub const BLUE: Self = Self {
+        r: 0,
+        g: 0,
+        b: 0xff,
+        a: 0xff,
     };
 }
 
