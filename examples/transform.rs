@@ -136,18 +136,12 @@ fn main() {
         pipeline.frame(&mut renderer, Rgba::TRANSPARENT, |f| {
             f.draw(&buffer_bg, &binding);
 
-            f.transform(
-                Matrix4::from_translation(Vector3::new(base + offset, base, 0.)),
-                |f| {
-                    f.transform(
-                        Matrix4::from_translation(Vector3::new(base + offset, base, 0.)),
-                        |f| {
-                            f.draw(&buffer_fg, &binding);
-                        },
-                    );
+            f.translate(base + offset, base, |f| {
+                f.translate(base + offset, base, |f| {
                     f.draw(&buffer_fg, &binding);
-                },
-            );
+                });
+                f.draw(&buffer_fg, &binding);
+            });
             if offset > 160.0 {
                 f.transform(
                     Matrix4::from_translation(Vector3::new(base + offset, base * 2., 0.))
