@@ -140,6 +140,7 @@ impl Line {
 }
 
 impl From<Shape> for Vec<Vertex> {
+    // TODO: (perf) This function is fairly CPU-inefficient.
     fn from(shape: Shape) -> Self {
         match shape {
             Shape::Line(l, width, color) => {
@@ -166,7 +167,7 @@ impl From<Shape> for Vec<Vertex> {
                     Line::new(r.x1 + width, r.y2 - w, r.x2, r.y2 - w), // Top
                     Line::new(r.x1, r.y1 + w, r.x2 - width, r.y1 + w), // Bottom
                 ];
-                let mut verts = Self::new();
+                let mut verts = Self::with_capacity(lines.len() * 6);
                 for l in lines {
                     let mut vs = Shape::Line(l, width, color).into();
                     verts.append(&mut vs);
