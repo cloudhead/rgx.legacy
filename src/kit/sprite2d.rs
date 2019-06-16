@@ -1,7 +1,7 @@
 #![deny(clippy::all, clippy::use_self)]
 
 use cgmath::prelude::*;
-use cgmath::{Matrix4, Vector2};
+use cgmath::{Matrix4, Vector2, Vector3};
 
 use crate::core;
 use crate::core::{Binding, BindingType, Rect, Rgba, Set, ShaderStage};
@@ -241,6 +241,20 @@ impl<'a> Frame<'a> {
         self.transforms.push(self.transforms.last() * t);
         inner(self);
         self.transforms.pop();
+    }
+
+    pub fn translate<F>(&mut self, x: f32, y: f32, inner: F)
+    where
+        F: FnOnce(&mut Self),
+    {
+        self.transform(Matrix4::from_translation(Vector3::new(x, y, 0.)), inner);
+    }
+
+    pub fn scale<F>(&mut self, s: f32, inner: F)
+    where
+        F: FnOnce(&mut Self),
+    {
+        self.transform(Matrix4::from_scale(s), inner);
     }
 }
 
