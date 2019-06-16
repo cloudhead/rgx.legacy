@@ -41,6 +41,9 @@ fn main() {
     let mut rows: u32;
     let mut cols: u32;
 
+    // Cursor position.
+    let (mut mx, mut my) = (0., 0.);
+
     while running {
         events_loop.poll_events(|event| {
             if let Event::WindowEvent { event, .. } = event {
@@ -59,6 +62,10 @@ fn main() {
                         }
                         _ => {}
                     },
+                    WindowEvent::CursorMoved { position, .. } => {
+                        mx = position.x;
+                        my = position.y;
+                    }
                     WindowEvent::CloseRequested => {
                         running = false;
                     }
@@ -76,13 +83,14 @@ fn main() {
         });
 
         rows = (win.height as f32 / sh) as u32;
-        cols = (win.width as f32 / (sw / 2.0)) as u32;
+        cols = (win.width as f32 / (sw / 2.0) / 2.0) as u32;
 
         ///////////////////////////////////////////////////////////////////////////
         // Prepare shape view
         ///////////////////////////////////////////////////////////////////////////
 
         let mut sv = ShapeView::new();
+        let (dx, dy) = ((mx / win.width) as f32, (my / win.height) as f32);
 
         for i in 0..rows {
             let y = i as f32 * sh;
@@ -90,17 +98,27 @@ fn main() {
             for j in 0..cols {
                 let x = j as f32 * sw - sw / 2.0;
 
-                let shape = if i * j % 2 == 0 {
-                    Shape::Line(
-                        Line::new(x, y, x + sw, y + sh),
-                        1.0,
-                        Rgba::new(i as f32 / rows as f32, j as f32 / cols as f32, 0.5, 0.75),
-                    )
-                } else {
+                let shape = if j * i % 2 != 0 {
                     Shape::Rectangle(
                         Rect::new(x, y, x + sw, y + sh),
                         2.0,
-                        Rgba::new(i as f32 / rows as f32, j as f32 / cols as f32, 0.5, 0.75),
+                        Rgba::new(
+                            i as f32 / rows as f32 + dy,
+                            j as f32 / cols as f32 - dx,
+                            0.5,
+                            0.75,
+                        ),
+                    )
+                } else {
+                    Shape::Line(
+                        Line::new(x, y, x + sw, y + sh),
+                        1.0,
+                        Rgba::new(
+                            i as f32 / rows as f32 + dy,
+                            j as f32 / cols as f32 - dx,
+                            0.5,
+                            0.75,
+                        ),
                     )
                 };
                 sv.add(shape);
