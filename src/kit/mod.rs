@@ -116,8 +116,8 @@ pub fn ortho(w: u32, h: u32) -> Matrix4<f32> {
     Ortho::<f32> {
         left: 0.0,
         right: w as f32,
-        bottom: 0.0,
-        top: h as f32,
+        bottom: h as f32,
+        top: 0.0,
         near: -1.0,
         far: 1.0,
     }
