@@ -64,6 +64,18 @@ impl<T> Rect<T> {
             y2: y + (self.y2 - self.y1),
         }
     }
+
+    pub fn is_empty(&self) -> bool
+        where T: PartialEq
+    {
+        self.x1 == self.x2 && self.y1 == self.y2
+    }
+
+    pub fn is_zero(&self) -> bool
+        where T: cgmath::Zero
+    {
+        self.x1.is_zero() && self.x2.is_zero() && self.y1.is_zero() && self.y2.is_zero()
+    }
 }
 
 impl<T> std::ops::Add<Vector2<T>> for Rect<T>
