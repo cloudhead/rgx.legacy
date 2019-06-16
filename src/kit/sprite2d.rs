@@ -1,4 +1,5 @@
 #![deny(clippy::all, clippy::use_self)]
+#![allow(clippy::new_without_default)]
 
 use cgmath::prelude::*;
 use cgmath::{Matrix4, Vector2, Vector3};
@@ -7,7 +8,7 @@ use crate::core;
 use crate::core::{Binding, BindingType, Rect, Rgba, Set, ShaderStage};
 
 use crate::kit;
-use crate::kit::Repeat;
+use crate::kit::{AlignedBuffer, Model, Repeat, Rgba8};
 
 use crate::nonempty::NonEmpty;
 
@@ -19,68 +20,6 @@ use crate::nonempty::NonEmpty;
 pub struct Uniforms {
     pub ortho: Matrix4<f32>,
     pub transform: Matrix4<f32>,
-}
-
-///////////////////////////////////////////////////////////////////////////
-// Rgba8
-///////////////////////////////////////////////////////////////////////////
-
-#[derive(Copy, Clone)]
-pub struct Rgba8 {
-    r: u8,
-    g: u8,
-    b: u8,
-    a: u8,
-}
-
-impl Rgba8 {
-    pub const TRANSPARENT: Self = Self {
-        r: 0,
-        g: 0,
-        b: 0,
-        a: 0,
-    };
-    pub const WHITE: Self = Self {
-        r: 0xff,
-        g: 0xff,
-        b: 0xff,
-        a: 0xff,
-    };
-    pub const BLACK: Self = Self {
-        r: 0,
-        g: 0,
-        b: 0,
-        a: 0xff,
-    };
-    pub const RED: Self = Self {
-        r: 0xff,
-        g: 0,
-        b: 0,
-        a: 0xff,
-    };
-    pub const GREEN: Self = Self {
-        r: 0,
-        g: 0xff,
-        b: 0,
-        a: 0xff,
-    };
-    pub const BLUE: Self = Self {
-        r: 0,
-        g: 0,
-        b: 0xff,
-        a: 0xff,
-    };
-}
-
-impl From<Rgba> for Rgba8 {
-    fn from(rgba: Rgba) -> Self {
-        Self {
-            r: (rgba.r * 255.0).round() as u8,
-            g: (rgba.g * 255.0).round() as u8,
-            b: (rgba.b * 255.0).round() as u8,
-            a: (rgba.a * 255.0).round() as u8,
-        }
-    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -172,50 +111,6 @@ impl Pipeline {
 
             i += AlignedBuffer::ALIGNMENT;
         }
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-#[derive(Copy, Clone)]
-struct AlignedBuffer {
-    data: Matrix4<f32>,
-    padding: [u8; AlignedBuffer::PAD],
-}
-
-impl AlignedBuffer {
-    const ALIGNMENT: u64 = 256;
-    const PAD: usize = Self::ALIGNMENT as usize - std::mem::size_of::<Matrix4<f32>>();
-}
-
-struct Model {
-    buf: core::UniformBuffer,
-    binding: core::BindingGroup,
-    size: usize,
-}
-
-impl Model {
-    fn new(
-        layout: &core::BindingGroupLayout,
-        transforms: &[Matrix4<f32>],
-        dev: &core::Device,
-    ) -> Self {
-        let aligned = Self::aligned(transforms);
-        let buf = dev.create_uniform_buffer(aligned.as_slice());
-        let binding = dev.create_binding_group(&layout, &[&buf]);
-        let size = transforms.len();
-        Self { buf, binding, size }
-    }
-
-    fn aligned(transforms: &[Matrix4<f32>]) -> Vec<AlignedBuffer> {
-        let mut aligned = Vec::with_capacity(transforms.len());
-        for t in transforms {
-            aligned.push(AlignedBuffer {
-                data: *t,
-                padding: [0u8; AlignedBuffer::PAD],
-            });
-        }
-        aligned
     }
 }
 

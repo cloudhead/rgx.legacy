@@ -1,8 +1,10 @@
 #![allow(dead_code)]
 use crate::core::VertexLayout;
 
+pub use crate::core;
 pub use crate::core::Rgba;
 
+pub mod shape2d;
 pub mod sprite2d;
 
 use cgmath::{Matrix4, Ortho};
@@ -24,6 +26,72 @@ impl Default for Repeat {
         Repeat { x: 1.0, y: 1.0 }
     }
 }
+
+///////////////////////////////////////////////////////////////////////////
+// Rgba8
+///////////////////////////////////////////////////////////////////////////
+
+#[derive(Copy, Clone)]
+pub struct Rgba8 {
+    r: u8,
+    g: u8,
+    b: u8,
+    a: u8,
+}
+
+impl Rgba8 {
+    pub const TRANSPARENT: Self = Self {
+        r: 0,
+        g: 0,
+        b: 0,
+        a: 0,
+    };
+    pub const WHITE: Self = Self {
+        r: 0xff,
+        g: 0xff,
+        b: 0xff,
+        a: 0xff,
+    };
+    pub const BLACK: Self = Self {
+        r: 0,
+        g: 0,
+        b: 0,
+        a: 0xff,
+    };
+    pub const RED: Self = Self {
+        r: 0xff,
+        g: 0,
+        b: 0,
+        a: 0xff,
+    };
+    pub const GREEN: Self = Self {
+        r: 0,
+        g: 0xff,
+        b: 0,
+        a: 0xff,
+    };
+    pub const BLUE: Self = Self {
+        r: 0,
+        g: 0,
+        b: 0xff,
+        a: 0xff,
+    };
+}
+
+impl From<Rgba> for Rgba8 {
+    fn from(rgba: Rgba) -> Self {
+        Self {
+            r: (rgba.r * 255.0).round() as u8,
+            g: (rgba.g * 255.0).round() as u8,
+            b: (rgba.b * 255.0).round() as u8,
+            a: (rgba.a * 255.0).round() as u8,
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Animation
+///////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone)]
 pub enum AnimationState {
@@ -122,4 +190,48 @@ pub fn ortho(w: u32, h: u32) -> Matrix4<f32> {
         far: 1.0,
     }
     .into()
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+#[derive(Copy, Clone)]
+struct AlignedBuffer {
+    data: Matrix4<f32>,
+    padding: [u8; AlignedBuffer::PAD],
+}
+
+impl AlignedBuffer {
+    const ALIGNMENT: u64 = 256;
+    const PAD: usize = Self::ALIGNMENT as usize - std::mem::size_of::<Matrix4<f32>>();
+}
+
+struct Model {
+    buf: core::UniformBuffer,
+    binding: core::BindingGroup,
+    size: usize,
+}
+
+impl Model {
+    fn new(
+        layout: &core::BindingGroupLayout,
+        transforms: &[Matrix4<f32>],
+        dev: &core::Device,
+    ) -> Self {
+        let aligned = Self::aligned(transforms);
+        let buf = dev.create_uniform_buffer(aligned.as_slice());
+        let binding = dev.create_binding_group(&layout, &[&buf]);
+        let size = transforms.len();
+        Self { buf, binding, size }
+    }
+
+    fn aligned(transforms: &[Matrix4<f32>]) -> Vec<AlignedBuffer> {
+        let mut aligned = Vec::with_capacity(transforms.len());
+        for t in transforms {
+            aligned.push(AlignedBuffer {
+                data: *t,
+                padding: [0u8; AlignedBuffer::PAD],
+            });
+        }
+        aligned
+    }
 }
