@@ -4,7 +4,7 @@
 
 use rgx::core::*;
 use rgx::kit;
-use rgx::kit::shape2d::{Line, Shape, ShapeView};
+use rgx::kit::shape2d::{Fill, Line, Shape, ShapeView, Stroke};
 
 use cgmath::prelude::*;
 use cgmath::Matrix4;
@@ -101,23 +101,28 @@ fn main() {
                 let shape = if j * i % 2 != 0 {
                     Shape::Rectangle(
                         Rect::new(x, y, x + sw, y + sh),
-                        2.0,
-                        Rgba::new(
-                            i as f32 / rows as f32 + dy,
-                            j as f32 / cols as f32 - dx,
-                            0.5,
-                            0.75,
+                        Stroke::new(
+                            2.0,
+                            Rgba::new(
+                                i as f32 / rows as f32 + dy,
+                                j as f32 / cols as f32 - dx,
+                                0.5,
+                                1.0,
+                            ),
                         ),
+                        Fill::Solid(Rgba::new(1.0, dx, dy, 0.1)),
                     )
                 } else {
                     Shape::Line(
                         Line::new(x, y, x + sw, y + sh),
-                        1.0,
-                        Rgba::new(
-                            i as f32 / rows as f32 + dy,
-                            j as f32 / cols as f32 - dx,
-                            0.5,
-                            0.75,
+                        Stroke::new(
+                            1.0,
+                            Rgba::new(
+                                i as f32 / rows as f32 + dy,
+                                j as f32 / cols as f32 - dx,
+                                0.5,
+                                0.75,
+                            ),
                         ),
                     )
                 };

@@ -120,9 +120,32 @@ impl<'a> core::AbstractPipeline<'a> for Pipeline {
 /// Shapes
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+pub struct Stroke {
+    width: f32,
+    color: Rgba,
+}
+
+impl Stroke {
+    const NONE: Self = Self {
+        width: 0.,
+        color: Rgba::TRANSPARENT,
+    };
+
+    pub fn new(width: f32, color: Rgba) -> Self {
+        Self { width, color }
+    }
+}
+
+pub enum Fill {
+    Empty(),
+    Solid(Rgba),
+    Gradient(Rgba, Rgba),
+}
+
 pub enum Shape {
-    Line(Line, f32, Rgba),
-    Rectangle(Rect<f32>, f32, Rgba),
+    Line(Line, Stroke),
+    Rectangle(Rect<f32>, Stroke, Fill),
+    Circle(f32, Stroke, Fill),
 }
 
 pub struct Line {
@@ -143,7 +166,7 @@ impl From<Shape> for Vec<Vertex> {
     // TODO: (perf) This function is fairly CPU-inefficient.
     fn from(shape: Shape) -> Self {
         match shape {
-            Shape::Line(l, width, color) => {
+            Shape::Line(l, Stroke { width, color }) => {
                 let v = (l.p2 - l.p1).normalize();
 
                 let wx = width / 2.0 * v.y;
@@ -159,20 +182,44 @@ impl From<Shape> for Vec<Vertex> {
                     Vertex::new(l.p2.x + wx, l.p2.y - wy, c),
                 ]
             }
-            Shape::Rectangle(r, width, color) => {
+            Shape::Rectangle(r, Stroke { width, color }, fill) => {
                 let w = width / 2.0;
-                let lines = vec![
+                let stroke = vec![
                     Line::new(r.x1 + w, r.y1 + width, r.x1 + w, r.y2), // Left
                     Line::new(r.x2 - w, r.y1, r.x2 - w, r.y2 - width), // Right
                     Line::new(r.x1 + width, r.y2 - w, r.x2, r.y2 - w), // Top
                     Line::new(r.x1, r.y1 + w, r.x2 - width, r.y1 + w), // Bottom
                 ];
-                let mut verts = Self::with_capacity(lines.len() * 6);
-                for l in lines {
-                    let mut vs = Shape::Line(l, width, color).into();
+                let mut verts = Self::with_capacity(stroke.len() * 6);
+                for l in stroke {
+                    let mut vs = Shape::Line(l, Stroke::new(width, color)).into();
                     verts.append(&mut vs);
                 }
+
+                match fill {
+                    Fill::Solid(color) => {
+                        let c = color.into();
+                        let inner =
+                            Rect::new(r.x1 + width, r.y1 + width, r.x2 - width, r.y2 - width);
+                        let mut vs = vec![
+                            Vertex::new(inner.x1, inner.y1, c),
+                            Vertex::new(inner.x2, inner.y1, c),
+                            Vertex::new(inner.x2, inner.y2, c),
+                            Vertex::new(inner.x1, inner.y1, c),
+                            Vertex::new(inner.x1, inner.y2, c),
+                            Vertex::new(inner.x2, inner.y2, c),
+                        ];
+                        verts.append(&mut vs);
+                    }
+                    Fill::Gradient(_, _) => {
+                        unimplemented!();
+                    }
+                    Fill::Empty() => {}
+                }
                 verts
+            }
+            Shape::Circle(radius, stroke, _) => {
+                unimplemented!();
             }
         }
     }
