@@ -205,6 +205,7 @@ fn main() {
                     anim.val(),
                     rect,
                     Rgba::new(i as f32 / rows as f32, j as f32 / cols as f32, 0.5, 0.75),
+                    1.0,
                     Repeat::default(),
                 );
             }

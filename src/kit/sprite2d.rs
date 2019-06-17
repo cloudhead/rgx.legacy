@@ -26,19 +26,22 @@ pub struct Uniforms {
 // Vertex
 ///////////////////////////////////////////////////////////////////////////
 
+#[repr(C)]
 #[derive(Copy, Clone)]
 pub struct Vertex {
     position: Vector2<f32>,
     uv: Vector2<f32>,
     color: Rgba8,
+    opacity: f32,
 }
 
 impl Vertex {
-    fn new(x: f32, y: f32, u: f32, v: f32, color: Rgba8) -> Self {
+    fn new(x: f32, y: f32, u: f32, v: f32, color: Rgba8, opacity: f32) -> Self {
         Self {
             position: Vector2::new(x, y),
             uv: Vector2::new(u, v),
             color,
+            opacity,
         }
     }
 }
@@ -165,6 +168,7 @@ impl<'a> core::AbstractPipeline<'a> for Pipeline {
                 core::VertexFormat::Float2,
                 core::VertexFormat::Float2,
                 core::VertexFormat::UByte4,
+                core::VertexFormat::Float,
             ],
             pipeline_layout: &[
                 Set(&[Binding {
@@ -242,7 +246,7 @@ pub struct TextureView {
     pub h: u32,
     pub size: usize,
 
-    views: Vec<(Rect<f32>, Rect<f32>, Rgba, Repeat)>,
+    views: Vec<(Rect<f32>, Rect<f32>, Rgba, f32, Repeat)>,
 }
 
 impl TextureView {
@@ -261,22 +265,23 @@ impl TextureView {
         src: Rect<f32>,
         dst: Rect<f32>,
         rgba: Rgba,
+        opa: f32,
         rep: Repeat,
     ) -> Self {
         let mut view = Self::new(w, h);
-        view.add(src, dst, rgba, rep);
+        view.add(src, dst, rgba, opa, rep);
         view
     }
 
-    pub fn add(&mut self, src: Rect<f32>, dst: Rect<f32>, rgba: Rgba, rep: Repeat) {
-        self.views.push((src, dst, rgba, rep));
+    pub fn add(&mut self, src: Rect<f32>, dst: Rect<f32>, rgba: Rgba, opacity: f32, rep: Repeat) {
+        self.views.push((src, dst, rgba, opacity, rep));
         self.size += 1;
     }
 
     pub fn finish(self, r: &core::Renderer) -> core::VertexBuffer {
         let mut buf = Vec::<Vertex>::new();
 
-        for (src, dst, rgba, rep) in self.views.iter() {
+        for (src, dst, rgba, o, rep) in self.views.iter() {
             // Relative texture coordinates
             let rx1: f32 = src.x1 / self.w as f32;
             let ry1: f32 = src.y1 / self.h as f32;
@@ -287,12 +292,12 @@ impl TextureView {
 
             // TODO: Use an index buffer
             let mut verts = vec![
-                Vertex::new(dst.x1, dst.y1, rx1 * rep.x, ry2 * rep.y, c),
-                Vertex::new(dst.x2, dst.y1, rx2 * rep.x, ry2 * rep.y, c),
-                Vertex::new(dst.x2, dst.y2, rx2 * rep.x, ry1 * rep.y, c),
-                Vertex::new(dst.x1, dst.y1, rx1 * rep.x, ry2 * rep.y, c),
-                Vertex::new(dst.x1, dst.y2, rx1 * rep.x, ry1 * rep.y, c),
-                Vertex::new(dst.x2, dst.y2, rx2 * rep.x, ry1 * rep.y, c),
+                Vertex::new(dst.x1, dst.y1, rx1 * rep.x, ry2 * rep.y, c, *o),
+                Vertex::new(dst.x2, dst.y1, rx2 * rep.x, ry2 * rep.y, c, *o),
+                Vertex::new(dst.x2, dst.y2, rx2 * rep.x, ry1 * rep.y, c, *o),
+                Vertex::new(dst.x1, dst.y1, rx1 * rep.x, ry2 * rep.y, c, *o),
+                Vertex::new(dst.x1, dst.y2, rx1 * rep.x, ry1 * rep.y, c, *o),
+                Vertex::new(dst.x2, dst.y2, rx2 * rep.x, ry1 * rep.y, c, *o),
             ];
             buf.append(&mut verts);
         }
@@ -300,7 +305,7 @@ impl TextureView {
     }
 
     pub fn offset(&mut self, x: f32, y: f32) {
-        for (_, dst, _, _) in self.views.iter_mut() {
+        for (_, dst, _, _, _) in self.views.iter_mut() {
             *dst = *dst + Vector2::new(x, y);
         }
     }
