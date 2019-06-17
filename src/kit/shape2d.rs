@@ -1,6 +1,8 @@
 #![deny(clippy::all, clippy::use_self)]
 #![allow(clippy::new_without_default)]
 
+use std::f32;
+
 use cgmath::prelude::*;
 use cgmath::{Matrix4, Vector2};
 
@@ -120,6 +122,7 @@ impl<'a> core::AbstractPipeline<'a> for Pipeline {
 /// Shapes
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#[derive(PartialEq)]
 pub struct Stroke {
     width: f32,
     color: Rgba,
@@ -145,7 +148,7 @@ pub enum Fill {
 pub enum Shape {
     Line(Line, Stroke),
     Rectangle(Rect<f32>, Stroke, Fill),
-    Circle(f32, Stroke, Fill),
+    Circle(Vector2<f32>, f32, u32, Stroke, Fill),
 }
 
 pub struct Line {
@@ -218,11 +221,76 @@ impl From<Shape> for Vec<Vertex> {
                 }
                 verts
             }
-            Shape::Circle(radius, stroke, _) => {
-                unimplemented!();
+            Shape::Circle(position, radius, sides, stroke, fill) => {
+                let mut verts = Self::new();
+                let outer = self::circle_vertices(position, radius, sides, stroke.color.into());
+                let inner = if stroke != Stroke::NONE {
+                    // If there is a stroke, the inner circle is smaller.
+                    let inner = self::circle_vertices(
+                        position,
+                        radius - stroke.width,
+                        sides,
+                        stroke.color.into(),
+                    );
+
+                    for i in 0..inner.len() - 1 {
+                        verts.push(inner[i]);
+                        verts.push(outer[i]);
+                        verts.push(outer[i + 1]);
+                        verts.push(inner[i]);
+                        verts.push(outer[i + 1]);
+                        verts.push(inner[i + 1]);
+                    }
+                    inner
+                } else {
+                    // If there is no stroke, the inner and outer circles are equal.
+                    outer
+                };
+
+                match fill {
+                    Fill::Solid(color) => {
+                        let c = color.into();
+                        let center = Vertex::new(position.x, position.y, c);
+                        for i in 0..sides as usize {
+                            verts.push(center);
+                            verts.push(Vertex::new(inner[i].position.x, inner[i].position.y, c));
+                            verts.push(Vertex::new(
+                                inner[i + 1].position.x,
+                                inner[i + 1].position.y,
+                                c,
+                            ));
+                        }
+                        verts.push(center);
+                        verts.push(Vertex::new(
+                            inner[inner.len() - 1].position.x,
+                            inner[inner.len() - 1].position.y,
+                            c,
+                        ));
+                        verts.push(Vertex::new(inner[0].position.x, inner[0].position.y, c));
+                    }
+                    Fill::Gradient(_, _) => {
+                        unimplemented!();
+                    }
+                    Fill::Empty() => {}
+                }
+                verts
             }
         }
     }
+}
+
+fn circle_vertices(position: Vector2<f32>, radius: f32, sides: u32, c: Rgba8) -> Vec<Vertex> {
+    let mut verts = Vec::new();
+
+    for i in 0..=sides as usize {
+        let angle: f32 = i as f32 * ((2. * f32::consts::PI) / sides as f32);
+        verts.push(Vertex::new(
+            position.x + radius * angle.cos(),
+            position.y + radius * angle.sin(),
+            c,
+        ));
+    }
+    verts
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

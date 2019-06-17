@@ -66,15 +66,78 @@ impl<T> Rect<T> {
     }
 
     pub fn is_empty(&self) -> bool
-        where T: PartialEq
+    where
+        T: PartialEq,
     {
         self.x1 == self.x2 && self.y1 == self.y2
     }
 
     pub fn is_zero(&self) -> bool
-        where T: cgmath::Zero
+    where
+        T: cgmath::Zero,
     {
         self.x1.is_zero() && self.x2.is_zero() && self.y1.is_zero() && self.y2.is_zero()
+    }
+
+    pub fn width(&self) -> T
+    where
+        T: Copy + PartialOrd + std::ops::Sub<Output = T> + std::ops::Neg<Output = T> + cgmath::Zero,
+    {
+        let w = self.x2 - self.x1;
+        if w < T::zero() {
+            -w
+        } else {
+            w
+        }
+    }
+
+    pub fn height(&self) -> T
+    where
+        T: Copy + PartialOrd + std::ops::Sub<Output = T> + std::ops::Neg<Output = T> + cgmath::Zero,
+    {
+        let h = self.y2 - self.y1;
+        if h < T::zero() {
+            -h
+        } else {
+            h
+        }
+    }
+
+    pub fn center(&self) -> Vector2<T>
+    where
+        T: std::ops::Div<Output = T>
+            + Copy
+            + From<i16>
+            + PartialOrd
+            + cgmath::Zero
+            + std::ops::Neg<Output = T>
+            + std::ops::Sub<Output = T>,
+    {
+        // TODO: Should be normalized for inverted rectangles.
+        Vector2::new(
+            self.x1 + self.width() / 2.into(),
+            self.y1 + self.height() / 2.into(),
+        )
+    }
+
+    pub fn radius(&self) -> T
+    where
+        T: std::ops::Div<Output = T>
+            + Copy
+            + From<i16>
+            + PartialOrd
+            + cgmath::Zero
+            + std::ops::Neg<Output = T>
+            + std::ops::Sub<Output = T>,
+    {
+        let w = self.width();
+        let h = self.height();
+
+        if w > h {
+            w / 2.into()
+        } else {
+            h / 2.into()
+        }
     }
 }
 

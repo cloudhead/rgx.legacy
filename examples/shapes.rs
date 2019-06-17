@@ -7,7 +7,7 @@ use rgx::kit;
 use rgx::kit::shape2d::{Fill, Line, Shape, ShapeView, Stroke};
 
 use cgmath::prelude::*;
-use cgmath::Matrix4;
+use cgmath::{Matrix4, Vector2};
 
 use wgpu::winit::{
     ElementState, Event, EventsLoop, KeyboardInput, VirtualKeyCode, Window, WindowEvent,
@@ -98,22 +98,27 @@ fn main() {
             for j in 0..cols {
                 let x = j as f32 * sw - sw / 2.0;
 
-                let shape = if j * i % 2 != 0 {
-                    Shape::Rectangle(
+                let c1 = i as f32 / rows as f32 + dy;
+                let c2 = j as f32 / cols as f32 - dx;
+
+                if j % 2 == 0 && i % 2 == 0 {
+                    sv.add(Shape::Circle(
+                        Vector2::new(x + sw / 2., y + sw / 2.),
+                        sw * 3.,
+                        32,
+                        Stroke::new(1.0, Rgba::new(0.5, c2, c1, 0.75)),
+                        Fill::Empty(),
+                    ));
+                }
+
+                if j * i % 2 != 0 {
+                    sv.add(Shape::Rectangle(
                         Rect::new(x, y, x + sw, y + sh),
-                        Stroke::new(
-                            2.0,
-                            Rgba::new(
-                                i as f32 / rows as f32 + dy,
-                                j as f32 / cols as f32 - dx,
-                                0.5,
-                                1.0,
-                            ),
-                        ),
+                        Stroke::new(1.0, Rgba::new(c1, c2, 0.5, 1.0)),
                         Fill::Solid(Rgba::new(1.0, dx, dy, 0.1)),
-                    )
+                    ));
                 } else {
-                    Shape::Line(
+                    sv.add(Shape::Line(
                         Line::new(x, y, x + sw, y + sh),
                         Stroke::new(
                             1.0,
@@ -124,9 +129,8 @@ fn main() {
                                 0.75,
                             ),
                         ),
-                    )
+                    ));
                 };
-                sv.add(shape);
             }
         }
 
