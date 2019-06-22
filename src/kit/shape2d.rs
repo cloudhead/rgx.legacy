@@ -4,7 +4,9 @@
 use std::f32;
 
 use cgmath::prelude::*;
-use cgmath::{Matrix4, Vector2};
+use cgmath::{Matrix4, Point2, Vector2};
+
+use arrayvec::ArrayVec;
 
 use crate::core;
 use crate::core::{Binding, BindingType, Rect, Rgba, Set, ShaderStage};
@@ -240,27 +242,21 @@ impl Shape {
                 let mut verts = if stroke != Stroke::NONE {
                     // If there is a stroke, the outer circle is larger.
                     let outer = Self::circle(position, radius, sides);
-
                     let rgba8 = stroke.color.into();
-                    let inner_verts: Vec<Vertex> = inner
-                        .iter()
-                        .map(|(x, y)| Vertex::new(*x, *y, rgba8))
-                        .collect();
-                    let outer_verts: Vec<Vertex> = outer
-                        .iter()
-                        .map(|(x, y)| Vertex::new(*x, *y, rgba8))
-                        .collect();
 
                     let n = inner.len() - 1;
                     let mut vs = Vec::with_capacity(n * 6);
                     for i in 0..n {
+                        let (i0, i1) = (inner[i], inner[i + 1]);
+                        let (o0, o1) = (outer[i], outer[i + 1]);
+
                         vs.extend_from_slice(&[
-                            inner_verts[i],
-                            outer_verts[i],
-                            outer_verts[i + 1],
-                            inner_verts[i],
-                            outer_verts[i + 1],
-                            inner_verts[i + 1],
+                            Vertex::new(i0.x, i0.y, rgba8),
+                            Vertex::new(o0.x, o0.y, rgba8),
+                            Vertex::new(o1.x, o1.y, rgba8),
+                            Vertex::new(i0.x, i0.y, rgba8),
+                            Vertex::new(o1.x, o1.y, rgba8),
+                            Vertex::new(i1.x, i1.y, rgba8),
                         ]);
                     }
                     vs
@@ -272,10 +268,8 @@ impl Shape {
                     Fill::Solid(color) => {
                         let rgba8 = color.into();
                         let center = Vertex::new(position.x, position.y, rgba8);
-                        let inner_verts: Vec<Vertex> = inner
-                            .iter()
-                            .map(|(x, y)| Vertex::new(*x, *y, rgba8))
-                            .collect();
+                        let inner_verts: Vec<Vertex> =
+                            inner.iter().map(|p| Vertex::new(p.x, p.y, rgba8)).collect();
                         for i in 0..sides as usize {
                             verts.extend_from_slice(&[center, inner_verts[i], inner_verts[i + 1]]);
                         }
@@ -295,12 +289,12 @@ impl Shape {
         }
     }
 
-    fn circle(position: Vector2<f32>, radius: f32, sides: u32) -> Vec<(f32, f32)> {
+    fn circle(position: Vector2<f32>, radius: f32, sides: u32) -> Vec<Point2<f32>> {
         let mut verts = Vec::with_capacity(sides as usize + 1);
 
         for i in 0..=sides as usize {
             let angle: f32 = i as f32 * ((2. * f32::consts::PI) / sides as f32);
-            verts.push((
+            verts.push(Point2::new(
                 position.x + radius * angle.cos(),
                 position.y + radius * angle.sin(),
             ));
