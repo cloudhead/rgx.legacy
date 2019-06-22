@@ -18,6 +18,7 @@ use crate::kit::{Model, Rgba8};
 // Uniforms
 ///////////////////////////////////////////////////////////////////////////
 
+#[repr(C)]
 #[derive(Copy, Clone)]
 pub struct Uniforms {
     pub ortho: Matrix4<f32>,
@@ -28,6 +29,7 @@ pub struct Uniforms {
 // Vertex
 ///////////////////////////////////////////////////////////////////////////
 
+#[repr(C)]
 #[derive(Copy, Clone)]
 pub struct Vertex {
     position: Vector2<f32>,

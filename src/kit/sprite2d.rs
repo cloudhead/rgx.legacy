@@ -16,6 +16,7 @@ use crate::nonempty::NonEmpty;
 // Uniforms
 ///////////////////////////////////////////////////////////////////////////
 
+#[repr(C)]
 #[derive(Copy, Clone)]
 pub struct Uniforms {
     pub ortho: Matrix4<f32>,
