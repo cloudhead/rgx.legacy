@@ -35,12 +35,17 @@ pub struct Vertex {
 }
 
 impl Vertex {
-    fn new(x: f32, y: f32, color: Rgba8) -> Self {
+    const fn new(x: f32, y: f32, color: Rgba8) -> Self {
         Self {
             position: Vector2::new(x, y),
             color,
         }
     }
+}
+
+#[inline]
+pub const fn vertex(x: f32, y: f32, color: Rgba8) -> Vertex {
+    Vertex::new(x, y, color)
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -165,12 +170,12 @@ impl Shape {
                 let rgba8 = color.into();
 
                 vec![
-                    Vertex::new(l.p1.x - wx, l.p1.y + wy, rgba8),
-                    Vertex::new(l.p1.x + wx, l.p1.y - wy, rgba8),
-                    Vertex::new(l.p2.x - wx, l.p2.y + wy, rgba8),
-                    Vertex::new(l.p2.x - wx, l.p2.y + wy, rgba8),
-                    Vertex::new(l.p1.x + wx, l.p1.y - wy, rgba8),
-                    Vertex::new(l.p2.x + wx, l.p2.y - wy, rgba8),
+                    vertex(l.p1.x - wx, l.p1.y + wy, rgba8),
+                    vertex(l.p1.x + wx, l.p1.y - wy, rgba8),
+                    vertex(l.p2.x - wx, l.p2.y + wy, rgba8),
+                    vertex(l.p2.x - wx, l.p2.y + wy, rgba8),
+                    vertex(l.p1.x + wx, l.p1.y - wy, rgba8),
+                    vertex(l.p2.x + wx, l.p2.y - wy, rgba8),
                 ]
             }
             Shape::Rectangle(r, stroke, fill) => {
@@ -184,33 +189,33 @@ impl Shape {
 
                     vec![
                         // Bottom
-                        Vertex::new(outer.x1, outer.y1, rgba8),
-                        Vertex::new(outer.x2, outer.y1, rgba8),
-                        Vertex::new(inner.x1, inner.y1, rgba8),
-                        Vertex::new(inner.x1, inner.y1, rgba8),
-                        Vertex::new(outer.x2, outer.y1, rgba8),
-                        Vertex::new(inner.x2, inner.y1, rgba8),
+                        vertex(outer.x1, outer.y1, rgba8),
+                        vertex(outer.x2, outer.y1, rgba8),
+                        vertex(inner.x1, inner.y1, rgba8),
+                        vertex(inner.x1, inner.y1, rgba8),
+                        vertex(outer.x2, outer.y1, rgba8),
+                        vertex(inner.x2, inner.y1, rgba8),
                         // Left
-                        Vertex::new(outer.x1, outer.y1, rgba8),
-                        Vertex::new(inner.x1, inner.y1, rgba8),
-                        Vertex::new(outer.x1, outer.y2, rgba8),
-                        Vertex::new(outer.x1, outer.y2, rgba8),
-                        Vertex::new(inner.x1, inner.y1, rgba8),
-                        Vertex::new(inner.x1, inner.y2, rgba8),
+                        vertex(outer.x1, outer.y1, rgba8),
+                        vertex(inner.x1, inner.y1, rgba8),
+                        vertex(outer.x1, outer.y2, rgba8),
+                        vertex(outer.x1, outer.y2, rgba8),
+                        vertex(inner.x1, inner.y1, rgba8),
+                        vertex(inner.x1, inner.y2, rgba8),
                         // Right
-                        Vertex::new(inner.x2, inner.y1, rgba8),
-                        Vertex::new(outer.x2, outer.y1, rgba8),
-                        Vertex::new(outer.x2, outer.y2, rgba8),
-                        Vertex::new(inner.x2, inner.y1, rgba8),
-                        Vertex::new(inner.x2, inner.y2, rgba8),
-                        Vertex::new(outer.x2, outer.y2, rgba8),
+                        vertex(inner.x2, inner.y1, rgba8),
+                        vertex(outer.x2, outer.y1, rgba8),
+                        vertex(outer.x2, outer.y2, rgba8),
+                        vertex(inner.x2, inner.y1, rgba8),
+                        vertex(inner.x2, inner.y2, rgba8),
+                        vertex(outer.x2, outer.y2, rgba8),
                         // Top
-                        Vertex::new(outer.x1, outer.y2, rgba8),
-                        Vertex::new(outer.x2, outer.y2, rgba8),
-                        Vertex::new(inner.x1, inner.y2, rgba8),
-                        Vertex::new(inner.x1, inner.y2, rgba8),
-                        Vertex::new(outer.x2, outer.y2, rgba8),
-                        Vertex::new(inner.x2, inner.y2, rgba8),
+                        vertex(outer.x1, outer.y2, rgba8),
+                        vertex(outer.x2, outer.y2, rgba8),
+                        vertex(inner.x1, inner.y2, rgba8),
+                        vertex(inner.x1, inner.y2, rgba8),
+                        vertex(outer.x2, outer.y2, rgba8),
+                        vertex(inner.x2, inner.y2, rgba8),
                     ]
                 } else {
                     Vec::with_capacity(6)
@@ -221,12 +226,12 @@ impl Shape {
                         let rgba8 = color.into();
 
                         verts.extend_from_slice(&[
-                            Vertex::new(inner.x1, inner.y1, rgba8),
-                            Vertex::new(inner.x2, inner.y1, rgba8),
-                            Vertex::new(inner.x2, inner.y2, rgba8),
-                            Vertex::new(inner.x1, inner.y1, rgba8),
-                            Vertex::new(inner.x1, inner.y2, rgba8),
-                            Vertex::new(inner.x2, inner.y2, rgba8),
+                            vertex(inner.x1, inner.y1, rgba8),
+                            vertex(inner.x2, inner.y1, rgba8),
+                            vertex(inner.x2, inner.y2, rgba8),
+                            vertex(inner.x1, inner.y1, rgba8),
+                            vertex(inner.x1, inner.y2, rgba8),
+                            vertex(inner.x2, inner.y2, rgba8),
                         ]);
                     }
                     Fill::Gradient(_, _) => {
@@ -251,12 +256,12 @@ impl Shape {
                         let (o0, o1) = (outer[i], outer[i + 1]);
 
                         vs.extend_from_slice(&[
-                            Vertex::new(i0.x, i0.y, rgba8),
-                            Vertex::new(o0.x, o0.y, rgba8),
-                            Vertex::new(o1.x, o1.y, rgba8),
-                            Vertex::new(i0.x, i0.y, rgba8),
-                            Vertex::new(o1.x, o1.y, rgba8),
-                            Vertex::new(i1.x, i1.y, rgba8),
+                            vertex(i0.x, i0.y, rgba8),
+                            vertex(o0.x, o0.y, rgba8),
+                            vertex(o1.x, o1.y, rgba8),
+                            vertex(i0.x, i0.y, rgba8),
+                            vertex(o1.x, o1.y, rgba8),
+                            vertex(i1.x, i1.y, rgba8),
                         ]);
                     }
                     vs
