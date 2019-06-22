@@ -104,7 +104,7 @@ fn main() {
                 if j % 2 == 0 && i % 2 == 0 {
                     sv.add(Shape::Circle(
                         Vector2::new(x + sw / 2., y + sw / 2.),
-                        sw * 3.,
+                        sw * 2.,
                         32,
                         Stroke::new(1.0, Rgba::new(0.5, c2, c1, 0.75)),
                         Fill::Empty(),
@@ -114,7 +114,7 @@ fn main() {
                 if j * i % 2 != 0 {
                     sv.add(Shape::Rectangle(
                         Rect::new(x, y, x + sw, y + sh),
-                        Stroke::new(1.0, Rgba::new(c1, c2, 0.5, 1.0)),
+                        Stroke::new(3.0, Rgba::new(c1, c2, 0.5, 1.0)),
                         Fill::Solid(Rgba::new(1.0, dx, dy, 0.1)),
                     ));
                 } else {

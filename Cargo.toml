@@ -19,6 +19,12 @@ features = ["vulkan"]
 env_logger = "*"
 shaderc = "*"
 cgmath = "*"
+arrayvec = "*"
 
 [dev-dependencies]
 image = "*"
+criterion = "*"
+
+[[bench]]
+name = "benchmark"
+harness = false

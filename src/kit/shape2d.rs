@@ -153,7 +153,7 @@ pub enum Shape {
 
 impl Shape {
     // TODO: (perf) This function is fairly CPU-inefficient.
-    fn triangulate(self) -> Vec<Vertex> {
+    pub fn triangulate(self) -> Vec<Vertex> {
         match self {
             Shape::Line(l, Stroke { width, color }) => {
                 let v = (l.p2 - l.p1).normalize();
@@ -171,36 +171,61 @@ impl Shape {
                     Vertex::new(l.p2.x + wx, l.p2.y - wy, rgba8),
                 ]
             }
-            Shape::Rectangle(r, Stroke { width, color }, fill) => {
-                let w = width / 2.0;
-                // TODO: (perf) use slice.
-                let stroke = vec![
-                    Line::new(r.x1 + w, r.y1 + width, r.x1 + w, r.y2), // Left
-                    Line::new(r.x2 - w, r.y1, r.x2 - w, r.y2 - width), // Right
-                    Line::new(r.x1 + width, r.y2 - w, r.x2, r.y2 - w), // Top
-                    Line::new(r.x1, r.y1 + w, r.x2 - width, r.y1 + w), // Bottom
-                ];
-                let mut verts = Vec::with_capacity(stroke.len() * 6);
-                for l in stroke {
-                    let mut vs = Shape::Line(l, Stroke::new(width, color)).triangulate();
-                    verts.append(&mut vs);
-                }
+            Shape::Rectangle(r, stroke, fill) => {
+                let width = stroke.width;
+                let inner = Rect::new(r.x1 + width, r.y1 + width, r.x2 - width, r.y2 - width);
+
+                let mut verts = if stroke != Stroke::NONE {
+                    let rgba8 = stroke.color.into();
+
+                    let outer = r;
+
+                    vec![
+                        // Bottom
+                        Vertex::new(outer.x1, outer.y1, rgba8),
+                        Vertex::new(outer.x2, outer.y1, rgba8),
+                        Vertex::new(inner.x1, inner.y1, rgba8),
+                        Vertex::new(inner.x1, inner.y1, rgba8),
+                        Vertex::new(outer.x2, outer.y1, rgba8),
+                        Vertex::new(inner.x2, inner.y1, rgba8),
+                        // Left
+                        Vertex::new(outer.x1, outer.y1, rgba8),
+                        Vertex::new(inner.x1, inner.y1, rgba8),
+                        Vertex::new(outer.x1, outer.y2, rgba8),
+                        Vertex::new(outer.x1, outer.y2, rgba8),
+                        Vertex::new(inner.x1, inner.y1, rgba8),
+                        Vertex::new(inner.x1, inner.y2, rgba8),
+                        // Right
+                        Vertex::new(inner.x2, inner.y1, rgba8),
+                        Vertex::new(outer.x2, outer.y1, rgba8),
+                        Vertex::new(outer.x2, outer.y2, rgba8),
+                        Vertex::new(inner.x2, inner.y1, rgba8),
+                        Vertex::new(inner.x2, inner.y2, rgba8),
+                        Vertex::new(outer.x2, outer.y2, rgba8),
+                        // Top
+                        Vertex::new(outer.x1, outer.y2, rgba8),
+                        Vertex::new(outer.x2, outer.y2, rgba8),
+                        Vertex::new(inner.x1, inner.y2, rgba8),
+                        Vertex::new(inner.x1, inner.y2, rgba8),
+                        Vertex::new(outer.x2, outer.y2, rgba8),
+                        Vertex::new(inner.x2, inner.y2, rgba8),
+                    ]
+                } else {
+                    Vec::with_capacity(6)
+                };
 
                 match fill {
                     Fill::Solid(color) => {
                         let rgba8 = color.into();
-                        let inner =
-                            Rect::new(r.x1 + width, r.y1 + width, r.x2 - width, r.y2 - width);
-                        let mut vs = vec![
+
+                        verts.extend_from_slice(&[
                             Vertex::new(inner.x1, inner.y1, rgba8),
                             Vertex::new(inner.x2, inner.y1, rgba8),
                             Vertex::new(inner.x2, inner.y2, rgba8),
                             Vertex::new(inner.x1, inner.y1, rgba8),
                             Vertex::new(inner.x1, inner.y2, rgba8),
                             Vertex::new(inner.x2, inner.y2, rgba8),
-                        ];
-                        // TODO: (perf) use `extend_from_slice`.
-                        verts.append(&mut vs);
+                        ]);
                     }
                     Fill::Gradient(_, _) => {
                         unimplemented!();
@@ -210,11 +235,11 @@ impl Shape {
                 verts
             }
             Shape::Circle(position, radius, sides, stroke, fill) => {
-                let mut verts = Vec::new(); // TODO: (perf) use `with_capacity`.
-                let outer = Self::triangulate_circle(position, radius, sides);
-                let inner = if stroke != Stroke::NONE {
-                    // If there is a stroke, the inner circle is smaller.
-                    let inner = Self::triangulate_circle(position, radius - stroke.width, sides);
+                let inner = Self::circle(position, radius - stroke.width, sides);
+
+                let mut verts = if stroke != Stroke::NONE {
+                    // If there is a stroke, the outer circle is larger.
+                    let outer = Self::circle(position, radius, sides);
 
                     let rgba8 = stroke.color.into();
                     let inner_verts: Vec<Vertex> = inner
@@ -226,18 +251,21 @@ impl Shape {
                         .map(|(x, y)| Vertex::new(*x, *y, rgba8))
                         .collect();
 
-                    for i in 0..inner.len() - 1 {
-                        verts.push(inner_verts[i]);
-                        verts.push(outer_verts[i]);
-                        verts.push(outer_verts[i + 1]);
-                        verts.push(inner_verts[i]);
-                        verts.push(outer_verts[i + 1]);
-                        verts.push(inner_verts[i + 1]);
+                    let n = inner.len() - 1;
+                    let mut vs = Vec::with_capacity(n * 6);
+                    for i in 0..n {
+                        vs.extend_from_slice(&[
+                            inner_verts[i],
+                            outer_verts[i],
+                            outer_verts[i + 1],
+                            inner_verts[i],
+                            outer_verts[i + 1],
+                            inner_verts[i + 1],
+                        ]);
                     }
-                    inner
+                    vs
                 } else {
-                    // If there is no stroke, the inner and outer circles are equal.
-                    outer
+                    Vec::new()
                 };
 
                 match fill {
@@ -249,13 +277,13 @@ impl Shape {
                             .map(|(x, y)| Vertex::new(*x, *y, rgba8))
                             .collect();
                         for i in 0..sides as usize {
-                            verts.push(center);
-                            verts.push(inner_verts[i]);
-                            verts.push(inner_verts[i + 1]);
+                            verts.extend_from_slice(&[center, inner_verts[i], inner_verts[i + 1]]);
                         }
-                        verts.push(center);
-                        verts.push(*inner_verts.last().unwrap());
-                        verts.push(*inner_verts.first().unwrap());
+                        verts.extend_from_slice(&[
+                            center,
+                            *inner_verts.last().unwrap(),
+                            *inner_verts.first().unwrap(),
+                        ]);
                     }
                     Fill::Gradient(_, _) => {
                         unimplemented!();
@@ -267,8 +295,8 @@ impl Shape {
         }
     }
 
-    fn triangulate_circle(position: Vector2<f32>, radius: f32, sides: u32) -> Vec<(f32, f32)> {
-        let mut verts = Vec::new();
+    fn circle(position: Vector2<f32>, radius: f32, sides: u32) -> Vec<(f32, f32)> {
+        let mut verts = Vec::with_capacity(sides as usize + 1);
 
         for i in 0..=sides as usize {
             let angle: f32 = i as f32 * ((2. * f32::consts::PI) / sides as f32);
