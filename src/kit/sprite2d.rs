@@ -309,6 +309,11 @@ impl TextureView {
         r.device.create_buffer(buf.as_slice())
     }
 
+    pub fn clear(&mut self) {
+        self.views.clear();
+        self.size = 0;
+    }
+
     pub fn offset(&mut self, x: f32, y: f32) {
         for (_, dst, _, _, _) in self.views.iter_mut() {
             *dst = *dst + Vector2::new(x, y);
