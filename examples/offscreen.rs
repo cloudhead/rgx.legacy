@@ -162,6 +162,7 @@ fn main() {
         rect,
         Rect::origin(sw as f32, sh as f32),
         Rgba::TRANSPARENT,
+        1.0,
         Repeat::default(),
     );
     let buffer = tv.finish(&r);
