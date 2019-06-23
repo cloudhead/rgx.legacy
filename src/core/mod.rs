@@ -420,6 +420,12 @@ pub struct VertexBuffer {
 
 impl Draw for VertexBuffer {
     fn draw(&self, binding: &BindingGroup, pass: &mut Pass) {
+        // TODO: If we attempt to draw more vertices than exist in the buffer, because
+        // 'size' was guessed wrong, we get a wgpu error. We should somehow try to
+        // get the pipeline layout to know here if the buffer we're trying to draw
+        // is the right size. Another option is to create buffers from the pipeline,
+        // so that we can check at creation time whether the data passed in matches
+        // the format.
         pass.apply_binding(binding, &[]);
         pass.set_vertex_buffer(&self);
         pass.draw_buffer(0..self.size, 0..1);
