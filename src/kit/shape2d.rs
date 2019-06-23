@@ -129,7 +129,7 @@ impl<'a> core::AbstractPipeline<'a> for Pipeline {
 /// Shapes
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Copy, Clone)]
 pub struct Stroke {
     width: f32,
     color: Rgba,
@@ -146,12 +146,14 @@ impl Stroke {
     }
 }
 
+#[derive(Copy, Clone)]
 pub enum Fill {
     Empty(),
     Solid(Rgba),
     Gradient(Rgba, Rgba),
 }
 
+#[derive(Clone)]
 pub enum Shape {
     Line(Line, Stroke),
     Rectangle(Rect<f32>, Stroke, Fill),
@@ -159,9 +161,8 @@ pub enum Shape {
 }
 
 impl Shape {
-    // TODO: (perf) This function is fairly CPU-inefficient.
-    pub fn triangulate(self) -> Vec<Vertex> {
-        match self {
+    pub fn triangulate(&self) -> Vec<Vertex> {
+        match *self {
             Shape::Line(l, Stroke { width, color }) => {
                 let v = (l.p2 - l.p1).normalize();
 
@@ -308,6 +309,7 @@ impl Shape {
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct Line {
     pub p1: Vector2<f32>,
     pub p2: Vector2<f32>,
@@ -339,13 +341,24 @@ impl ShapeView {
         self.views.push(shape);
     }
 
-    pub fn finish(self, r: &core::Renderer) -> core::VertexBuffer {
-        let mut buf = Vec::<Vertex>::new();
+    pub fn vertices(&self) -> Vec<Vertex> {
+        // TODO: This is a lower-bound estimate of how much space we need.
+        // We should get the actual numbers from the shapes.
+        let mut buf = Vec::with_capacity(6 * self.views.len());
 
-        for shape in self.views {
+        for shape in self.views.iter() {
             let mut verts: Vec<Vertex> = shape.triangulate();
             buf.append(&mut verts);
         }
+        buf
+    }
+
+    pub fn clear(&mut self) {
+        self.views.clear();
+    }
+
+    pub fn finish(self, r: &core::Renderer) -> core::VertexBuffer {
+        let buf = self.vertices();
         r.device.create_buffer(buf.as_slice())
     }
 }
