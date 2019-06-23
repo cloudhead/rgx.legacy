@@ -6,8 +6,6 @@ use std::f32;
 use cgmath::prelude::*;
 use cgmath::{Matrix4, Point2, Vector2};
 
-use arrayvec::ArrayVec;
-
 use crate::core;
 use crate::core::{Binding, BindingType, Rect, Rgba, Set, ShaderStage};
 

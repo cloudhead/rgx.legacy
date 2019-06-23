@@ -279,8 +279,8 @@ impl TextureView {
         self.size += 1;
     }
 
-    pub fn finish(self, r: &core::Renderer) -> core::VertexBuffer {
-        let mut buf = Vec::<Vertex>::new();
+    pub fn vertices(&self) -> Vec<Vertex> {
+        let mut buf = Vec::with_capacity(6 * self.views.len());
 
         for (src, dst, rgba, o, rep) in self.views.iter() {
             // Relative texture coordinates
@@ -292,16 +292,20 @@ impl TextureView {
             let c: Rgba8 = (*rgba).into();
 
             // TODO: Use an index buffer
-            let mut verts = vec![
+            buf.extend_from_slice(&[
                 Vertex::new(dst.x1, dst.y1, rx1 * rep.x, ry2 * rep.y, c, *o),
                 Vertex::new(dst.x2, dst.y1, rx2 * rep.x, ry2 * rep.y, c, *o),
                 Vertex::new(dst.x2, dst.y2, rx2 * rep.x, ry1 * rep.y, c, *o),
                 Vertex::new(dst.x1, dst.y1, rx1 * rep.x, ry2 * rep.y, c, *o),
                 Vertex::new(dst.x1, dst.y2, rx1 * rep.x, ry1 * rep.y, c, *o),
                 Vertex::new(dst.x2, dst.y2, rx2 * rep.x, ry1 * rep.y, c, *o),
-            ];
-            buf.append(&mut verts);
+            ]);
         }
+        buf
+    }
+
+    pub fn finish(self, r: &core::Renderer) -> core::VertexBuffer {
+        let buf = self.vertices();
         r.device.create_buffer(buf.as_slice())
     }
 
