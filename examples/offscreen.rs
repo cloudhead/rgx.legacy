@@ -35,7 +35,7 @@ impl Framebuffer {
         ];
 
         Self {
-            target: r.framebuffer(w, h),
+            target: r.framebuffer(&[], w, h),
             vertices: r.vertexbuffer(vertices),
         }
     }

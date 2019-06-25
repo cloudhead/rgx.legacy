@@ -309,6 +309,8 @@ pub struct Framebuffer {
     texture_view: wgpu::TextureView,
     extent: wgpu::Extent3d,
 
+    buffer: Option<wgpu::Buffer>,
+
     pub w: u32,
     pub h: u32,
 }
@@ -318,6 +320,15 @@ impl Bind for Framebuffer {
         wgpu::Binding {
             binding: index as u32,
             resource: wgpu::BindingResource::TextureView(&self.texture_view),
+        }
+    }
+}
+
+impl Resource for &Framebuffer {
+    fn prepare(&self, encoder: &mut wgpu::CommandEncoder) {
+        // If we have a buffer to upload, treat the Framebuffer as a Texture.
+        if let Some(buffer) = &self.buffer {
+            Texture::blit(&self.texture, self.w, self.h, self.extent, buffer, encoder);
         }
     }
 }
@@ -346,6 +357,35 @@ impl Texture {
             y2: self.h as f32,
         }
     }
+
+    fn blit(
+        texture: &wgpu::Texture,
+        w: u32,
+        h: u32,
+        extent: wgpu::Extent3d,
+        buffer: &wgpu::Buffer,
+        encoder: &mut wgpu::CommandEncoder,
+    ) {
+        encoder.copy_buffer_to_texture(
+            wgpu::BufferCopyView {
+                buffer,
+                offset: 0,
+                row_pitch: 4 * w,
+                image_height: h,
+            },
+            wgpu::TextureCopyView {
+                texture,
+                mip_level: 0,
+                array_layer: 0,
+                origin: wgpu::Origin3d {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+            },
+            extent,
+        );
+    }
 }
 
 impl Bind for Texture {
@@ -359,24 +399,13 @@ impl Bind for Texture {
 
 impl Resource for &Texture {
     fn prepare(&self, encoder: &mut wgpu::CommandEncoder) {
-        encoder.copy_buffer_to_texture(
-            wgpu::BufferCopyView {
-                buffer: &self.buffer,
-                offset: 0,
-                row_pitch: 4 * self.w,
-                image_height: self.h,
-            },
-            wgpu::TextureCopyView {
-                texture: &self.wgpu,
-                mip_level: 0,
-                array_layer: 0,
-                origin: wgpu::Origin3d {
-                    x: 0.0,
-                    y: 0.0,
-                    z: 0.0,
-                },
-            },
+        Texture::blit(
+            &self.wgpu,
+            self.w,
+            self.h,
             self.extent,
+            &self.buffer,
+            encoder,
         );
     }
 }
@@ -749,8 +778,8 @@ impl Renderer {
         self.device.create_texture(texels, w, h)
     }
 
-    pub fn framebuffer(&self, w: u32, h: u32) -> Framebuffer {
-        self.device.create_framebuffer(w, h)
+    pub fn framebuffer(&self, texels: &[u8], w: u32, h: u32) -> Framebuffer {
+        self.device.create_framebuffer(texels, w, h)
     }
 
     pub fn vertexbuffer<T>(&self, verts: &[T]) -> VertexBuffer
@@ -936,7 +965,7 @@ impl Device {
         }
     }
 
-    pub fn create_framebuffer(&self, w: u32, h: u32) -> Framebuffer {
+    pub fn create_framebuffer(&self, texels: &[u8], w: u32, h: u32) -> Framebuffer {
         let texture_extent = wgpu::Extent3d {
             width: w,
             height: h,
@@ -949,14 +978,27 @@ impl Device {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::Bgra8Unorm,
-            usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+            usage: wgpu::TextureUsage::SAMPLED
+                | wgpu::TextureUsage::TRANSFER_DST
+                | wgpu::TextureUsage::OUTPUT_ATTACHMENT,
         });
         let texture_view = texture.create_default_view();
+
+        let buffer = if texels.is_empty() {
+            None
+        } else {
+            Some(
+                self.device
+                    .create_buffer_mapped(texels.len(), wgpu::BufferUsage::TRANSFER_SRC)
+                    .fill_from_slice(&texels),
+            )
+        };
 
         Framebuffer {
             texture,
             texture_view,
             extent: texture_extent,
+            buffer,
             w,
             h,
         }
