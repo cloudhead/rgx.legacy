@@ -22,6 +22,10 @@ where
         self.1.len() + 1
     }
 
+    pub fn first(&self) -> &T {
+        &self.0
+    }
+
     pub fn last(&self) -> &T {
         match self.1.last() {
             None => &self.0,
