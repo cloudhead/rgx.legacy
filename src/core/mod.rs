@@ -1,9 +1,79 @@
 #![deny(clippy::all, clippy::use_self)]
+#![allow(clippy::cast_lossless)]
 
 use std::ops::Range;
 use std::{mem, ptr};
 
 use cgmath::Vector2;
+
+///////////////////////////////////////////////////////////////////////////
+// Rgba8
+///////////////////////////////////////////////////////////////////////////
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct Rgba8 {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+    pub a: u8,
+}
+
+impl Rgba8 {
+    pub const TRANSPARENT: Self = Self {
+        r: 0,
+        g: 0,
+        b: 0,
+        a: 0,
+    };
+    pub const WHITE: Self = Self {
+        r: 0xff,
+        g: 0xff,
+        b: 0xff,
+        a: 0xff,
+    };
+    pub const BLACK: Self = Self {
+        r: 0,
+        g: 0,
+        b: 0,
+        a: 0xff,
+    };
+    pub const RED: Self = Self {
+        r: 0xff,
+        g: 0,
+        b: 0,
+        a: 0xff,
+    };
+    pub const GREEN: Self = Self {
+        r: 0,
+        g: 0xff,
+        b: 0,
+        a: 0xff,
+    };
+    pub const BLUE: Self = Self {
+        r: 0,
+        g: 0,
+        b: 0xff,
+        a: 0xff,
+    };
+}
+
+impl From<Rgba> for Rgba8 {
+    fn from(rgba: Rgba) -> Self {
+        Self {
+            r: (rgba.r * 255.0).round() as u8,
+            g: (rgba.g * 255.0).round() as u8,
+            b: (rgba.b * 255.0).round() as u8,
+            a: (rgba.a * 255.0).round() as u8,
+        }
+    }
+}
+
+impl From<u32> for Rgba8 {
+    fn from(rgba: u32) -> Self {
+        unsafe { std::mem::transmute(rgba) }
+    }
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Rect
@@ -315,6 +385,12 @@ pub struct Framebuffer {
     pub h: u32,
 }
 
+impl Framebuffer {
+    pub fn size(&self) -> usize {
+        (self.w * self.h) as usize
+    }
+}
+
 impl Bind for Framebuffer {
     fn binding(&self, index: u32) -> wgpu::Binding {
         wgpu::Binding {
@@ -623,16 +699,47 @@ pub struct PipelineDescription<'a> {
 /// Frame
 ///////////////////////////////////////////////////////////////////////////////
 
+enum OnDrop {
+    ReadAsync(wgpu::Buffer, usize, Box<FnOnce(&[u8])>),
+}
+
 pub struct Frame<'a> {
     encoder: mem::ManuallyDrop<wgpu::CommandEncoder>,
     texture: wgpu::SwapChainOutput<'a>,
     device: &'a mut Device,
+    on_drop: Vec<OnDrop>,
 }
 
 impl<'a> Drop for Frame<'a> {
     fn drop(&mut self) {
         let e = unsafe { mem::ManuallyDrop::into_inner(ptr::read(&self.encoder)) };
+
         self.device.submit(&[e.finish()]);
+
+        for a in self.on_drop.drain(..) {
+            match a {
+                OnDrop::ReadAsync(buf, bytesize, f) => {
+                    let mut buffer: Vec<u8> = Vec::with_capacity(bytesize);
+
+                    buf.map_read_async(
+                        0,
+                        bytesize as u64,
+                        move |result: wgpu::BufferMapAsyncResult<&[u32]>| match result {
+                            Ok(ref mapping) => {
+                                for bgra in mapping.data {
+                                    let rgba: Rgba8 = Rgba8::from(*bgra);
+                                    buffer.extend_from_slice(&[rgba.b, rgba.g, rgba.r, rgba.a]);
+                                }
+                                if buffer.len() == bytesize {
+                                    f(unsafe { std::mem::transmute(buffer.as_slice()) });
+                                }
+                            }
+                            Err(ref err) => panic!("{:?}", err),
+                        },
+                    );
+                }
+            }
+        }
     }
 }
 
@@ -646,6 +753,7 @@ impl<'a> Frame<'a> {
             texture,
             device,
             encoder: mem::ManuallyDrop::new(encoder),
+            on_drop: Vec::new(),
         }
     }
 
@@ -688,6 +796,41 @@ impl<'a> Frame<'a> {
             0,
             (std::mem::size_of::<T>() * buf.len()) as wgpu::BufferAddress,
         );
+    }
+
+    pub fn read<F>(&mut self, fb: &Framebuffer, f: F)
+    where
+        F: 'static + FnOnce(&[u8]),
+    {
+        let bytesize = 4 * fb.size();
+        let dst = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+            size: bytesize as u64,
+            usage: wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::TRANSFER_DST,
+        });
+
+        self.encoder.copy_texture_to_buffer(
+            wgpu::TextureCopyView {
+                texture: &fb.texture,
+                mip_level: 0,
+                array_layer: 0,
+                origin: wgpu::Origin3d {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+            },
+            wgpu::BufferCopyView {
+                buffer: &dst,
+                offset: 0,
+                // TODO: Must be a multiple of 256
+                row_pitch: 4 * fb.w,
+                image_height: fb.h,
+            },
+            fb.extent,
+        );
+
+        self.on_drop
+            .push(OnDrop::ReadAsync(dst, bytesize, Box::new(f)));
     }
 }
 
@@ -980,6 +1123,7 @@ impl Device {
             format: wgpu::TextureFormat::Bgra8Unorm,
             usage: wgpu::TextureUsage::SAMPLED
                 | wgpu::TextureUsage::TRANSFER_DST
+                | wgpu::TextureUsage::TRANSFER_SRC
                 | wgpu::TextureUsage::OUTPUT_ATTACHMENT,
         });
         let texture_view = texture.create_default_view();

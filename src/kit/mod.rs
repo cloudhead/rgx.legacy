@@ -2,7 +2,7 @@
 use crate::core::VertexLayout;
 
 pub use crate::core;
-pub use crate::core::Rgba;
+pub use crate::core::{Rgba, Rgba8};
 
 pub mod shape2d;
 pub mod sprite2d;
@@ -24,68 +24,6 @@ impl Repeat {
 impl Default for Repeat {
     fn default() -> Self {
         Repeat { x: 1.0, y: 1.0 }
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////
-// Rgba8
-///////////////////////////////////////////////////////////////////////////
-
-#[derive(Copy, Clone)]
-pub struct Rgba8 {
-    r: u8,
-    g: u8,
-    b: u8,
-    a: u8,
-}
-
-impl Rgba8 {
-    pub const TRANSPARENT: Self = Self {
-        r: 0,
-        g: 0,
-        b: 0,
-        a: 0,
-    };
-    pub const WHITE: Self = Self {
-        r: 0xff,
-        g: 0xff,
-        b: 0xff,
-        a: 0xff,
-    };
-    pub const BLACK: Self = Self {
-        r: 0,
-        g: 0,
-        b: 0,
-        a: 0xff,
-    };
-    pub const RED: Self = Self {
-        r: 0xff,
-        g: 0,
-        b: 0,
-        a: 0xff,
-    };
-    pub const GREEN: Self = Self {
-        r: 0,
-        g: 0xff,
-        b: 0,
-        a: 0xff,
-    };
-    pub const BLUE: Self = Self {
-        r: 0,
-        g: 0,
-        b: 0xff,
-        a: 0xff,
-    };
-}
-
-impl From<Rgba> for Rgba8 {
-    fn from(rgba: Rgba) -> Self {
-        Self {
-            r: (rgba.r * 255.0).round() as u8,
-            g: (rgba.g * 255.0).round() as u8,
-            b: (rgba.b * 255.0).round() as u8,
-            a: (rgba.a * 255.0).round() as u8,
-        }
     }
 }
 
