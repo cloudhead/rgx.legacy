@@ -31,12 +31,13 @@ impl Default for Repeat {
 // Rgba8
 ///////////////////////////////////////////////////////////////////////////
 
+#[repr(C)]
 #[derive(Copy, Clone)]
 pub struct Rgba8 {
-    r: u8,
-    g: u8,
-    b: u8,
-    a: u8,
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+    pub a: u8,
 }
 
 impl Rgba8 {
@@ -86,6 +87,12 @@ impl From<Rgba> for Rgba8 {
             b: (rgba.b * 255.0).round() as u8,
             a: (rgba.a * 255.0).round() as u8,
         }
+    }
+}
+
+impl From<u32> for Rgba8 {
+    fn from(rgba: u32) -> Self {
+        unsafe { std::mem::transmute(rgba) }
     }
 }
 
