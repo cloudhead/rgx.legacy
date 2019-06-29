@@ -65,6 +65,7 @@ fn main() {
         texture.rect(),
         Rect::new(0., 0., size.width as f32, size.height as f32),
         Rgba::TRANSPARENT,
+        1.0,
         kit::Repeat::new(24. * (size.width / size.height) as f32, 24.),
     );
     let buffer_bg = view_bg.finish(&renderer);
@@ -75,6 +76,7 @@ fn main() {
         texture.rect(),
         Rect::origin(160.0, 160.0),
         Rgba::new(1.0, 1.0, 0.0, 0.5),
+        1.0,
         kit::Repeat::default(),
     );
     let buffer_fg = view_fg.finish(&renderer);
