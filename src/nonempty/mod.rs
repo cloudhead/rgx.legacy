@@ -2,10 +2,7 @@
 pub struct NonEmpty<T>(T, Vec<T>);
 
 #[allow(clippy::len_without_is_empty)]
-impl<T> NonEmpty<T>
-where
-    T: Clone,
-{
+impl<T> NonEmpty<T> {
     pub fn singleton(e: T) -> Self {
         NonEmpty(e, Vec::new())
     }
