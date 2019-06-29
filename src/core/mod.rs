@@ -1142,6 +1142,7 @@ impl Device {
                 }),
                 rasterization_state: wgpu::RasterizationStateDescriptor {
                     front_face: wgpu::FrontFace::Ccw,
+                    // TODO: Test with CullMode::Back
                     cull_mode: wgpu::CullMode::None,
                     depth_bias: 0,
                     depth_bias_slope_scale: 0.0,
@@ -1149,6 +1150,7 @@ impl Device {
                 },
                 primitive_topology: wgpu::PrimitiveTopology::TriangleList,
                 color_states: &[wgpu::ColorStateDescriptor {
+                    // TODO: Try Bgra8UnormSrgb
                     format: wgpu::TextureFormat::Bgra8Unorm,
                     color_blend: wgpu::BlendDescriptor {
                         src_factor: wgpu::BlendFactor::SrcAlpha,
@@ -1156,6 +1158,7 @@ impl Device {
                         operation: wgpu::BlendOperation::Add,
                     },
                     alpha_blend: wgpu::BlendDescriptor {
+                        // TODO: Try BlendFactor::One
                         src_factor: wgpu::BlendFactor::SrcAlpha,
                         dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
                         operation: wgpu::BlendOperation::Add,
