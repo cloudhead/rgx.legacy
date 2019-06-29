@@ -2,24 +2,20 @@
 #![allow(clippy::unreadable_literal)]
 #![allow(clippy::single_match)]
 
-use self::kit::sprite2d::TextureView;
+use self::kit::shape2d::*;
 use rgx::core;
 use rgx::core::*;
 use rgx::kit;
-use rgx::kit::*;
 
 use cgmath::prelude::*;
-use cgmath::Matrix4;
+use cgmath::{Matrix4, Vector2};
 
 use image::png::PNGEncoder;
 use image::ColorType;
-use image::ImageDecoder;
 
 use std::fs::File;
 
-use wgpu::winit::{
-    ElementState, Event, EventsLoop, KeyboardInput, VirtualKeyCode, Window, WindowEvent,
-};
+use wgpu::winit::{EventsLoop, Window};
 
 pub struct Framebuffer {
     target: core::Framebuffer,
@@ -135,47 +131,22 @@ fn main() {
         .to_physical(window.get_hidpi_factor());
 
     let (sw, sh) = (size.width as u32, size.height as u32);
-    let offscreen: kit::sprite2d::Pipeline = r.pipeline(sw, sh);
-    let onscreen: FramebufferPipeline = r.pipeline(sw, sh);
     let framebuffer = Framebuffer::new(sw, sh, &r);
-
-    ///////////////////////////////////////////////////////////////////////////
-    // Setup sampler & load texture
-    ///////////////////////////////////////////////////////////////////////////
 
     let sampler = r.sampler(Filter::Nearest, Filter::Nearest);
 
-    let texture = {
-        let bytes = include_bytes!("data/sprite.tga");
-        let tga = std::io::Cursor::new(bytes.as_ref());
-        let decoder = image::tga::TGADecoder::new(tga).unwrap();
-        let (w, h) = decoder.dimensions();
-        let pixels = decoder.read_image().unwrap();
-
-        r.texture(pixels.as_slice(), w as u32, h as u32)
-    };
-
-    let offscreen_binding = offscreen.binding(&r, &texture, &sampler); // Texture binding
+    let offscreen: kit::shape2d::Pipeline = r.pipeline(sw, sh);
+    let onscreen: FramebufferPipeline = r.pipeline(sw, sh);
     let onscreen_binding = onscreen.binding(&r, &framebuffer, &sampler);
 
-    let w = 50.0;
-    let rect = Rect::new(w * 1.0, 0.0, w * 2.0, texture.h as f32);
-    let tv = TextureView::singleton(
-        texture.w,
-        texture.h,
-        rect,
-        Rect::origin(sw as f32, sh as f32),
-        Rgba::TRANSPARENT,
-        1.0,
-        Repeat::default(),
-    );
-    let buffer = tv.finish(&r);
-
-    ///////////////////////////////////////////////////////////////////////////
-    // Prepare resources
-    ///////////////////////////////////////////////////////////////////////////
-
-    r.prepare(&[&texture]);
+    let sv = ShapeView::singleton(Shape::Circle(
+        Vector2::new(sw as f32 / 2., sh as f32 / 2.),
+        sh as f32 / 2.0,
+        128,
+        Stroke::new(3.0, Rgba::new(1.0, 0.0, 1.0, 1.0)),
+        Fill::Empty(),
+    ));
+    let buffer = sv.finish(&r);
 
     ///////////////////////////////////////////////////////////////////////////
     // Create frame
@@ -197,7 +168,8 @@ fn main() {
     {
         let pass = &mut frame.offscreen_pass(Rgba::TRANSPARENT, &framebuffer.target);
         pass.apply_pipeline(&offscreen);
-        pass.draw(&buffer, &offscreen_binding);
+        pass.set_vertex_buffer(&buffer);
+        pass.draw_buffer(0..buffer.size, 0..1);
     }
 
     {
@@ -206,30 +178,17 @@ fn main() {
         pass.draw(&framebuffer.vertices, &onscreen_binding);
     }
 
-    let size = framebuffer.target.size();
+    ///////////////////////////////////////////////////////////////////////////
+    // Read the framebuffer into host memory and write it to an image file
+    ///////////////////////////////////////////////////////////////////////////
+
     let w = framebuffer.target.w;
     let h = framebuffer.target.h;
 
-    let mut screenshot: Vec<u32> = Vec::with_capacity(size);
+    frame.read(&framebuffer.target, move |data| {
+        let file = File::create("screenshot.png").unwrap();
+        let png = PNGEncoder::new(file);
 
-    // Read the framebuffer into host memory and write it to an image file.
-    frame.read_async(&framebuffer.target, move |data| {
-        screenshot.extend_from_slice(data);
-
-        if screenshot.len() == size {
-            let mut data = Vec::with_capacity(size);
-
-            for bgra in &screenshot {
-                let rgba: Rgba8 = Rgba8::from(*bgra);
-                data.extend_from_slice(&[rgba.b, rgba.g, rgba.r, rgba.a]);
-            }
-
-            let file = File::create("screenshot.png").unwrap();
-            let encoder = PNGEncoder::new(file);
-
-            encoder
-                .encode(data.as_slice(), w, h, ColorType::RGBA(8))
-                .unwrap();
-        }
+        png.encode(data, w, h, ColorType::RGBA(8)).unwrap();
     });
 }

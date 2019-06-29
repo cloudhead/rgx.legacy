@@ -6,6 +6,75 @@ use std::{mem, ptr};
 
 use cgmath::Vector2;
 
+///////////////////////////////////////////////////////////////////////////
+// Rgba8
+///////////////////////////////////////////////////////////////////////////
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct Rgba8 {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+    pub a: u8,
+}
+
+impl Rgba8 {
+    pub const TRANSPARENT: Self = Self {
+        r: 0,
+        g: 0,
+        b: 0,
+        a: 0,
+    };
+    pub const WHITE: Self = Self {
+        r: 0xff,
+        g: 0xff,
+        b: 0xff,
+        a: 0xff,
+    };
+    pub const BLACK: Self = Self {
+        r: 0,
+        g: 0,
+        b: 0,
+        a: 0xff,
+    };
+    pub const RED: Self = Self {
+        r: 0xff,
+        g: 0,
+        b: 0,
+        a: 0xff,
+    };
+    pub const GREEN: Self = Self {
+        r: 0,
+        g: 0xff,
+        b: 0,
+        a: 0xff,
+    };
+    pub const BLUE: Self = Self {
+        r: 0,
+        g: 0,
+        b: 0xff,
+        a: 0xff,
+    };
+}
+
+impl From<Rgba> for Rgba8 {
+    fn from(rgba: Rgba) -> Self {
+        Self {
+            r: (rgba.r * 255.0).round() as u8,
+            g: (rgba.g * 255.0).round() as u8,
+            b: (rgba.b * 255.0).round() as u8,
+            a: (rgba.a * 255.0).round() as u8,
+        }
+    }
+}
+
+impl From<u32> for Rgba8 {
+    fn from(rgba: u32) -> Self {
+        unsafe { std::mem::transmute(rgba) }
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 /// Rect
 ///////////////////////////////////////////////////////////////////////////////
@@ -631,7 +700,7 @@ pub struct PipelineDescription<'a> {
 ///////////////////////////////////////////////////////////////////////////////
 
 enum OnDrop {
-    ReadAsync(wgpu::Buffer, usize, Box<FnMut(&[u32])>),
+    ReadAsync(wgpu::Buffer, usize, Box<FnOnce(&[u8])>),
 }
 
 pub struct Frame<'a> {
@@ -644,17 +713,26 @@ pub struct Frame<'a> {
 impl<'a> Drop for Frame<'a> {
     fn drop(&mut self) {
         let e = unsafe { mem::ManuallyDrop::into_inner(ptr::read(&self.encoder)) };
+
         self.device.submit(&[e.finish()]);
 
         for a in self.on_drop.drain(..) {
             match a {
-                OnDrop::ReadAsync(buf, size, mut f) => {
+                OnDrop::ReadAsync(buf, bytesize, f) => {
+                    let mut buffer: Vec<u8> = Vec::with_capacity(bytesize);
+
                     buf.map_read_async(
                         0,
-                        size as u64,
+                        bytesize as u64,
                         move |result: wgpu::BufferMapAsyncResult<&[u32]>| match result {
                             Ok(ref mapping) => {
-                                f(mapping.data);
+                                for bgra in mapping.data {
+                                    let rgba: Rgba8 = Rgba8::from(*bgra);
+                                    buffer.extend_from_slice(&[rgba.b, rgba.g, rgba.r, rgba.a]);
+                                }
+                                if buffer.len() == bytesize {
+                                    f(unsafe { std::mem::transmute(buffer.as_slice()) });
+                                }
                             }
                             Err(ref err) => panic!("{:?}", err),
                         },
@@ -720,9 +798,9 @@ impl<'a> Frame<'a> {
         );
     }
 
-    pub fn read_async<F>(&mut self, fb: &Framebuffer, f: F)
+    pub fn read<F>(&mut self, fb: &Framebuffer, f: F)
     where
-        F: 'static + FnMut(&[u32]),
+        F: 'static + FnOnce(&[u8]),
     {
         let bytesize = 4 * fb.size();
         let dst = self.device.device.create_buffer(&wgpu::BufferDescriptor {

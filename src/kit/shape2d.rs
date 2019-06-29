@@ -337,6 +337,12 @@ impl ShapeView {
         Self { views: Vec::new() }
     }
 
+    pub fn singleton(shape: Shape) -> Self {
+        let mut sv = Self::new();
+        sv.add(shape);
+        sv
+    }
+
     pub fn add(&mut self, shape: Shape) {
         self.views.push(shape);
     }
