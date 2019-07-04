@@ -135,7 +135,7 @@ fn main() {
         // Draw frame
         ///////////////////////////////////////////////////////////////////////////
 
-        pipeline.frame(&mut renderer, Rgba::TRANSPARENT, |f| {
+        pipeline.frame(&mut renderer, PassOp::Clear(Rgba::TRANSPARENT), |f| {
             f.draw(&buffer_bg, &binding);
 
             f.translate(base + offset, base, |f| {

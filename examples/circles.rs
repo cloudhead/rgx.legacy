@@ -134,7 +134,7 @@ fn main() {
         // Draw frame
         ///////////////////////////////////////////////////////////////////////////
 
-        let pass = &mut frame.pass(Rgba::TRANSPARENT);
+        let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT));
 
         pass.apply_pipeline(&pip);
         pass.set_vertex_buffer(&buffer);

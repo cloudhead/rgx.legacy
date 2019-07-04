@@ -5,7 +5,7 @@ use cgmath::prelude::*;
 use cgmath::{Matrix4, Vector2, Vector3};
 
 use crate::core;
-use crate::core::{Binding, BindingType, Rect, Rgba, Set, ShaderStage};
+use crate::core::{Binding, BindingType, PassOp, Rect, Rgba, Set, ShaderStage};
 
 use crate::kit;
 use crate::kit::{AlignedBuffer, Model, Repeat, Rgba8};
@@ -71,7 +71,7 @@ impl Pipeline {
             .create_binding_group(&self.pipeline.layout.sets[2], &[texture, sampler])
     }
 
-    pub fn frame<'a, F>(&mut self, r: &mut core::Renderer, clear: Rgba, inner: F)
+    pub fn frame<'a, F>(&mut self, r: &mut core::Renderer, op: PassOp, inner: F)
     where
         F: FnOnce(&mut Frame<'a>),
     {
@@ -100,7 +100,7 @@ impl Pipeline {
             raw.update_uniform_buffer(&self.model.buf, data.as_slice());
         }
 
-        let mut pass = raw.pass(clear);
+        let mut pass = raw.pass(op);
 
         // Bypass the AbstractPipeline implementation.
         pass.apply_pipeline(&self.pipeline);

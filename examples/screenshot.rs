@@ -166,14 +166,14 @@ fn main() {
     ///////////////////////////////////////////////////////////////////////////
 
     {
-        let pass = &mut frame.offscreen_pass(Rgba::TRANSPARENT, &framebuffer.target);
+        let pass = &mut frame.offscreen_pass(PassOp::Clear(Rgba::TRANSPARENT), &framebuffer.target);
         pass.apply_pipeline(&offscreen);
         pass.set_vertex_buffer(&buffer);
         pass.draw_buffer(0..buffer.size, 0..1);
     }
 
     {
-        let pass = &mut frame.pass(Rgba::TRANSPARENT);
+        let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT));
         pass.apply_pipeline(&onscreen);
         pass.draw(&framebuffer.vertices, &onscreen_binding);
     }

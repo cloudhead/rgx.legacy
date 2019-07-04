@@ -766,12 +766,12 @@ impl<'a> Frame<'a> {
         }
     }
 
-    pub fn offscreen_pass(&mut self, clear: Rgba, fb: &Framebuffer) -> Pass {
-        Pass::begin(&mut self.encoder, &fb.texture_view, clear)
+    pub fn offscreen_pass(&mut self, op: PassOp, fb: &Framebuffer) -> Pass {
+        Pass::begin(&mut self.encoder, &fb.texture_view, op)
     }
 
-    pub fn pass(&mut self, clear: Rgba) -> Pass {
-        Pass::begin(&mut self.encoder, &self.texture.view, clear)
+    pub fn pass(&mut self, op: PassOp) -> Pass {
+        Pass::begin(&mut self.encoder, &self.texture.view, op)
     }
 
     pub fn update_uniform_buffer<T>(&mut self, u: &UniformBuffer, buf: &[T])
@@ -846,14 +846,17 @@ impl<'a> Pass<'a> {
     pub fn begin(
         encoder: &'a mut wgpu::CommandEncoder,
         view: &wgpu::TextureView,
-        clear_color: Rgba,
+        op: PassOp,
     ) -> Self {
         let pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
                 attachment: &view,
-                load_op: wgpu::LoadOp::Clear,
+                load_op: op.to_wgpu(),
                 store_op: wgpu::StoreOp::Store,
-                clear_color: clear_color.to_wgpu(),
+                clear_color: match op {
+                    PassOp::Clear(color) => color.to_wgpu(),
+                    PassOp::Load() => Rgba::TRANSPARENT.to_wgpu(),
+                },
                 resolve_target: None,
             }],
             depth_stencil_attachment: None,
@@ -884,6 +887,20 @@ impl<'a> Pass<'a> {
     }
     pub fn draw_indexed(&mut self, indices: Range<u32>, instances: Range<u32>) {
         self.wgpu.draw_indexed(indices, 0, instances)
+    }
+}
+
+pub enum PassOp {
+    Clear(Rgba),
+    Load(),
+}
+
+impl PassOp {
+    fn to_wgpu(&self) -> wgpu::LoadOp {
+        match self {
+            PassOp::Clear(_) => wgpu::LoadOp::Clear,
+            PassOp::Load() => wgpu::LoadOp::Load,
+        }
     }
 }
 
