@@ -209,6 +209,13 @@ impl<T> Rect<T> {
             h / 2.into()
         }
     }
+
+    pub fn contains(&self, p: Point2<T>) -> bool
+    where
+        T: PartialOrd,
+    {
+        p.x >= self.x1 && p.x < self.x2 && p.y >= self.y1 && p.y < self.y2
+    }
 }
 
 impl<T> std::ops::Add<Vector2<T>> for Rect<T>
@@ -254,6 +261,12 @@ impl Rgba {
         b: 1.0,
         a: 1.0,
     };
+    pub const BLACK: Self = Self {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+        a: 1.0,
+    };
     pub const TRANSPARENT: Self = Self {
         r: 0.0,
         g: 0.0,
@@ -271,6 +284,17 @@ impl Rgba {
             g: self.g,
             b: self.b,
             a: self.a,
+        }
+    }
+}
+
+impl From<Rgba8> for Rgba {
+    fn from(rgba8: Rgba8) -> Self {
+        Self {
+            r: (rgba8.r as f32 / 255.0),
+            g: (rgba8.g as f32 / 255.0),
+            b: (rgba8.b as f32 / 255.0),
+            a: (rgba8.a as f32 / 255.0),
         }
     }
 }
@@ -418,7 +442,7 @@ pub struct Texture {
     wgpu: wgpu::Texture,
     view: wgpu::TextureView,
     extent: wgpu::Extent3d,
-    buffer: wgpu::Buffer,
+    buffer: Option<wgpu::Buffer>,
 
     pub w: u32,
     pub h: u32,
@@ -475,14 +499,22 @@ impl Bind for Texture {
 
 impl Resource for &Texture {
     fn prepare(&self, encoder: &mut wgpu::CommandEncoder) {
-        Texture::blit(
-            &self.wgpu,
-            self.w,
-            self.h,
-            self.extent,
-            &self.buffer,
-            encoder,
-        );
+        if let Some(ref buf) = self.buffer {
+            Texture::blit(&self.wgpu, self.w, self.h, self.extent, buf, encoder);
+        }
+    }
+}
+
+impl From<Framebuffer> for Texture {
+    fn from(fb: Framebuffer) -> Self {
+        Self {
+            wgpu: fb.texture,
+            view: fb.texture_view,
+            extent: fb.extent,
+            buffer: fb.buffer,
+            w: fb.w,
+            h: fb.h,
+        }
     }
 }
 
@@ -1119,7 +1151,7 @@ impl Device {
             wgpu: texture,
             view: texture_view,
             extent: texture_extent,
-            buffer: buf,
+            buffer: Some(buf),
             w,
             h,
         }

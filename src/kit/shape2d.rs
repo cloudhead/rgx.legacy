@@ -136,7 +136,7 @@ pub struct Stroke {
 }
 
 impl Stroke {
-    const NONE: Self = Self {
+    pub const NONE: Self = Self {
         width: 0.,
         color: Rgba::TRANSPARENT,
     };
@@ -358,6 +358,10 @@ impl ShapeView {
             buf.append(&mut verts);
         }
         buf
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.views.is_empty()
     }
 
     pub fn clear(&mut self) {
