@@ -28,7 +28,7 @@ pub struct Uniforms {
 ///////////////////////////////////////////////////////////////////////////
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Vertex {
     position: Vector2<f32>,
     uv: Vector2<f32>,

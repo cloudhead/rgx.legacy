@@ -28,7 +28,7 @@ pub struct Uniforms {
 ///////////////////////////////////////////////////////////////////////////
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Vertex {
     position: Vector2<f32>,
     color: Rgba8,
@@ -129,7 +129,7 @@ impl<'a> core::AbstractPipeline<'a> for Pipeline {
 /// Shapes
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Copy, Clone, Debug)]
 pub struct Stroke {
     width: f32,
     color: Rgba,
@@ -146,14 +146,14 @@ impl Stroke {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum Fill {
     Empty(),
     Solid(Rgba),
     Gradient(Rgba, Rgba),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Shape {
     Line(Line, Stroke),
     Rectangle(Rect<f32>, Stroke, Fill),
@@ -309,7 +309,7 @@ impl Shape {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Line {
     pub p1: Vector2<f32>,
     pub p2: Vector2<f32>,
@@ -328,6 +328,7 @@ impl Line {
 /// ShapeView
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#[derive(Debug)]
 pub struct ShapeView {
     views: Vec<Shape>,
 }

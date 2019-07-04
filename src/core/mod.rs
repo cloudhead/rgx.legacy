@@ -4,14 +4,14 @@
 use std::ops::Range;
 use std::{mem, ptr};
 
-use cgmath::Vector2;
+use cgmath::{Point2, Vector2};
 
 ///////////////////////////////////////////////////////////////////////////
 // Rgba8
 ///////////////////////////////////////////////////////////////////////////
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Rgba8 {
     pub r: u8,
     pub g: u8,
@@ -239,7 +239,7 @@ pub trait Draw {
 /// Rgba
 ///////////////////////////////////////////////////////////////////////////////
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Rgba {
     pub r: f32,
     pub g: f32,
