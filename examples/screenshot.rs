@@ -88,8 +88,8 @@ impl<'a> core::AbstractPipeline<'a> for FramebufferPipeline {
     }
 
     fn apply(&self, pass: &mut core::Pass) {
-        pass.apply_pipeline(&self.pipeline);
-        pass.apply_binding(&self.bindings, &[0]);
+        pass.set_pipeline(&self.pipeline);
+        pass.set_binding(&self.bindings, &[0]);
     }
 
     fn prepare(&'a self, color: core::Rgba) -> Option<(&'a core::UniformBuffer, Vec<core::Rgba>)> {
@@ -167,14 +167,14 @@ fn main() {
 
     {
         let pass = &mut frame.offscreen_pass(PassOp::Clear(Rgba::TRANSPARENT), &framebuffer.target);
-        pass.apply_pipeline(&offscreen);
+        pass.set_pipeline(&offscreen);
         pass.set_vertex_buffer(&buffer);
         pass.draw_buffer(0..buffer.size, 0..1);
     }
 
     {
         let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT));
-        pass.apply_pipeline(&onscreen);
+        pass.set_pipeline(&onscreen);
         pass.draw(&framebuffer.vertices, &onscreen_binding);
     }
 

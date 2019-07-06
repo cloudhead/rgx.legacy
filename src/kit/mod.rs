@@ -133,14 +133,22 @@ pub fn ortho(w: u32, h: u32) -> Matrix4<f32> {
 ///////////////////////////////////////////////////////////////////////////////
 
 #[derive(Copy, Clone)]
-struct AlignedBuffer {
+pub struct AlignedBuffer {
+    // TODO: Make this generic when rust-lang#43408 is fixed.
     data: Matrix4<f32>,
     padding: [u8; AlignedBuffer::PAD],
 }
 
 impl AlignedBuffer {
-    const ALIGNMENT: u64 = 256;
-    const PAD: usize = Self::ALIGNMENT as usize - std::mem::size_of::<Matrix4<f32>>();
+    pub const ALIGNMENT: u64 = 256;
+    pub const PAD: usize = Self::ALIGNMENT as usize - std::mem::size_of::<Matrix4<f32>>();
+
+    pub fn new(data: Matrix4<f32>) -> Self {
+        Self {
+            data,
+            padding: [0u8; AlignedBuffer::PAD],
+        }
+    }
 }
 
 struct Model {
@@ -165,10 +173,7 @@ impl Model {
     fn aligned(transforms: &[Matrix4<f32>]) -> Vec<AlignedBuffer> {
         let mut aligned = Vec::with_capacity(transforms.len());
         for t in transforms {
-            aligned.push(AlignedBuffer {
-                data: *t,
-                padding: [0u8; AlignedBuffer::PAD],
-            });
+            aligned.push(AlignedBuffer::new(*t));
         }
         aligned
     }

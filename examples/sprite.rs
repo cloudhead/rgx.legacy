@@ -233,7 +233,7 @@ fn main() {
 
         let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT));
 
-        pass.apply_pipeline(&pip);
+        pass.set_pipeline(&pip);
         pass.draw(&buffer, &binding);
 
         if frames_total >= frame_batch && frames_total % frame_batch == 0 {

@@ -90,7 +90,7 @@ fn main() {
         // Draw frame
         let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT));
 
-        pass.apply_pipeline(&pipeline);
+        pass.set_pipeline(&pipeline);
         pass.draw(&buffer, &binding);
     }
 }

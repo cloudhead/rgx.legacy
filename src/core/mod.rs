@@ -563,7 +563,7 @@ impl Draw for VertexBuffer {
         // is the right size. Another option is to create buffers from the pipeline,
         // so that we can check at creation time whether the data passed in matches
         // the format.
-        pass.apply_binding(binding, &[]);
+        pass.set_binding(binding, &[]);
         pass.set_vertex_buffer(&self);
         pass.draw_buffer(0..self.size, 0..1);
     }
@@ -895,13 +895,13 @@ impl<'a> Pass<'a> {
         });
         Pass { wgpu: pass }
     }
-    pub fn apply_pipeline<T>(&mut self, pipeline: &T)
+    pub fn set_pipeline<T>(&mut self, pipeline: &T)
     where
         T: AbstractPipeline<'a>,
     {
         pipeline.apply(self);
     }
-    pub fn apply_binding(&mut self, group: &BindingGroup, offsets: &[u64]) {
+    pub fn set_binding(&mut self, group: &BindingGroup, offsets: &[u64]) {
         self.wgpu
             .set_bind_group(group.set_index, &group.wgpu, offsets);
     }

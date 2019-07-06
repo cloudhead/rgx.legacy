@@ -103,13 +103,13 @@ impl Pipeline {
         let mut pass = raw.pass(op);
 
         // Bypass the AbstractPipeline implementation.
-        pass.apply_pipeline(&self.pipeline);
-        pass.apply_binding(&self.bindings, &[0]);
+        pass.set_pipeline(&self.pipeline);
+        pass.set_binding(&self.bindings, &[0]);
 
         let mut i = 0;
         for Command(buf, bin, _) in &frame.commands {
-            pass.apply_binding(&self.model.binding, &[i]);
-            pass.apply_binding(bin, &[]);
+            pass.set_binding(&self.model.binding, &[i]);
+            pass.set_binding(bin, &[]);
             pass.set_vertex_buffer(buf);
             pass.draw_buffer(0..buf.size, 0..1);
 
@@ -218,9 +218,9 @@ impl<'a> core::AbstractPipeline<'a> for Pipeline {
     }
 
     fn apply(&self, pass: &mut core::Pass) {
-        pass.apply_pipeline(&self.pipeline);
-        pass.apply_binding(&self.bindings, &[0]);
-        pass.apply_binding(&self.model.binding, &[0]);
+        pass.set_pipeline(&self.pipeline);
+        pass.set_binding(&self.bindings, &[0]);
+        pass.set_binding(&self.model.binding, &[0]);
     }
 
     fn prepare(

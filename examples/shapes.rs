@@ -154,7 +154,7 @@ fn main() {
 
         let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT));
 
-        pass.apply_pipeline(&pip);
+        pass.set_pipeline(&pip);
         pass.set_vertex_buffer(&buffer);
         pass.draw_buffer(0..buffer.size, 0..1);
     }
