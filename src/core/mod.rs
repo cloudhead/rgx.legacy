@@ -325,12 +325,11 @@ impl ShaderStage {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-/// Resource
+/// Canvas
 ///////////////////////////////////////////////////////////////////////////////
 
-/// Anything that needs to be submitted to the GPU before the frame starts.
-pub trait Resource {
-    fn prepare(&self, encoder: &mut wgpu::CommandEncoder);
+pub trait Canvas {
+    fn fill(&self, buf: &[u8], device: &mut Device, encoder: &mut wgpu::CommandEncoder);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -399,19 +398,12 @@ impl Bind for UniformBuffer {
 
 #[allow(dead_code)]
 pub struct Framebuffer {
-    texture: wgpu::Texture,
-    texture_view: wgpu::TextureView,
-    extent: wgpu::Extent3d,
-
-    buffer: Option<wgpu::Buffer>,
-
-    pub w: u32,
-    pub h: u32,
+    pub texture: Texture,
 }
 
 impl Framebuffer {
     pub fn size(&self) -> usize {
-        (self.w * self.h) as usize
+        (self.texture.w * self.texture.h) as usize
     }
 }
 
@@ -419,17 +411,14 @@ impl Bind for Framebuffer {
     fn binding(&self, index: u32) -> wgpu::Binding {
         wgpu::Binding {
             binding: index as u32,
-            resource: wgpu::BindingResource::TextureView(&self.texture_view),
+            resource: wgpu::BindingResource::TextureView(&self.texture.view),
         }
     }
 }
 
-impl Resource for &Framebuffer {
-    fn prepare(&self, encoder: &mut wgpu::CommandEncoder) {
-        // If we have a buffer to upload, treat the Framebuffer as a Texture.
-        if let Some(buffer) = &self.buffer {
-            Texture::blit(&self.texture, self.w, self.h, self.extent, buffer, encoder);
-        }
+impl Canvas for Framebuffer {
+    fn fill(&self, buf: &[u8], device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
+        Texture::fill(&self.texture, buf, device, encoder);
     }
 }
 
@@ -442,7 +431,6 @@ pub struct Texture {
     wgpu: wgpu::Texture,
     view: wgpu::TextureView,
     extent: wgpu::Extent3d,
-    buffer: Option<wgpu::Buffer>,
 
     pub w: u32,
     pub h: u32,
@@ -456,6 +444,33 @@ impl Texture {
             x2: self.w as f32,
             y2: self.h as f32,
         }
+    }
+
+    fn fill(
+        texture: &Texture,
+        texels: &[u8],
+        device: &mut Device,
+        encoder: &mut wgpu::CommandEncoder,
+    ) {
+        assert_eq!(
+            texels.len() as u32,
+            texture.w * texture.h * 4,
+            "fatal: incorrect length for texel buffer"
+        );
+
+        let buf = device
+            .device
+            .create_buffer_mapped(texels.len(), wgpu::BufferUsage::TRANSFER_SRC)
+            .fill_from_slice(&texels);
+
+        Self::blit(
+            &texture.wgpu,
+            texture.w,
+            texture.h,
+            texture.extent,
+            &buf,
+            encoder,
+        );
     }
 
     fn blit(
@@ -497,24 +512,15 @@ impl Bind for Texture {
     }
 }
 
-impl Resource for &Texture {
-    fn prepare(&self, encoder: &mut wgpu::CommandEncoder) {
-        if let Some(ref buf) = self.buffer {
-            Texture::blit(&self.wgpu, self.w, self.h, self.extent, buf, encoder);
-        }
+impl Canvas for Texture {
+    fn fill(&self, buf: &[u8], device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
+        Texture::fill(&self, buf, device, encoder);
     }
 }
 
 impl From<Framebuffer> for Texture {
     fn from(fb: Framebuffer) -> Self {
-        Self {
-            wgpu: fb.texture,
-            view: fb.texture_view,
-            extent: fb.extent,
-            buffer: fb.buffer,
-            w: fb.w,
-            h: fb.h,
-        }
+        fb.texture
     }
 }
 
@@ -799,7 +805,7 @@ impl<'a> Frame<'a> {
     }
 
     pub fn offscreen_pass(&mut self, op: PassOp, fb: &Framebuffer) -> Pass {
-        Pass::begin(&mut self.encoder, &fb.texture_view, op)
+        Pass::begin(&mut self.encoder, &fb.texture.view, op)
     }
 
     pub fn pass(&mut self, op: PassOp) -> Pass {
@@ -842,7 +848,7 @@ impl<'a> Frame<'a> {
 
         self.encoder.copy_texture_to_buffer(
             wgpu::TextureCopyView {
-                texture: &fb.texture,
+                texture: &fb.texture.wgpu,
                 mip_level: 0,
                 array_layer: 0,
                 origin: wgpu::Origin3d {
@@ -855,10 +861,10 @@ impl<'a> Frame<'a> {
                 buffer: &dst,
                 offset: 0,
                 // TODO: Must be a multiple of 256
-                row_pitch: 4 * fb.w,
-                image_height: fb.h,
+                row_pitch: 4 * fb.texture.w,
+                image_height: fb.texture.h,
             },
-            fb.extent,
+            fb.texture.extent,
         );
 
         self.on_drop
@@ -966,12 +972,12 @@ impl Renderer {
         Self { device, swap_chain }
     }
 
-    pub fn texture(&self, texels: &[u8], w: u32, h: u32) -> Texture {
-        self.device.create_texture(texels, w, h)
+    pub fn texture(&self, w: u32, h: u32) -> Texture {
+        self.device.create_texture(w, h)
     }
 
-    pub fn framebuffer(&self, texels: &[u8], w: u32, h: u32) -> Framebuffer {
-        self.device.create_framebuffer(texels, w, h)
+    pub fn framebuffer(&self, w: u32, h: u32) -> Framebuffer {
+        self.device.create_framebuffer(w, h)
     }
 
     pub fn vertexbuffer<T>(&self, verts: &[T]) -> VertexBuffer
@@ -1033,12 +1039,26 @@ impl Renderer {
         Frame::new(encoder, texture, &mut self.device)
     }
 
-    pub fn prepare<T: Resource>(&mut self, resources: &[T]) {
+    pub fn prepare(&mut self, commands: &[Op]) {
         let mut encoder = self.device.create_command_encoder();
-        for r in resources.iter() {
-            r.prepare(&mut encoder);
+        for c in commands.iter() {
+            c.encode(&mut self.device, &mut encoder);
         }
         self.device.submit(&[encoder.finish()]);
+    }
+}
+
+pub enum Op<'a> {
+    Fill(&'a dyn Canvas, &'a [u8]),
+}
+
+impl<'a> Op<'a> {
+    fn encode(&self, dev: &mut Device, encoder: &mut wgpu::CommandEncoder) {
+        match *self {
+            Op::Fill(f, buf) => {
+                f.fill(buf, dev, encoder);
+            }
+        }
     }
 }
 
@@ -1119,13 +1139,7 @@ impl Device {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 })
     }
 
-    pub fn create_texture(&self, texels: &[u8], w: u32, h: u32) -> Texture {
-        assert_eq!(
-            texels.len() as u32,
-            w * h * 4,
-            "wrong texture width or height given"
-        );
-
+    pub fn create_texture(&self, w: u32, h: u32) -> Texture {
         let texture_extent = wgpu::Extent3d {
             width: w,
             height: h,
@@ -1142,29 +1156,23 @@ impl Device {
         });
         let texture_view = texture.create_default_view();
 
-        let buf = self
-            .device
-            .create_buffer_mapped(texels.len(), wgpu::BufferUsage::TRANSFER_SRC)
-            .fill_from_slice(&texels);
-
         Texture {
             wgpu: texture,
             view: texture_view,
             extent: texture_extent,
-            buffer: Some(buf),
             w,
             h,
         }
     }
 
-    pub fn create_framebuffer(&self, texels: &[u8], w: u32, h: u32) -> Framebuffer {
-        let texture_extent = wgpu::Extent3d {
+    pub fn create_framebuffer(&self, w: u32, h: u32) -> Framebuffer {
+        let extent = wgpu::Extent3d {
             width: w,
             height: h,
             depth: 1,
         };
         let texture = self.device.create_texture(&wgpu::TextureDescriptor {
-            size: texture_extent,
+            size: extent,
             array_layer_count: 1,
             mip_level_count: 1,
             sample_count: 1,
@@ -1175,25 +1183,16 @@ impl Device {
                 | wgpu::TextureUsage::TRANSFER_SRC
                 | wgpu::TextureUsage::OUTPUT_ATTACHMENT,
         });
-        let texture_view = texture.create_default_view();
-
-        let buffer = if texels.is_empty() {
-            None
-        } else {
-            Some(
-                self.device
-                    .create_buffer_mapped(texels.len(), wgpu::BufferUsage::TRANSFER_SRC)
-                    .fill_from_slice(&texels),
-            )
-        };
+        let view = texture.create_default_view();
 
         Framebuffer {
-            texture,
-            texture_view,
-            extent: texture_extent,
-            buffer,
-            w,
-            h,
+            texture: Texture {
+                wgpu: texture,
+                view,
+                extent,
+                w,
+                h,
+            },
         }
     }
 

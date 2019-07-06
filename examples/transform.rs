@@ -48,7 +48,7 @@ fn main() {
     let buf: [u8; 16] = unsafe { std::mem::transmute(texels) };
 
     // Create 4 by 4 texture and sampler.
-    let texture = renderer.texture(&buf, 2, 2);
+    let texture = renderer.texture(2, 2);
     let sampler = renderer.sampler(Filter::Nearest, Filter::Nearest);
 
     ///////////////////////////////////////////////////////////////////////////
@@ -87,7 +87,7 @@ fn main() {
     // Prepare resources
     ///////////////////////////////////////////////////////////////////////////
 
-    renderer.prepare(&[&texture]);
+    renderer.prepare(&[Op::Fill(&texture, &buf)]);
 
     ///////////////////////////////////////////////////////////////////////////
     // Render loop

@@ -35,7 +35,7 @@ impl Framebuffer {
         ];
 
         Self {
-            target: r.framebuffer(&[], w, h),
+            target: r.framebuffer(w, h),
             vertices: r.vertexbuffer(vertices),
         }
     }
@@ -141,14 +141,14 @@ fn main() {
 
     let sampler = r.sampler(Filter::Nearest, Filter::Nearest);
 
-    let texture = {
+    let (texture, pixels) = {
         let bytes = include_bytes!("data/sprite.tga");
         let tga = std::io::Cursor::new(bytes.as_ref());
         let decoder = image::tga::TGADecoder::new(tga).unwrap();
         let (w, h) = decoder.dimensions();
         let pixels = decoder.read_image().unwrap();
 
-        r.texture(pixels.as_slice(), w as u32, h as u32)
+        (r.texture(w as u32, h as u32), pixels)
     };
 
     let offscreen_binding = offscreen.binding(&r, &texture, &sampler); // Texture binding
@@ -173,7 +173,7 @@ fn main() {
     // Prepare resources
     ///////////////////////////////////////////////////////////////////////////
 
-    r.prepare(&[&texture]);
+    r.prepare(&[Op::Fill(&texture, pixels.as_slice())]);
 
     ///////////////////////////////////////////////////////////////////////////
     // Render loop

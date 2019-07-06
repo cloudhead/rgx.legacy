@@ -38,7 +38,7 @@ fn main() {
     let buf: [u8; 64] = unsafe { std::mem::transmute(texels) };
 
     // Create 4 by 4 texture and sampler.
-    let texture = renderer.texture(&buf, 4, 4);
+    let texture = renderer.texture(4, 4);
     let sampler = renderer.sampler(Filter::Nearest, Filter::Nearest);
 
     // Setup sprite
@@ -57,7 +57,7 @@ fn main() {
     let mut running = true;
 
     // Prepare resources
-    renderer.prepare(&[&texture]);
+    renderer.prepare(&[Op::Fill(&texture, &buf)]);
 
     while running {
         events_loop.poll_events(|event| {

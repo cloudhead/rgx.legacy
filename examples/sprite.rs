@@ -45,14 +45,14 @@ fn main() {
 
     let sampler = r.sampler(Filter::Nearest, Filter::Nearest);
 
-    let sprite = {
+    let (sprite, texels) = {
         let bytes = include_bytes!("data/sprite.tga");
         let tga = std::io::Cursor::new(bytes.as_ref());
         let decoder = image::tga::TGADecoder::new(tga).unwrap();
         let (w, h) = decoder.dimensions();
         let pixels = decoder.read_image().unwrap();
 
-        r.texture(pixels.as_slice(), w as u32, h as u32)
+        (r.texture(w as u32, h as u32), pixels)
     };
 
     let binding = pip.binding(&r, &sprite, &sampler); // Texture binding
@@ -92,7 +92,7 @@ fn main() {
     // Prepare resources
     ///////////////////////////////////////////////////////////////////////////
 
-    r.prepare(&[&sprite]);
+    r.prepare(&[Op::Fill(&sprite, texels.as_slice())]);
 
     ///////////////////////////////////////////////////////////////////////////
     // Render loop

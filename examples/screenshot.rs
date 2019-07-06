@@ -35,7 +35,7 @@ impl Framebuffer {
         ];
 
         Self {
-            target: r.framebuffer(&[], w, h),
+            target: r.framebuffer(w, h),
             vertices: r.vertexbuffer(vertices),
         }
     }
@@ -182,8 +182,8 @@ fn main() {
     // Read the framebuffer into host memory and write it to an image file
     ///////////////////////////////////////////////////////////////////////////
 
-    let w = framebuffer.target.w;
-    let h = framebuffer.target.h;
+    let w = framebuffer.target.texture.w;
+    let h = framebuffer.target.texture.h;
 
     frame.read(&framebuffer.target, move |data| {
         let file = File::create("screenshot.png").unwrap();
