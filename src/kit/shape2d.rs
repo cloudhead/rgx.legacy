@@ -368,8 +368,12 @@ impl ShapeView {
         self.views.clear();
     }
 
-    pub fn finish(self, r: &core::Renderer) -> core::VertexBuffer {
+    pub fn buffer(&self, r: &core::Renderer) -> core::VertexBuffer {
         let buf = self.vertices();
         r.device.create_buffer(buf.as_slice())
+    }
+
+    pub fn finish(self, r: &core::Renderer) -> core::VertexBuffer {
+        self.buffer(r)
     }
 }

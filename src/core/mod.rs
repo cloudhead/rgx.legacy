@@ -56,6 +56,10 @@ impl Rgba8 {
         b: 0xff,
         a: 0xff,
     };
+
+    pub fn new(r: u8, g: u8, b: u8, a: u8) -> Self {
+        Self { r, g, b, a }
+    }
 }
 
 impl From<Rgba> for Rgba8 {
@@ -215,6 +219,13 @@ impl<T> Rect<T> {
         T: PartialOrd,
     {
         p.x >= self.x1 && p.x < self.x2 && p.y >= self.y1 && p.y < self.y2
+    }
+
+    pub fn intersects(&self, other: Rect<T>) -> bool
+    where
+        T: PartialOrd,
+    {
+        self.y2 > other.y1 && self.y1 < other.y2 && self.x1 < other.x2 && self.x2 > other.x1
     }
 }
 
