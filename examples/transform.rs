@@ -79,7 +79,6 @@ fn main() {
     );
     let buffer_fg = view_fg.finish(&renderer);
 
-    let mut running = true;
     let base: f32 = 160.;
     let mut offset: f32 = 0.;
 
@@ -92,6 +91,9 @@ fn main() {
     ///////////////////////////////////////////////////////////////////////////
     // Render loop
     ///////////////////////////////////////////////////////////////////////////
+
+    let mut running = true;
+    let mut textures = renderer.swap_chain(size.width as u32, size.height as u32);
 
     while running {
         offset += 1.;
@@ -124,7 +126,7 @@ fn main() {
                         let (w, h) = (physical.width as u32, physical.height as u32);
 
                         pipeline.resize(w, h);
-                        renderer.resize(w, h);
+                        textures = renderer.swap_chain(w, h);
                     }
                     _ => {}
                 }
@@ -135,7 +137,9 @@ fn main() {
         // Draw frame
         ///////////////////////////////////////////////////////////////////////////
 
-        pipeline.frame(&mut renderer, PassOp::Clear(Rgba::TRANSPARENT), |f| {
+        let out = textures.next();
+
+        pipeline.frame(&mut renderer, PassOp::Clear(Rgba::TRANSPARENT), &out, |f| {
             f.draw(&buffer_bg, &binding);
 
             f.translate(base + offset, base, |f| {

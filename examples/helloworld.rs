@@ -55,6 +55,7 @@ fn main() {
     let buffer = view.finish(&renderer);
 
     let mut running = true;
+    let mut textures = renderer.swap_chain(size.width as u32, size.height as u32);
 
     // Prepare resources
     renderer.prepare(&[Op::Fill(&texture, &buf)]);
@@ -81,16 +82,14 @@ fn main() {
             }
         });
 
-        // Create frame
+        let output = textures.next();
         let mut frame = renderer.frame();
+        {
+            let mut pass = frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &output);
 
-        // Prepare pipeline
-        frame.prepare(&pipeline, Matrix4::identity());
-
-        // Draw frame
-        let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT));
-
-        pass.set_pipeline(&pipeline);
-        pass.draw(&buffer, &binding);
+            pass.set_pipeline(&pipeline);
+            pass.draw(&buffer, &binding);
+        }
+        renderer.submit(frame);
     }
 }

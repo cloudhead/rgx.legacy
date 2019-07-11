@@ -106,6 +106,8 @@ fn main() {
     let mut rows: u32;
     let mut cols: u32;
 
+    let mut textures = r.swap_chain(win.width as u32, win.height as u32);
+
     while running {
         events_loop.poll_events(|event| {
             if let Event::WindowEvent { event, .. } = event {
@@ -145,7 +147,7 @@ fn main() {
                         let (w, h) = (win.width as u32, win.height as u32);
 
                         pip.resize(w, h);
-                        r.resize(w, h);
+                        textures = r.swap_chain(w, h);
                     }
                     _ => {}
                 }
@@ -215,26 +217,24 @@ fn main() {
         let buffer = tv.finish(&r);
 
         ///////////////////////////////////////////////////////////////////////////
-        // Create frame
+        // Create frame & output
         ///////////////////////////////////////////////////////////////////////////
 
         let mut frame = r.frame();
-
-        ///////////////////////////////////////////////////////////////////////////
-        // Prepare pipeline
-        ///////////////////////////////////////////////////////////////////////////
-
-        // TODO: Should take a list of uniform buffers to update.
-        frame.prepare(&pip, Matrix4::identity());
+        let out = textures.next();
 
         ///////////////////////////////////////////////////////////////////////////
         // Draw frame
         ///////////////////////////////////////////////////////////////////////////
 
-        let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT));
+        {
+            let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &out);
 
-        pass.set_pipeline(&pip);
-        pass.draw(&buffer, &binding);
+            pass.set_pipeline(&pip);
+            pass.draw(&buffer, &binding);
+        }
+
+        r.submit(frame);
 
         if frames_total >= frame_batch && frames_total % frame_batch == 0 {
             average_ft = fts.iter().sum::<f64>() / fts.len() as f64;

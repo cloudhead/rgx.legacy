@@ -33,6 +33,8 @@ fn main() {
     let mut pip: kit::shape2d::Pipeline = r.pipeline(win.width as u32, win.height as u32);
     let mut running = true;
 
+    let mut chain = r.swap_chain(win.width as u32, win.height as u32);
+
     ///////////////////////////////////////////////////////////////////////////
     // Render loop
     ///////////////////////////////////////////////////////////////////////////
@@ -75,7 +77,7 @@ fn main() {
                         let (w, h) = (win.width as u32, win.height as u32);
 
                         pip.resize(w, h);
-                        r.resize(w, h);
+                        chain = r.swap_chain(w, h);
                     }
                     _ => {}
                 }
@@ -122,22 +124,20 @@ fn main() {
         // Create frame
         ///////////////////////////////////////////////////////////////////////////
 
+        let out = chain.next();
         let mut frame = r.frame();
-
-        ///////////////////////////////////////////////////////////////////////////
-        // Prepare pipeline
-        ///////////////////////////////////////////////////////////////////////////
-
-        frame.prepare(&pip, Matrix4::identity());
 
         ///////////////////////////////////////////////////////////////////////////
         // Draw frame
         ///////////////////////////////////////////////////////////////////////////
 
-        let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT));
+        {
+            let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &out);
 
-        pass.set_pipeline(&pip);
-        pass.set_vertex_buffer(&buffer);
-        pass.draw_buffer(0..buffer.size, 0..1);
+            pass.set_pipeline(&pip);
+            pass.set_vertex_buffer(&buffer);
+            pass.draw_buffer(0..buffer.size, 0..1);
+        }
+        r.submit(frame);
     }
 }

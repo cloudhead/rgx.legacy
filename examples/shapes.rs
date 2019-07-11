@@ -6,8 +6,7 @@ use rgx::core::*;
 use rgx::kit;
 use rgx::kit::shape2d::{Fill, Line, Shape, ShapeView, Stroke};
 
-use cgmath::prelude::*;
-use cgmath::{Matrix4, Vector2};
+use cgmath::Vector2;
 
 use wgpu::winit::{
     ElementState, Event, EventsLoop, KeyboardInput, VirtualKeyCode, Window, WindowEvent,
@@ -44,6 +43,8 @@ fn main() {
     // Cursor position.
     let (mut mx, mut my) = (0., 0.);
 
+    let mut textures = r.swap_chain(win.width as u32, win.height as u32);
+
     while running {
         events_loop.poll_events(|event| {
             if let Event::WindowEvent { event, .. } = event {
@@ -75,7 +76,7 @@ fn main() {
                         let (w, h) = (win.width as u32, win.height as u32);
 
                         pip.resize(w, h);
-                        r.resize(w, h);
+                        textures = r.swap_chain(w, h);
                     }
                     _ => {}
                 }
@@ -143,19 +144,17 @@ fn main() {
         let mut frame = r.frame();
 
         ///////////////////////////////////////////////////////////////////////////
-        // Prepare pipeline
-        ///////////////////////////////////////////////////////////////////////////
-
-        frame.prepare(&pip, Matrix4::identity());
-
-        ///////////////////////////////////////////////////////////////////////////
         // Draw frame
         ///////////////////////////////////////////////////////////////////////////
 
-        let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT));
+        let out = textures.next();
+        {
+            let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &out);
 
-        pass.set_pipeline(&pip);
-        pass.set_vertex_buffer(&buffer);
-        pass.draw_buffer(0..buffer.size, 0..1);
+            pass.set_pipeline(&pip);
+            pass.set_vertex_buffer(&buffer);
+            pass.draw_buffer(0..buffer.size, 0..1);
+        }
+        r.submit(frame);
     }
 }

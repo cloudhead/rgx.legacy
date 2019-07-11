@@ -134,6 +134,7 @@ fn main() {
     let framebuffer = Framebuffer::new(sw, sh, &r);
 
     let sampler = r.sampler(Filter::Nearest, Filter::Nearest);
+    let mut textures = r.swap_chain(sw, sh);
 
     let offscreen: kit::shape2d::Pipeline = r.pipeline(sw, sh);
     let onscreen: FramebufferPipeline = r.pipeline(sw, sh);
@@ -149,34 +150,38 @@ fn main() {
     let buffer = sv.finish(&r);
 
     ///////////////////////////////////////////////////////////////////////////
-    // Create frame
+    // Update pipeline
+    ///////////////////////////////////////////////////////////////////////////
+
+    r.update(&offscreen, Matrix4::identity());
+    r.update(&onscreen, Rgba::TRANSPARENT);
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Create frame & on-screen output texture
     ///////////////////////////////////////////////////////////////////////////
 
     let mut frame = r.frame();
-
-    ///////////////////////////////////////////////////////////////////////////
-    // Prepare pipeline
-    ///////////////////////////////////////////////////////////////////////////
-
-    frame.prepare(&offscreen, Matrix4::identity());
-    frame.prepare(&onscreen, Rgba::TRANSPARENT);
+    let out = textures.next();
 
     ///////////////////////////////////////////////////////////////////////////
     // Draw frame
     ///////////////////////////////////////////////////////////////////////////
 
     {
-        let pass = &mut frame.offscreen_pass(PassOp::Clear(Rgba::TRANSPARENT), &framebuffer.target);
+        let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &framebuffer.target);
         pass.set_pipeline(&offscreen);
         pass.set_vertex_buffer(&buffer);
         pass.draw_buffer(0..buffer.size, 0..1);
     }
 
     {
-        let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT));
+        let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &out);
         pass.set_pipeline(&onscreen);
         pass.draw(&framebuffer.vertices, &onscreen_binding);
     }
+
+    // Submit frame first, so that we can read it below.
+    r.submit(frame);
 
     ///////////////////////////////////////////////////////////////////////////
     // Read the framebuffer into host memory and write it to an image file
@@ -185,7 +190,7 @@ fn main() {
     let w = framebuffer.target.texture.w;
     let h = framebuffer.target.texture.h;
 
-    frame.read(&framebuffer.target, move |data| {
+    r.read(&framebuffer.target, move |data| {
         let file = File::create("screenshot.png").unwrap();
         let png = PNGEncoder::new(file);
 

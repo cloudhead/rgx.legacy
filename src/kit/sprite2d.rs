@@ -71,8 +71,9 @@ impl Pipeline {
             .create_binding_group(&self.pipeline.layout.sets[2], &[texture, sampler])
     }
 
-    pub fn frame<'a, F>(&mut self, r: &mut core::Renderer, op: PassOp, inner: F)
+    pub fn frame<'a, T, F>(&mut self, r: &mut core::Renderer, op: PassOp, view: T, inner: F)
     where
+        T: core::TextureView,
         F: FnOnce(&mut Frame<'a>),
     {
         let mut frame = Frame {
@@ -92,29 +93,33 @@ impl Pipeline {
 
         if grow {
             self.model = Model::new(&self.pipeline.layout.sets[1], slice, &r.device);
+        } else {
+            let data = Model::aligned(slice);
+            let mut e = r.device.create_command_encoder();
+            r.device
+                .update_uniform_buffer(data.as_slice(), &self.model.buf, &mut e);
+            r.device.submit(&[e.finish()]);
         }
 
         let mut raw = r.frame();
-        if !grow {
-            let data = Model::aligned(slice);
-            raw.update_uniform_buffer(&self.model.buf, data.as_slice());
+        {
+            let mut pass = raw.pass(op, view);
+
+            // Bypass the AbstractPipeline implementation.
+            pass.set_pipeline(&self.pipeline);
+            pass.set_binding(&self.bindings, &[0]);
+
+            let mut i = 0;
+            for Command(buf, bin, _) in &frame.commands {
+                pass.set_binding(&self.model.binding, &[i]);
+                pass.set_binding(bin, &[]);
+                pass.set_vertex_buffer(buf);
+                pass.draw_buffer(0..buf.size, 0..1);
+
+                i += AlignedBuffer::ALIGNMENT;
+            }
         }
-
-        let mut pass = raw.pass(op);
-
-        // Bypass the AbstractPipeline implementation.
-        pass.set_pipeline(&self.pipeline);
-        pass.set_binding(&self.bindings, &[0]);
-
-        let mut i = 0;
-        for Command(buf, bin, _) in &frame.commands {
-            pass.set_binding(&self.model.binding, &[i]);
-            pass.set_binding(bin, &[]);
-            pass.set_vertex_buffer(buf);
-            pass.draw_buffer(0..buf.size, 0..1);
-
-            i += AlignedBuffer::ALIGNMENT;
-        }
+        r.submit(raw);
     }
 }
 

@@ -2,7 +2,6 @@
 #![allow(clippy::cast_lossless)]
 
 use std::ops::Range;
-use std::{mem, ptr};
 
 use cgmath::{Point2, Vector2};
 
@@ -433,6 +432,12 @@ impl Canvas for Framebuffer {
     }
 }
 
+impl TextureView for &Framebuffer {
+    fn texture_view(&self) -> &wgpu::TextureView {
+        &self.texture.view
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 /// Texturing
 ///////////////////////////////////////////////////////////////////////////////
@@ -748,138 +753,17 @@ pub struct PipelineDescription<'a> {
 /// Frame
 ///////////////////////////////////////////////////////////////////////////////
 
-enum OnDrop {
-    ReadAsync(wgpu::Buffer, usize, Box<FnOnce(&[u8])>),
+pub struct Frame {
+    encoder: wgpu::CommandEncoder,
 }
 
-pub struct Frame<'a> {
-    encoder: mem::ManuallyDrop<wgpu::CommandEncoder>,
-    texture: wgpu::SwapChainOutput<'a>,
-    device: &'a mut Device,
-    on_drop: Vec<OnDrop>,
-}
-
-impl<'a> Drop for Frame<'a> {
-    fn drop(&mut self) {
-        let e = unsafe { mem::ManuallyDrop::into_inner(ptr::read(&self.encoder)) };
-
-        self.device.submit(&[e.finish()]);
-
-        for a in self.on_drop.drain(..) {
-            match a {
-                OnDrop::ReadAsync(buf, bytesize, f) => {
-                    let mut buffer: Vec<u8> = Vec::with_capacity(bytesize);
-
-                    buf.map_read_async(
-                        0,
-                        bytesize as u64,
-                        move |result: wgpu::BufferMapAsyncResult<&[u32]>| match result {
-                            Ok(ref mapping) => {
-                                for bgra in mapping.data {
-                                    let rgba: Rgba8 = Rgba8::from(*bgra);
-                                    buffer.extend_from_slice(&[rgba.b, rgba.g, rgba.r, rgba.a]);
-                                }
-                                if buffer.len() == bytesize {
-                                    f(unsafe { std::mem::transmute(buffer.as_slice()) });
-                                }
-                            }
-                            Err(ref err) => panic!("{:?}", err),
-                        },
-                    );
-                }
-            }
-        }
-    }
-}
-
-impl<'a> Frame<'a> {
-    pub fn new(
-        encoder: wgpu::CommandEncoder,
-        texture: wgpu::SwapChainOutput<'a>,
-        device: &'a mut Device,
-    ) -> Frame<'a> {
-        Frame {
-            texture,
-            device,
-            encoder: mem::ManuallyDrop::new(encoder),
-            on_drop: Vec::new(),
-        }
+impl Frame {
+    pub fn new(encoder: wgpu::CommandEncoder) -> Self {
+        Self { encoder }
     }
 
-    pub fn prepare<T>(&mut self, pip: &'a T, p: T::PrepareContext)
-    where
-        T: AbstractPipeline<'a>,
-    {
-        if let Some((buf, unifs)) = pip.prepare(p) {
-            self.update_uniform_buffer(buf, unifs.as_slice());
-        }
-    }
-
-    pub fn offscreen_pass(&mut self, op: PassOp, fb: &Framebuffer) -> Pass {
-        Pass::begin(&mut self.encoder, &fb.texture.view, op)
-    }
-
-    pub fn pass(&mut self, op: PassOp) -> Pass {
-        Pass::begin(&mut self.encoder, &self.texture.view, op)
-    }
-
-    pub fn update_uniform_buffer<T>(&mut self, u: &UniformBuffer, buf: &[T])
-    where
-        T: 'static + Copy,
-    {
-        let src = self
-            .device
-            .device
-            .create_buffer_mapped::<T>(
-                buf.len(),
-                wgpu::BufferUsage::UNIFORM
-                    | wgpu::BufferUsage::TRANSFER_SRC
-                    | wgpu::BufferUsage::MAP_WRITE,
-            )
-            .fill_from_slice(buf);
-
-        self.encoder.copy_buffer_to_buffer(
-            &src,
-            0,
-            &u.wgpu,
-            0,
-            (std::mem::size_of::<T>() * buf.len()) as wgpu::BufferAddress,
-        );
-    }
-
-    pub fn read<F>(&mut self, fb: &Framebuffer, f: F)
-    where
-        F: 'static + FnOnce(&[u8]),
-    {
-        let bytesize = 4 * fb.size();
-        let dst = self.device.device.create_buffer(&wgpu::BufferDescriptor {
-            size: bytesize as u64,
-            usage: wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::TRANSFER_DST,
-        });
-
-        self.encoder.copy_texture_to_buffer(
-            wgpu::TextureCopyView {
-                texture: &fb.texture.wgpu,
-                mip_level: 0,
-                array_layer: 0,
-                origin: wgpu::Origin3d {
-                    x: 0.0,
-                    y: 0.0,
-                    z: 0.0,
-                },
-            },
-            wgpu::BufferCopyView {
-                buffer: &dst,
-                offset: 0,
-                // TODO: Must be a multiple of 256
-                row_pitch: 4 * fb.texture.w,
-                image_height: fb.texture.h,
-            },
-            fb.texture.extent,
-        );
-
-        self.on_drop
-            .push(OnDrop::ReadAsync(dst, bytesize, Box::new(f)));
+    pub fn pass<T: TextureView>(&mut self, op: PassOp, view: T) -> Pass {
+        Pass::begin(&mut self.encoder, &view.texture_view(), op)
     }
 }
 
@@ -953,12 +837,38 @@ impl PassOp {
     }
 }
 
-fn swap_chain_descriptor(width: u32, height: u32) -> wgpu::SwapChainDescriptor {
-    wgpu::SwapChainDescriptor {
-        usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
-        format: wgpu::TextureFormat::Bgra8Unorm,
-        width,
-        height,
+///////////////////////////////////////////////////////////////////////////////
+/// SwapChain & TextureView
+///////////////////////////////////////////////////////////////////////////////
+
+pub trait TextureView {
+    fn texture_view(&self) -> &wgpu::TextureView;
+}
+
+pub struct SwapChainTexture<'a>(wgpu::SwapChainOutput<'a>);
+
+impl TextureView for &SwapChainTexture<'_> {
+    fn texture_view(&self) -> &wgpu::TextureView {
+        &self.0.view
+    }
+}
+
+pub struct SwapChain {
+    wgpu: wgpu::SwapChain,
+}
+
+impl SwapChain {
+    pub fn next(&mut self) -> SwapChainTexture {
+        SwapChainTexture(self.wgpu.get_next_texture())
+    }
+
+    fn descriptor(width: u32, height: u32) -> wgpu::SwapChainDescriptor {
+        wgpu::SwapChainDescriptor {
+            usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+            format: wgpu::TextureFormat::Bgra8Unorm,
+            width,
+            height,
+        }
     }
 }
 
@@ -968,19 +878,19 @@ fn swap_chain_descriptor(width: u32, height: u32) -> wgpu::SwapChainDescriptor {
 
 pub struct Renderer {
     pub device: Device,
-    swap_chain: wgpu::SwapChain,
 }
 
 impl Renderer {
     pub fn new(window: &wgpu::winit::Window) -> Self {
-        let size = window
-            .get_inner_size()
-            .unwrap()
-            .to_physical(window.get_hidpi_factor());
-        let device = Device::new(window);
-        let swap_chain = device.create_swap_chain(size.width as u32, size.height as u32);
+        Self {
+            device: Device::new(window),
+        }
+    }
 
-        Self { device, swap_chain }
+    pub fn swap_chain(&self, w: u32, h: u32) -> SwapChain {
+        SwapChain {
+            wgpu: self.device.create_swap_chain(w, h),
+        }
     }
 
     pub fn texture(&self, w: u32, h: u32) -> Texture {
@@ -1038,16 +948,86 @@ impl Renderer {
         )
     }
 
+    pub fn read<F>(&mut self, fb: &Framebuffer, f: F)
+    where
+        F: 'static + FnOnce(&[u8]),
+    {
+        let mut encoder = self.device.create_command_encoder();
+
+        let bytesize = 4 * fb.size();
+        let dst = self.device.device.create_buffer(&wgpu::BufferDescriptor {
+            size: bytesize as u64,
+            usage: wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::TRANSFER_DST,
+        });
+
+        encoder.copy_texture_to_buffer(
+            wgpu::TextureCopyView {
+                texture: &fb.texture.wgpu,
+                mip_level: 0,
+                array_layer: 0,
+                origin: wgpu::Origin3d {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+            },
+            wgpu::BufferCopyView {
+                buffer: &dst,
+                offset: 0,
+                // TODO: Must be a multiple of 256
+                row_pitch: 4 * fb.texture.w,
+                image_height: fb.texture.h,
+            },
+            fb.texture.extent,
+        );
+        self.device.submit(&[encoder.finish()]);
+
+        let mut buffer: Vec<u8> = Vec::with_capacity(bytesize);
+
+        dst.map_read_async(
+            0,
+            bytesize as u64,
+            move |result: wgpu::BufferMapAsyncResult<&[u32]>| match result {
+                Ok(ref mapping) => {
+                    for bgra in mapping.data {
+                        let rgba: Rgba8 = Rgba8::from(*bgra);
+                        buffer.extend_from_slice(&[rgba.b, rgba.g, rgba.r, rgba.a]);
+                    }
+                    if buffer.len() == bytesize {
+                        f(unsafe { std::mem::transmute(buffer.as_slice()) });
+                    }
+                }
+                Err(ref err) => panic!("{:?}", err),
+            },
+        );
+    }
+
     // MUTABLE API ////////////////////////////////////////////////////////////
 
-    pub fn resize(&mut self, w: u32, h: u32) {
-        self.swap_chain = self.device.create_swap_chain(w, h);
+    pub fn update<'a, T>(&mut self, pip: &'a T, p: T::PrepareContext)
+    where
+        T: AbstractPipeline<'a>,
+    {
+        // TODO: This function should ideally work on multiple pipelines,
+        // so we don't create an encoder for each update. We could also
+        // bundle it with the 'prepare' function, but that requires more
+        // work.
+
+        if let Some((buf, unifs)) = pip.prepare(p) {
+            let mut encoder = self.device.create_command_encoder();
+            self.device
+                .update_uniform_buffer::<T::Uniforms>(unifs.as_slice(), buf, &mut encoder);
+            self.device.submit(&[encoder.finish()]);
+        }
     }
 
     pub fn frame(&mut self) -> Frame {
-        let texture = self.swap_chain.get_next_texture();
         let encoder = self.device.create_command_encoder();
-        Frame::new(encoder, texture, &mut self.device)
+        Frame::new(encoder)
+    }
+
+    pub fn submit(&mut self, frame: Frame) {
+        self.device.submit(&[frame.encoder.finish()]);
     }
 
     pub fn prepare(&mut self, commands: &[Op]) {
@@ -1107,7 +1087,7 @@ impl Device {
     }
 
     pub fn create_swap_chain(&self, w: u32, h: u32) -> wgpu::SwapChain {
-        let desc = swap_chain_descriptor(w, h);
+        let desc = SwapChain::descriptor(w, h);
         self.device.create_swap_chain(&self.surface, &desc)
     }
 
@@ -1302,6 +1282,31 @@ impl Device {
                 bindings: bindings.as_slice(),
             });
         BindingGroupLayout::new(index, layout, bindings.len())
+    }
+
+    pub fn update_uniform_buffer<T: Copy + 'static>(
+        &self,
+        slice: &[T],
+        buf: &UniformBuffer,
+        encoder: &mut wgpu::CommandEncoder,
+    ) {
+        let src = self
+            .device
+            .create_buffer_mapped::<T>(
+                slice.len(),
+                wgpu::BufferUsage::UNIFORM
+                    | wgpu::BufferUsage::TRANSFER_SRC
+                    | wgpu::BufferUsage::MAP_WRITE,
+            )
+            .fill_from_slice(slice);
+
+        encoder.copy_buffer_to_buffer(
+            &src,
+            0,
+            &buf.wgpu,
+            0,
+            (std::mem::size_of::<T>() * slice.len()) as wgpu::BufferAddress,
+        );
     }
 
     // MUTABLE API ////////////////////////////////////////////////////////////

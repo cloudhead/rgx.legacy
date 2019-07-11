@@ -167,8 +167,6 @@ fn main() {
     );
     let buffer = tv.finish(&r);
 
-    let mut running = true;
-
     ///////////////////////////////////////////////////////////////////////////
     // Prepare resources
     ///////////////////////////////////////////////////////////////////////////
@@ -178,6 +176,9 @@ fn main() {
     ///////////////////////////////////////////////////////////////////////////
     // Render loop
     ///////////////////////////////////////////////////////////////////////////
+
+    let mut textures = r.swap_chain(sw, sh);
+    let mut running = true;
 
     while running {
         events_loop.poll_events(|event| {
@@ -203,12 +204,19 @@ fn main() {
 
                         offscreen.resize(w, h);
                         onscreen.resize(w, h);
-                        r.resize(w, h);
+                        textures = r.swap_chain(w, h);
                     }
                     _ => {}
                 }
             }
         });
+
+        ///////////////////////////////////////////////////////////////////////////
+        // Prepare pipeline
+        ///////////////////////////////////////////////////////////////////////////
+
+        r.update(&offscreen, Matrix4::identity());
+        r.update(&onscreen, Rgba::new(0.2, 0.2, 0.0, 1.0));
 
         ///////////////////////////////////////////////////////////////////////////
         // Create frame
@@ -217,27 +225,23 @@ fn main() {
         let mut frame = r.frame();
 
         ///////////////////////////////////////////////////////////////////////////
-        // Prepare pipeline
-        ///////////////////////////////////////////////////////////////////////////
-
-        frame.prepare(&offscreen, Matrix4::identity());
-        frame.prepare(&onscreen, Rgba::new(0.2, 0.2, 0.0, 1.0));
-
-        ///////////////////////////////////////////////////////////////////////////
         // Draw frame
         ///////////////////////////////////////////////////////////////////////////
 
+        let out = textures.next();
+
         {
-            let pass =
-                &mut frame.offscreen_pass(PassOp::Clear(Rgba::TRANSPARENT), &framebuffer.target);
+            let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &framebuffer.target);
             pass.set_pipeline(&offscreen);
             pass.draw(&buffer, &offscreen_binding);
         }
 
         {
-            let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT));
+            let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &out);
             pass.set_pipeline(&onscreen);
             pass.draw(&framebuffer.vertices, &onscreen_binding);
         }
+
+        r.submit(frame);
     }
 }

@@ -86,6 +86,7 @@ fn main() {
 
     let mut running = true;
     let mut transform;
+    let mut textures = renderer.swap_chain(size.width as u32, size.height as u32);
 
     ///////////////////////////////////////////////////////////////////////////
     // Prepare resources
@@ -131,12 +132,24 @@ fn main() {
                         let (w, h) = (physical.width as u32, physical.height as u32);
 
                         pipeline.resize(w, h);
-                        renderer.resize(w, h);
+                        textures = renderer.swap_chain(w, h);
                     }
                     _ => {}
                 }
             }
         });
+
+        ///////////////////////////////////////////////////////////////////////////
+        // Update uniform
+        ///////////////////////////////////////////////////////////////////////////
+
+        renderer.update(&pipeline, transform);
+
+        ///////////////////////////////////////////////////////////////////////////
+        // Create output texture
+        ///////////////////////////////////////////////////////////////////////////
+
+        let out = textures.next();
 
         ///////////////////////////////////////////////////////////////////////////
         // Create frame
@@ -145,19 +158,16 @@ fn main() {
         let mut frame = renderer.frame();
 
         ///////////////////////////////////////////////////////////////////////////
-        // Prepare pipeline
-        ///////////////////////////////////////////////////////////////////////////
-
-        frame.prepare(&pipeline, transform);
-
-        ///////////////////////////////////////////////////////////////////////////
         // Draw frame
         ///////////////////////////////////////////////////////////////////////////
 
-        let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT));
+        {
+            let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &out);
 
-        pass.set_pipeline(&pipeline);
-        pass.draw(&buffer_bg, &binding);
-        pass.draw(&buffer_fg, &binding);
+            pass.set_pipeline(&pipeline);
+            pass.draw(&buffer_bg, &binding);
+            pass.draw(&buffer_fg, &binding);
+        }
+        renderer.submit(frame);
     }
 }
