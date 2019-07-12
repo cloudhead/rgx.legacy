@@ -6,8 +6,6 @@ use rgx::core::*;
 use rgx::kit;
 use rgx::kit::sprite2d::TextureView;
 
-use cgmath::prelude::*;
-use cgmath::Matrix4;
 use wgpu::winit::*;
 
 fn main() {
