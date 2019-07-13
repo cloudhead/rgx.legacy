@@ -1,5 +1,6 @@
 {
   "rust.clippy_preference": "on",
   "rust.features": [],
-  "rust.build_on_save": true
+  "rust.build_on_save": true,
+  "rust-analyzer.enableEnhancedTyping": false
 }

@@ -765,6 +765,16 @@ impl Frame {
     pub fn pass<T: TextureView>(&mut self, op: PassOp, view: T) -> Pass {
         Pass::begin(&mut self.encoder, &view.texture_view(), op)
     }
+
+    pub fn copy(&mut self, src: &UniformBuffer, dst: &UniformBuffer) {
+        self.encoder.copy_buffer_to_buffer(
+            &src.wgpu,
+            0,
+            &dst.wgpu,
+            0,
+            src.size as wgpu::BufferAddress,
+        );
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1004,20 +1014,13 @@ impl Renderer {
 
     // MUTABLE API ////////////////////////////////////////////////////////////
 
-    pub fn update<'a, T>(&mut self, pip: &'a T, p: T::PrepareContext)
+    pub fn update<'a, T>(&mut self, pip: &'a T, p: T::PrepareContext, f: &mut Frame)
     where
         T: AbstractPipeline<'a>,
     {
-        // TODO: This function should ideally work on multiple pipelines,
-        // so we don't create an encoder for each update. We could also
-        // bundle it with the 'prepare' function, but that requires more
-        // work.
-
         if let Some((buf, unifs)) = pip.prepare(p) {
-            let mut encoder = self.device.create_command_encoder();
             self.device
-                .update_uniform_buffer::<T::Uniforms>(unifs.as_slice(), buf, &mut encoder);
-            self.device.submit(&[encoder.finish()]);
+                .update_uniform_buffer::<T::Uniforms>(unifs.as_slice(), buf, &mut f.encoder);
         }
     }
 
@@ -1231,12 +1234,14 @@ impl Device {
         T: 'static + Copy,
     {
         UniformBuffer {
-            size: std::mem::size_of::<T>(),
+            size: std::mem::size_of::<T>() * buf.len(),
             wgpu: self
                 .device
                 .create_buffer_mapped::<T>(
                     buf.len(),
-                    wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::TRANSFER_DST,
+                    wgpu::BufferUsage::UNIFORM
+                        | wgpu::BufferUsage::TRANSFER_DST
+                        | wgpu::BufferUsage::TRANSFER_SRC,
                 )
                 .fill_from_slice(buf),
         }

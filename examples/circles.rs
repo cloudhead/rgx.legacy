@@ -7,7 +7,7 @@ use rgx::kit;
 use rgx::kit::shape2d::{Fill, Shape, ShapeView, Stroke};
 
 use cgmath::prelude::*;
-use cgmath::{Matrix4, Vector2};
+use cgmath::Vector2;
 
 use wgpu::winit::{
     ElementState, Event, EventsLoop, KeyboardInput, VirtualKeyCode, Window, WindowEvent,

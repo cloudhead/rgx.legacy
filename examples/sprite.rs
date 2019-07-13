@@ -9,9 +9,6 @@ use rgx::kit;
 use rgx::kit::sprite2d::TextureView;
 use rgx::kit::*;
 
-use cgmath::prelude::*;
-use cgmath::Matrix4;
-
 use image::ImageDecoder;
 
 use wgpu::winit::{
