@@ -3,6 +3,10 @@ pub struct NonEmpty<T>(T, Vec<T>);
 
 #[allow(clippy::len_without_is_empty)]
 impl<T> NonEmpty<T> {
+    pub fn new(e: T) -> Self {
+        Self::singleton(e)
+    }
+
     pub fn singleton(e: T) -> Self {
         NonEmpty(e, Vec::new())
     }
@@ -27,6 +31,14 @@ impl<T> NonEmpty<T> {
         match self.1.last() {
             None => &self.0,
             Some(e) => e,
+        }
+    }
+
+    pub fn get(&self, index: usize) -> Option<&T> {
+        if index == 0 {
+            Some(&self.0)
+        } else {
+            self.1.get(index - 1)
         }
     }
 }

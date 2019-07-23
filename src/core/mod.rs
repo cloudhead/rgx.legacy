@@ -1,7 +1,9 @@
 #![deny(clippy::all, clippy::use_self)]
 #![allow(clippy::cast_lossless)]
 
+use std::fmt;
 use std::ops::Range;
+use std::str::FromStr;
 
 use cgmath::{Point2, Vector2};
 
@@ -10,7 +12,7 @@ use cgmath::{Point2, Vector2};
 ///////////////////////////////////////////////////////////////////////////
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Rgba8 {
     pub r: u8,
     pub g: u8,
@@ -61,6 +63,12 @@ impl Rgba8 {
     }
 }
 
+impl fmt::Display for Rgba8 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "#{:x}{:x}{:x}{:x}", self.r, self.g, self.b, self.a)
+    }
+}
+
 impl From<Rgba> for Rgba8 {
     fn from(rgba: Rgba) -> Self {
         Self {
@@ -75,6 +83,21 @@ impl From<Rgba> for Rgba8 {
 impl From<u32> for Rgba8 {
     fn from(rgba: u32) -> Self {
         unsafe { std::mem::transmute(rgba) }
+    }
+}
+
+impl FromStr for Rgba8 {
+    type Err = std::num::ParseIntError;
+
+    /// Parse a color code of the form '#ffffff' into an
+    /// instance of 'Rgba8'. The alpha is always 0xff.
+    fn from_str(hex_code: &str) -> Result<Self, Self::Err> {
+        let r: u8 = u8::from_str_radix(&hex_code[1..3], 16)?;
+        let g: u8 = u8::from_str_radix(&hex_code[3..5], 16)?;
+        let b: u8 = u8::from_str_radix(&hex_code[5..7], 16)?;
+        let a: u8 = 0xff;
+
+        Ok(Rgba8 { r, g, b, a })
     }
 }
 
