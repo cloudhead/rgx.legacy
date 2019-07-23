@@ -5,7 +5,7 @@
 use rgx::core;
 use rgx::core::*;
 use rgx::kit;
-use rgx::kit::sprite2d::TextureView;
+use rgx::kit::sprite2d;
 use rgx::kit::*;
 
 use cgmath::prelude::*;
@@ -156,7 +156,7 @@ fn main() {
 
     let w = 50.0;
     let rect = Rect::new(w * 1.0, 0.0, w * 2.0, texture.h as f32);
-    let tv = TextureView::singleton(
+    let batch = sprite2d::Batch::singleton(
         texture.w,
         texture.h,
         rect,
@@ -165,7 +165,7 @@ fn main() {
         1.0,
         Repeat::default(),
     );
-    let buffer = tv.finish(&r);
+    let buffer = batch.finish(&r);
 
     ///////////////////////////////////////////////////////////////////////////
     // Prepare resources

@@ -2,6 +2,7 @@
 #![allow(clippy::unreadable_literal)]
 #![allow(clippy::single_match)]
 
+use self::kit::shape2d;
 use self::kit::shape2d::*;
 use rgx::core;
 use rgx::core::*;
@@ -140,7 +141,7 @@ fn main() {
     let onscreen: FramebufferPipeline = r.pipeline(sw, sh);
     let onscreen_binding = onscreen.binding(&r, &framebuffer, &sampler);
 
-    let sv = ShapeView::singleton(Shape::Circle(
+    let sv = shape2d::Batch::singleton(Shape::Circle(
         Vector2::new(sw as f32 / 2., sh as f32 / 2.),
         sh as f32 / 2.0,
         128,

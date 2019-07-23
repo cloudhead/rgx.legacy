@@ -4,7 +4,7 @@
 
 use rgx::core::*;
 use rgx::kit;
-use rgx::kit::shape2d::{Fill, Line, Shape, ShapeView, Stroke};
+use rgx::kit::shape2d::{Batch, Fill, Line, Shape, Stroke};
 
 use cgmath::Vector2;
 
@@ -90,7 +90,7 @@ fn main() {
         // Prepare shape view
         ///////////////////////////////////////////////////////////////////////////
 
-        let mut sv = ShapeView::new();
+        let mut batch = Batch::new();
         let (dx, dy) = ((mx / win.width) as f32, (my / win.height) as f32);
 
         for i in 0..rows {
@@ -103,7 +103,7 @@ fn main() {
                 let c2 = j as f32 / cols as f32 - dx;
 
                 if j % 2 == 0 && i % 2 == 0 {
-                    sv.add(Shape::Circle(
+                    batch.add(Shape::Circle(
                         Vector2::new(x + sw / 2., y + sw / 2.),
                         sw * 2.,
                         32,
@@ -113,13 +113,13 @@ fn main() {
                 }
 
                 if j * i % 2 != 0 {
-                    sv.add(Shape::Rectangle(
+                    batch.add(Shape::Rectangle(
                         Rect::new(x, y, x + sw, y + sh),
                         Stroke::new(3.0, Rgba::new(c1, c2, 0.5, 1.0)),
                         Fill::Solid(Rgba::new(1.0, dx, dy, 0.1)),
                     ));
                 } else {
-                    sv.add(Shape::Line(
+                    batch.add(Shape::Line(
                         Line::new(x, y, x + sw, y + sh),
                         Stroke::new(
                             1.0,
@@ -135,7 +135,7 @@ fn main() {
             }
         }
 
-        let buffer = sv.finish(&r);
+        let buffer = batch.finish(&r);
 
         ///////////////////////////////////////////////////////////////////////////
         // Create frame

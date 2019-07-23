@@ -243,24 +243,24 @@ impl<'a> core::AbstractPipeline<'a> for Pipeline {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-/// TextureView
+/// Batch
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Clone)]
-pub struct TextureView {
+#[derive(Clone, Debug)]
+pub struct Batch {
     pub w: u32,
     pub h: u32,
     pub size: usize,
 
-    views: Vec<(Rect<f32>, Rect<f32>, Rgba, f32, Repeat)>,
+    items: Vec<(Rect<f32>, Rect<f32>, Rgba, f32, Repeat)>,
 }
 
-impl TextureView {
+impl Batch {
     pub fn new(w: u32, h: u32) -> Self {
         Self {
             w,
             h,
-            views: Vec::new(),
+            items: Vec::new(),
             size: 0,
         }
     }
@@ -280,14 +280,14 @@ impl TextureView {
     }
 
     pub fn add(&mut self, src: Rect<f32>, dst: Rect<f32>, rgba: Rgba, opacity: f32, rep: Repeat) {
-        self.views.push((src, dst, rgba, opacity, rep));
+        self.items.push((src, dst, rgba, opacity, rep));
         self.size += 1;
     }
 
     pub fn vertices(&self) -> Vec<Vertex> {
-        let mut buf = Vec::with_capacity(6 * self.views.len());
+        let mut buf = Vec::with_capacity(6 * self.items.len());
 
-        for (src, dst, rgba, o, rep) in self.views.iter() {
+        for (src, dst, rgba, o, rep) in self.items.iter() {
             // Relative texture coordinates
             let rx1: f32 = src.x1 / self.w as f32;
             let ry1: f32 = src.y1 / self.h as f32;
@@ -315,12 +315,12 @@ impl TextureView {
     }
 
     pub fn clear(&mut self) {
-        self.views.clear();
+        self.items.clear();
         self.size = 0;
     }
 
     pub fn offset(&mut self, x: f32, y: f32) {
-        for (_, dst, _, _, _) in self.views.iter_mut() {
+        for (_, dst, _, _, _) in self.items.iter_mut() {
             *dst = *dst + Vector2::new(x, y);
         }
     }

@@ -6,7 +6,7 @@ use std::collections::vec_deque::VecDeque;
 
 use rgx::core::*;
 use rgx::kit;
-use rgx::kit::sprite2d::TextureView;
+use rgx::kit::sprite2d;
 use rgx::kit::*;
 
 use image::ImageDecoder;
@@ -179,7 +179,7 @@ fn main() {
             .unwrap()
             .to_physical(window.get_hidpi_factor());
 
-        let mut tv = TextureView::new(sprite.w, sprite.h);
+        let mut batch = sprite2d::Batch::new(sprite.w, sprite.h);
 
         x += delta as f32 / move_speed;
 
@@ -200,7 +200,7 @@ fn main() {
                     Rect::new(pad + x, y, pad + x + sw, y + sh)
                 };
 
-                tv.add(
+                batch.add(
                     anim.val(),
                     rect,
                     Rgba::new(i as f32 / rows as f32, j as f32 / cols as f32, 0.5, 0.75),
@@ -209,9 +209,9 @@ fn main() {
                 );
             }
         }
-        tv.offset(mx, my);
+        batch.offset(mx, my);
 
-        let buffer = tv.finish(&r);
+        let buffer = batch.finish(&r);
 
         ///////////////////////////////////////////////////////////////////////////
         // Create frame & output

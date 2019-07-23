@@ -1,6 +1,4 @@
 #![allow(dead_code)]
-use crate::core::VertexLayout;
-
 pub use crate::core;
 pub use crate::core::{Rgba, Rgba8};
 
@@ -9,7 +7,7 @@ pub mod sprite2d;
 
 use cgmath::{Matrix4, Ortho};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Repeat {
     pub x: f32,
     pub y: f32,
@@ -31,14 +29,14 @@ impl Default for Repeat {
 // Animation
 ///////////////////////////////////////////////////////////////////////////
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum AnimationState {
     Playing(u32, f64),
     Paused(u32, f64),
     Stopped,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Animation<T> {
     pub state: AnimationState,
     pub delay: f64,
@@ -98,25 +96,7 @@ impl<T> Animation<T> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-/// RenderBatch
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-// TODO: We can perhaps use compile-time attributes to mark a struct with labels indicating which
-// fields represent position, uvs, &c.
-
-#[allow(dead_code)]
-pub struct RenderBatch<T> {
-    vertices: Vec<T>,
-    size: usize,
-}
-
-trait VertexLike<'a> {
-    type Data: Default + Into<&'a [u8]>;
-
-    fn new(x: f32, y: f32, u: f32, v: f32, data: Self::Data) -> Self;
-    fn layout(&self) -> VertexLayout;
-}
+///////////////////////////////////////////////////////////////////////////////
 
 pub fn ortho(w: u32, h: u32) -> Matrix4<f32> {
     Ortho::<f32> {

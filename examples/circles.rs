@@ -4,7 +4,7 @@
 
 use rgx::core::*;
 use rgx::kit;
-use rgx::kit::shape2d::{Fill, Shape, ShapeView, Stroke};
+use rgx::kit::shape2d::{Batch, Fill, Shape, Stroke};
 
 use cgmath::prelude::*;
 use cgmath::Vector2;
@@ -91,7 +91,7 @@ fn main() {
         // Prepare shape view
         ///////////////////////////////////////////////////////////////////////////
 
-        let mut sv = ShapeView::new();
+        let mut batch = Batch::new();
         let cursor = Vector2::new((mx / win.width) as f32, 1. - (my / win.height) as f32);
 
         for i in 0..rows {
@@ -108,7 +108,7 @@ fn main() {
                 let delta = Vector2::distance(rpos, cursor);
                 let width = 1. + delta * (rad / 1.5);
 
-                sv.add(Shape::Circle(
+                batch.add(Shape::Circle(
                     Vector2::new(x + rad, y + rad),
                     rad,
                     32,
@@ -118,7 +118,7 @@ fn main() {
             }
         }
 
-        let buffer = sv.finish(&r);
+        let buffer = batch.finish(&r);
 
         ///////////////////////////////////////////////////////////////////////////
         // Create frame

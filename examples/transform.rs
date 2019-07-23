@@ -4,7 +4,7 @@
 
 use rgx::core::*;
 use rgx::kit;
-use rgx::kit::sprite2d::TextureView;
+use rgx::kit::sprite2d;
 
 use cgmath::{Matrix4, Vector3};
 
@@ -57,7 +57,7 @@ fn main() {
 
     let binding = pipeline.binding(&renderer, &texture, &sampler);
 
-    let view_bg = TextureView::singleton(
+    let bg_batch = sprite2d::Batch::singleton(
         texture.w,
         texture.h,
         texture.rect(),
@@ -66,9 +66,9 @@ fn main() {
         1.0,
         kit::Repeat::new(8. * (size.width / size.height) as f32, 8.),
     );
-    let buffer_bg = view_bg.finish(&renderer);
+    let buffer_bg = bg_batch.finish(&renderer);
 
-    let view_fg = TextureView::singleton(
+    let fg_batch = sprite2d::Batch::singleton(
         texture.w,
         texture.h,
         texture.rect(),
@@ -77,7 +77,7 @@ fn main() {
         1.0,
         kit::Repeat::default(),
     );
-    let buffer_fg = view_fg.finish(&renderer);
+    let buffer_fg = fg_batch.finish(&renderer);
 
     let base: f32 = 160.;
     let mut offset: f32 = 0.;

@@ -4,7 +4,7 @@
 
 use rgx::core::*;
 use rgx::kit;
-use rgx::kit::sprite2d::TextureView;
+use rgx::kit::sprite2d;
 
 use wgpu::winit::*;
 
@@ -41,7 +41,7 @@ fn main() {
 
     // Setup sprite
     let binding = pipeline.binding(&renderer, &texture, &sampler);
-    let view = TextureView::singleton(
+    let batch = sprite2d::Batch::singleton(
         texture.w,
         texture.h,
         texture.rect(),
@@ -50,7 +50,7 @@ fn main() {
         1.0,
         kit::Repeat::new(24. * (size.width / size.height) as f32, 24.),
     );
-    let buffer = view.finish(&renderer);
+    let buffer = batch.finish(&renderer);
 
     let mut running = true;
     let mut textures = renderer.swap_chain(size.width as u32, size.height as u32);

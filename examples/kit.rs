@@ -4,7 +4,7 @@
 
 use rgx::core::*;
 use rgx::kit;
-use rgx::kit::sprite2d::TextureView;
+use rgx::kit::sprite2d;
 
 use cgmath::{Matrix4, Vector3};
 
@@ -59,7 +59,7 @@ fn main() {
 
     let binding = pipeline.binding(&renderer, &texture, &sampler);
 
-    let view_bg = TextureView::singleton(
+    let bg_batch = sprite2d::Batch::singleton(
         texture.w,
         texture.h,
         texture.rect(),
@@ -68,9 +68,9 @@ fn main() {
         1.0,
         kit::Repeat::new(24. * (size.width / size.height) as f32, 24.),
     );
-    let buffer_bg = view_bg.finish(&renderer);
+    let bg_buffer = bg_batch.finish(&renderer);
 
-    let view_fg = TextureView::singleton(
+    let fg_batch = sprite2d::Batch::singleton(
         texture.w,
         texture.h,
         texture.rect(),
@@ -79,7 +79,7 @@ fn main() {
         1.0,
         kit::Repeat::default(),
     );
-    let buffer_fg = view_fg.finish(&renderer);
+    let fg_buffer = fg_batch.finish(&renderer);
 
     let mut x: f32 = 0.0;
     let mut y: f32 = 0.0;
@@ -165,8 +165,8 @@ fn main() {
             let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &out);
 
             pass.set_pipeline(&pipeline);
-            pass.draw(&buffer_bg, &binding);
-            pass.draw(&buffer_fg, &binding);
+            pass.draw(&bg_buffer, &binding);
+            pass.draw(&fg_buffer, &binding);
         }
         renderer.submit(frame);
     }

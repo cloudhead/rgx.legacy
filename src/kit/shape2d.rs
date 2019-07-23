@@ -325,17 +325,17 @@ impl Line {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-/// ShapeView
+/// Batch
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug)]
-pub struct ShapeView {
-    views: Vec<Shape>,
+pub struct Batch {
+    items: Vec<Shape>,
 }
 
-impl ShapeView {
+impl Batch {
     pub fn new() -> Self {
-        Self { views: Vec::new() }
+        Self { items: Vec::new() }
     }
 
     pub fn singleton(shape: Shape) -> Self {
@@ -345,15 +345,15 @@ impl ShapeView {
     }
 
     pub fn add(&mut self, shape: Shape) {
-        self.views.push(shape);
+        self.items.push(shape);
     }
 
     pub fn vertices(&self) -> Vec<Vertex> {
         // TODO: This is a lower-bound estimate of how much space we need.
         // We should get the actual numbers from the shapes.
-        let mut buf = Vec::with_capacity(6 * self.views.len());
+        let mut buf = Vec::with_capacity(6 * self.items.len());
 
-        for shape in self.views.iter() {
+        for shape in self.items.iter() {
             let mut verts: Vec<Vertex> = shape.triangulate();
             buf.append(&mut verts);
         }
@@ -361,11 +361,11 @@ impl ShapeView {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.views.is_empty()
+        self.items.is_empty()
     }
 
     pub fn clear(&mut self) {
-        self.views.clear();
+        self.items.clear();
     }
 
     pub fn buffer(&self, r: &core::Renderer) -> core::VertexBuffer {
