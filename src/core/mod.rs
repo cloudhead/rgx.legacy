@@ -1020,12 +1020,9 @@ impl Renderer {
         dst.map_read_async(
             0,
             bytesize as u64,
-            move |result: wgpu::BufferMapAsyncResult<&[u32]>| match result {
+            move |result: wgpu::BufferMapAsyncResult<&[u8]>| match result {
                 Ok(ref mapping) => {
-                    for bgra in mapping.data {
-                        let rgba: Rgba8 = Rgba8::from(*bgra);
-                        buffer.extend_from_slice(&[rgba.b, rgba.g, rgba.r, rgba.a]);
-                    }
+                    buffer.extend_from_slice(mapping.data);
                     if buffer.len() == bytesize {
                         f(unsafe { std::mem::transmute(buffer.as_slice()) });
                     }
