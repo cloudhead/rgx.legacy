@@ -1,4 +1,4 @@
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct NonEmpty<T>(T, Vec<T>);
 
 #[allow(clippy::len_without_is_empty)]
@@ -40,6 +40,11 @@ impl<T> NonEmpty<T> {
         } else {
             self.1.get(index - 1)
         }
+    }
+
+    pub fn truncate(&mut self, len: usize) {
+        assert!(len >= 1);
+        self.1.truncate(len - 1);
     }
 }
 
