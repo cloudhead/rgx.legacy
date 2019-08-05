@@ -64,6 +64,24 @@ impl<T> Animation<T> {
         }
     }
 
+    pub fn pause(&mut self) {
+        if let AnimationState::Playing(_, elapsed) = self.state {
+            self.state = AnimationState::Paused(0, elapsed);
+        }
+    }
+
+    pub fn play(&mut self) {
+        match self.state {
+            AnimationState::Paused(_, elapsed) => self.state = AnimationState::Playing(0, elapsed),
+            AnimationState::Stopped => self.state = AnimationState::Playing(0, 0.),
+            _ => {}
+        }
+    }
+
+    pub fn stop(&mut self) {
+        self.state = AnimationState::Stopped;
+    }
+
     pub fn val(&self) -> T
     where
         T: Copy,
@@ -93,6 +111,14 @@ impl<T> Animation<T> {
             AnimationState::Paused(cursor, _) => cursor,
             AnimationState::Stopped => 0,
         }
+    }
+
+    pub fn push_frame(&mut self, frame: T) {
+        self.frames.push(frame);
+    }
+
+    pub fn pop_frame(&mut self) {
+        self.frames.pop();
     }
 }
 

@@ -42,6 +42,14 @@ impl<T> NonEmpty<T> {
         }
     }
 
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
+        if index == 0 {
+            Some(&mut self.0)
+        } else {
+            self.1.get_mut(index - 1)
+        }
+    }
+
     pub fn truncate(&mut self, len: usize) {
         assert!(len >= 1);
         self.1.truncate(len - 1);

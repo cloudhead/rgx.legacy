@@ -363,6 +363,14 @@ impl ShaderStage {
 
 pub trait Canvas {
     fn fill(&self, buf: &[u8], device: &mut Device, encoder: &mut wgpu::CommandEncoder);
+    fn transfer(
+        &self,
+        buf: &[u8],
+        w: u32,
+        h: u32,
+        device: &mut Device,
+        encoder: &mut wgpu::CommandEncoder,
+    );
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -438,6 +446,14 @@ impl Framebuffer {
     pub fn size(&self) -> usize {
         (self.texture.w * self.texture.h) as usize
     }
+
+    pub fn width(&self) -> u32 {
+        self.texture.w
+    }
+
+    pub fn height(&self) -> u32 {
+        self.texture.h
+    }
 }
 
 impl Bind for Framebuffer {
@@ -452,6 +468,17 @@ impl Bind for Framebuffer {
 impl Canvas for Framebuffer {
     fn fill(&self, buf: &[u8], device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
         Texture::fill(&self.texture, buf, device, encoder);
+    }
+
+    fn transfer(
+        &self,
+        buf: &[u8],
+        w: u32,
+        h: u32,
+        device: &mut Device,
+        encoder: &mut wgpu::CommandEncoder,
+    ) {
+        Texture::transfer(&self.texture, buf, w, h, device, encoder);
     }
 }
 
@@ -502,7 +529,7 @@ impl Texture {
             .create_buffer_mapped(texels.len(), wgpu::BufferUsage::TRANSFER_SRC)
             .fill_from_slice(&texels);
 
-        Self::blit(
+        Self::copy(
             &texture.wgpu,
             texture.w,
             texture.h,
@@ -512,7 +539,33 @@ impl Texture {
         );
     }
 
-    fn blit(
+    fn transfer(
+        texture: &Texture,
+        texels: &[u8],
+        width: u32,
+        height: u32,
+        device: &mut Device,
+        encoder: &mut wgpu::CommandEncoder,
+    ) {
+        assert!(
+            (texels.len() as u32) < texture.w * texture.h * 4,
+            "fatal: incorrect length for texel buffer"
+        );
+
+        let buf = device
+            .device
+            .create_buffer_mapped(texels.len(), wgpu::BufferUsage::TRANSFER_SRC)
+            .fill_from_slice(&texels);
+
+        let extent = wgpu::Extent3d {
+            width,
+            height,
+            depth: 1,
+        };
+        Self::copy(&texture.wgpu, width, height, extent, &buf, encoder);
+    }
+
+    fn copy(
         texture: &wgpu::Texture,
         w: u32,
         h: u32,
@@ -554,6 +607,17 @@ impl Bind for Texture {
 impl Canvas for Texture {
     fn fill(&self, buf: &[u8], device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
         Texture::fill(&self, buf, device, encoder);
+    }
+
+    fn transfer(
+        &self,
+        buf: &[u8],
+        w: u32,
+        h: u32,
+        device: &mut Device,
+        encoder: &mut wgpu::CommandEncoder,
+    ) {
+        Texture::transfer(&self, buf, w, h, device, encoder);
     }
 }
 
@@ -887,6 +951,9 @@ impl TextureView for &SwapChainTexture<'_> {
 }
 
 pub struct SwapChain {
+    pub width: u32,
+    pub height: u32,
+
     wgpu: wgpu::SwapChain,
 }
 
@@ -923,6 +990,8 @@ impl Renderer {
     pub fn swap_chain(&self, w: u32, h: u32) -> SwapChain {
         SwapChain {
             wgpu: self.device.create_swap_chain(w, h),
+            width: w,
+            height: h,
         }
     }
 
@@ -1064,6 +1133,9 @@ impl Renderer {
 
 pub enum Op<'a> {
     Fill(&'a dyn Canvas, &'a [u8]),
+    Transfer(&'a dyn Canvas, &'a [u8], u32, u32),
+    // TODO:
+    // Blit(&'a dyn Canvas, &'a [u8], Rect<f32>, Rect<f32>),
 }
 
 impl<'a> Op<'a> {
@@ -1071,6 +1143,9 @@ impl<'a> Op<'a> {
         match *self {
             Op::Fill(f, buf) => {
                 f.fill(buf, dev, encoder);
+            }
+            Op::Transfer(f, buf, w, h) => {
+                f.transfer(buf, w, h, dev, encoder);
             }
         }
     }
