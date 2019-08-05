@@ -97,6 +97,13 @@ impl<T> Animation<T> {
         self.len() == 0
     }
 
+    pub fn is_playing(&self) -> bool {
+        match self.state {
+            AnimationState::Playing(_, _) => true,
+            _ => false,
+        }
+    }
+
     pub fn elapsed(&self) -> f64 {
         match self.state {
             AnimationState::Playing(_, elapsed) => elapsed,
