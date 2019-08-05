@@ -267,6 +267,38 @@ where
     }
 }
 
+impl<T> std::ops::Sub<Vector2<T>> for Rect<T>
+where
+    T: std::ops::Sub<Output = T> + Copy,
+{
+    type Output = Self;
+
+    fn sub(self, vec: Vector2<T>) -> Self {
+        Self {
+            x1: self.x1 - vec.x,
+            y1: self.y1 - vec.y,
+            x2: self.x2 - vec.x,
+            y2: self.y2 - vec.y,
+        }
+    }
+}
+
+impl<T> std::ops::Mul<T> for Rect<T>
+where
+    T: std::ops::Mul<Output = T> + Copy,
+{
+    type Output = Self;
+
+    fn mul(self, s: T) -> Self {
+        Self {
+            x1: self.x1 * s,
+            y1: self.y1 * s,
+            x2: self.x2 * s,
+            y2: self.y2 * s,
+        }
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 /// Draw
 ///////////////////////////////////////////////////////////////////////////////
