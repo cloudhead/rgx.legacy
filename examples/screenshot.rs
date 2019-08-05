@@ -137,8 +137,8 @@ fn main() {
     let sampler = r.sampler(Filter::Nearest, Filter::Nearest);
     let mut textures = r.swap_chain(sw, sh);
 
-    let offscreen: kit::shape2d::Pipeline = r.pipeline(sw, sh);
-    let onscreen: FramebufferPipeline = r.pipeline(sw, sh);
+    let offscreen: kit::shape2d::Pipeline = r.pipeline(sw, sh, Blending::default());
+    let onscreen: FramebufferPipeline = r.pipeline(sw, sh, Blending::default());
     let onscreen_binding = onscreen.binding(&r, &framebuffer, &sampler);
 
     let sv = shape2d::Batch::singleton(Shape::Circle(

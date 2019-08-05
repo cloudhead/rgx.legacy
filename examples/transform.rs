@@ -34,7 +34,7 @@ fn main() {
         .to_physical(window.get_hidpi_factor());
 
     let mut pipeline: kit::sprite2d::Pipeline =
-        renderer.pipeline(size.width as u32, size.height as u32);
+        renderer.pipeline(size.width as u32, size.height as u32, Blending::default());
 
     ///////////////////////////////////////////////////////////////////////////
     // Setup texture & sampler

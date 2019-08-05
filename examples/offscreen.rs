@@ -131,8 +131,8 @@ fn main() {
         .to_physical(window.get_hidpi_factor());
 
     let (sw, sh) = (size.width as u32, size.height as u32);
-    let mut offscreen: kit::sprite2d::Pipeline = r.pipeline(sw, sh);
-    let mut onscreen: FramebufferPipeline = r.pipeline(sw, sh);
+    let mut offscreen: kit::sprite2d::Pipeline = r.pipeline(sw, sh, Blending::default());
+    let mut onscreen: FramebufferPipeline = r.pipeline(sw, sh, Blending::default());
     let framebuffer = Framebuffer::new(sw, sh, &r);
 
     ///////////////////////////////////////////////////////////////////////////

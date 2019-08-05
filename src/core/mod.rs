@@ -841,6 +841,62 @@ impl<'a> AbstractPipeline<'a> for Pipeline {
     }
 }
 
+pub struct Blending {
+    src_factor: BlendFactor,
+    dst_factor: BlendFactor,
+    operation: BlendOp,
+}
+
+impl Blending {
+    fn to_wgpu(&self) -> (wgpu::BlendFactor, wgpu::BlendFactor, wgpu::BlendOperation) {
+        (
+            self.src_factor.to_wgpu(),
+            self.dst_factor.to_wgpu(),
+            self.operation.to_wgpu(),
+        )
+    }
+}
+
+impl Default for Blending {
+    fn default() -> Self {
+        Blending {
+            src_factor: BlendFactor::SrcAlpha,
+            dst_factor: BlendFactor::OneMinusSrcAlpha,
+            operation: BlendOp::Add,
+        }
+    }
+}
+
+pub enum BlendFactor {
+    One,
+    Zero,
+    SrcAlpha,
+    OneMinusSrcAlpha,
+}
+
+impl BlendFactor {
+    fn to_wgpu(&self) -> wgpu::BlendFactor {
+        match self {
+            BlendFactor::SrcAlpha => wgpu::BlendFactor::SrcAlpha,
+            BlendFactor::OneMinusSrcAlpha => wgpu::BlendFactor::OneMinusSrcAlpha,
+            BlendFactor::One => wgpu::BlendFactor::One,
+            BlendFactor::Zero => wgpu::BlendFactor::Zero,
+        }
+    }
+}
+
+pub enum BlendOp {
+    Add,
+}
+
+impl BlendOp {
+    fn to_wgpu(&self) -> wgpu::BlendOperation {
+        match self {
+            BlendOp::Add => wgpu::BlendOperation::Add,
+        }
+    }
+}
+
 pub struct Set<'a>(pub &'a [Binding]);
 
 pub struct PipelineLayout {
@@ -1057,7 +1113,7 @@ impl Renderer {
         self.device.create_sampler(min_filter, mag_filter)
     }
 
-    pub fn pipeline<T>(&self, w: u32, h: u32) -> T
+    pub fn pipeline<T>(&self, w: u32, h: u32, blending: Blending) -> T
     where
         T: AbstractPipeline<'static>,
     {
@@ -1075,7 +1131,7 @@ impl Renderer {
 
         T::setup(
             self.device
-                .create_pipeline(pip_layout, vertex_layout, &vs, &fs),
+                .create_pipeline(pip_layout, vertex_layout, blending, &vs, &fs),
             &self.device,
             w,
             h,
@@ -1453,6 +1509,7 @@ impl Device {
         &self,
         pipeline_layout: PipelineLayout,
         vertex_layout: VertexLayout,
+        blending: Blending,
         vs: &Shader,
         fs: &Shader,
     ) -> Pipeline {
@@ -1467,6 +1524,8 @@ impl Device {
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 bind_group_layouts: sets.as_slice(),
             });
+
+        let (src_factor, dst_factor, operation) = blending.to_wgpu();
 
         let wgpu = self
             .device
@@ -1493,9 +1552,9 @@ impl Device {
                     // TODO: Try Bgra8UnormSrgb
                     format: wgpu::TextureFormat::Bgra8Unorm,
                     color_blend: wgpu::BlendDescriptor {
-                        src_factor: wgpu::BlendFactor::SrcAlpha,
-                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                        operation: wgpu::BlendOperation::Add,
+                        src_factor,
+                        dst_factor,
+                        operation,
                     },
                     alpha_blend: wgpu::BlendDescriptor {
                         // TODO: Try BlendFactor::One

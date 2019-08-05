@@ -23,7 +23,7 @@ fn main() {
 
     // Setup render pipeline
     let pipeline: kit::sprite2d::Pipeline =
-        renderer.pipeline(size.width as u32, size.height as u32);
+        renderer.pipeline(size.width as u32, size.height as u32, Blending::default());
 
     // Setup texture & sampler
     #[rustfmt::skip]

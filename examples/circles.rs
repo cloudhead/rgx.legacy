@@ -30,7 +30,8 @@ fn main() {
         .unwrap()
         .to_physical(window.get_hidpi_factor());
 
-    let mut pip: kit::shape2d::Pipeline = r.pipeline(win.width as u32, win.height as u32);
+    let mut pip: kit::shape2d::Pipeline =
+        r.pipeline(win.width as u32, win.height as u32, Blending::default());
     let mut running = true;
 
     let mut chain = r.swap_chain(win.width as u32, win.height as u32);
