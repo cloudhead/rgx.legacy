@@ -394,6 +394,7 @@ impl ShaderStage {
 ///////////////////////////////////////////////////////////////////////////////
 
 pub trait Canvas {
+    fn clear(&self, color: Rgba, device: &mut Device, encoder: &mut wgpu::CommandEncoder);
     fn fill(&self, buf: &[u8], device: &mut Device, encoder: &mut wgpu::CommandEncoder);
     fn transfer(
         &self,
@@ -500,6 +501,10 @@ impl Bind for Framebuffer {
 }
 
 impl Canvas for Framebuffer {
+    fn clear(&self, color: Rgba, device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
+        Texture::clear(&self.texture, color, device, encoder);
+    }
+
     fn fill(&self, buf: &[u8], device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
         Texture::fill(&self.texture, buf, device, encoder);
     }
@@ -546,6 +551,22 @@ impl Texture {
             x2: self.w as f32,
             y2: self.h as f32,
         }
+    }
+
+    fn clear(
+        texture: &Texture,
+        color: Rgba,
+        device: &mut Device,
+        encoder: &mut wgpu::CommandEncoder,
+    ) {
+        let mut texels: Vec<Rgba8> = Vec::with_capacity(texture.w as usize * texture.h as usize);
+        texels.resize(texture.w as usize * texture.h as usize, color.into());
+
+        let (head, body, tail) = unsafe { texels.align_to::<u8>() };
+        assert!(head.is_empty());
+        assert!(tail.is_empty());
+
+        Self::fill(texture, body, device, encoder);
     }
 
     fn fill(
@@ -650,6 +671,10 @@ impl Bind for Texture {
 impl Canvas for Texture {
     fn fill(&self, buf: &[u8], device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
         Texture::fill(&self, buf, device, encoder);
+    }
+
+    fn clear(&self, color: Rgba, device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
+        Texture::clear(&self, color, device, encoder);
     }
 
     fn transfer(
@@ -1243,6 +1268,7 @@ impl Renderer {
 }
 
 pub enum Op<'a> {
+    Clear(&'a dyn Canvas, Rgba),
     Fill(&'a dyn Canvas, &'a [u8]),
     Transfer(&'a dyn Canvas, &'a [u8], u32, u32, u32, u32),
     // TODO:
@@ -1252,6 +1278,9 @@ pub enum Op<'a> {
 impl<'a> Op<'a> {
     fn encode(&self, dev: &mut Device, encoder: &mut wgpu::CommandEncoder) {
         match *self {
+            Op::Clear(f, color) => {
+                f.clear(color, dev, encoder);
+            }
             Op::Fill(f, buf) => {
                 f.fill(buf, dev, encoder);
             }
