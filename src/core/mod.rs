@@ -834,6 +834,14 @@ impl<'a> AbstractPipeline<'a> for Pipeline {
         pass.wgpu.set_pipeline(&self.wgpu);
     }
 
+    fn width(&self) -> u32 {
+        unimplemented!()
+    }
+
+    fn height(&self) -> u32 {
+        unimplemented!()
+    }
+
     fn resize(&mut self, _w: u32, _h: u32) {}
 
     fn prepare(&'a self, _unused: ()) -> Option<(&'a UniformBuffer, Vec<()>)> {
@@ -911,6 +919,8 @@ pub trait AbstractPipeline<'a> {
     fn setup(pip: Pipeline, dev: &Device, w: u32, h: u32) -> Self;
     fn apply(&self, pass: &mut Pass);
     fn resize(&mut self, w: u32, h: u32);
+    fn width(&self) -> u32;
+    fn height(&self) -> u32;
     fn prepare(
         &'a self,
         t: Self::PrepareContext,

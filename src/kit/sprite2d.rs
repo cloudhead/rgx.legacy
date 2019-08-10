@@ -55,6 +55,8 @@ pub struct Pipeline {
     pipeline: core::Pipeline,
     bindings: core::BindingGroup,
     buf: core::UniformBuffer,
+    width: u32,
+    height: u32,
     ortho: Matrix4<f32>,
     model: Model,
 }
@@ -202,8 +204,8 @@ impl<'a> core::AbstractPipeline<'a> for Pipeline {
         }
     }
 
-    fn setup(pipeline: core::Pipeline, dev: &core::Device, w: u32, h: u32) -> Self {
-        let ortho = kit::ortho(w, h);
+    fn setup(pipeline: core::Pipeline, dev: &core::Device, width: u32, height: u32) -> Self {
+        let ortho = kit::ortho(width, height);
         let transform = Matrix4::identity();
         let model = Model::new(&pipeline.layout.sets[1], &[Matrix4::identity()], dev);
         let buf = dev.create_uniform_buffer(&[self::Uniforms { ortho, transform }]);
@@ -215,11 +217,21 @@ impl<'a> core::AbstractPipeline<'a> for Pipeline {
             bindings,
             model,
             ortho,
+            width,
+            height,
         }
     }
 
     fn resize(&mut self, w: u32, h: u32) {
         self.ortho = kit::ortho(w, h);
+    }
+
+    fn width(&self) -> u32 {
+        self.width
+    }
+
+    fn height(&self) -> u32 {
+        self.height
     }
 
     fn apply(&self, pass: &mut core::Pass) {

@@ -45,6 +45,8 @@ pub struct FramebufferPipeline {
     pipeline: core::Pipeline,
     bindings: core::BindingGroup,
     buf: core::UniformBuffer,
+    width: u32,
+    height: u32,
 }
 
 impl<'a> core::AbstractPipeline<'a> for FramebufferPipeline {
@@ -76,7 +78,7 @@ impl<'a> core::AbstractPipeline<'a> for FramebufferPipeline {
         }
     }
 
-    fn setup(pipeline: core::Pipeline, dev: &core::Device, _w: u32, _h: u32) -> Self {
+    fn setup(pipeline: core::Pipeline, dev: &core::Device, width: u32, height: u32) -> Self {
         let buf = dev.create_uniform_buffer(&[core::Rgba::TRANSPARENT]);
         let bindings = dev.create_binding_group(&pipeline.layout.sets[0], &[&buf]);
 
@@ -84,6 +86,8 @@ impl<'a> core::AbstractPipeline<'a> for FramebufferPipeline {
             pipeline,
             buf,
             bindings,
+            width,
+            height,
         }
     }
 
@@ -96,7 +100,18 @@ impl<'a> core::AbstractPipeline<'a> for FramebufferPipeline {
         Some((&self.buf, vec![color]))
     }
 
-    fn resize(&mut self, _w: u32, _h: u32) {}
+    fn resize(&mut self, w: u32, h: u32) {
+        self.width = w;
+        self.height = h;
+    }
+
+    fn width(&self) -> u32 {
+        self.width
+    }
+
+    fn height(&self) -> u32 {
+        self.height
+    }
 }
 
 impl FramebufferPipeline {
