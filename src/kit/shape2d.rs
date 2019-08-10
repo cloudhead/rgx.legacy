@@ -157,7 +157,7 @@ pub enum Fill {
 pub enum Shape {
     Line(Line, Stroke),
     Rectangle(Rect<f32>, Stroke, Fill),
-    Circle(Vector2<f32>, f32, u32, Stroke, Fill),
+    Circle(Point2<f32>, f32, u32, Stroke, Fill),
 }
 
 impl Shape {
@@ -295,7 +295,7 @@ impl Shape {
         }
     }
 
-    fn circle(position: Vector2<f32>, radius: f32, sides: u32) -> Vec<Point2<f32>> {
+    fn circle(position: Point2<f32>, radius: f32, sides: u32) -> Vec<Point2<f32>> {
         let mut verts = Vec::with_capacity(sides as usize + 1);
 
         for i in 0..=sides as usize {

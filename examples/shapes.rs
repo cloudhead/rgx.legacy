@@ -6,7 +6,7 @@ use rgx::core::*;
 use rgx::kit;
 use rgx::kit::shape2d::{Batch, Fill, Line, Shape, Stroke};
 
-use cgmath::Vector2;
+use cgmath::Point2;
 
 use wgpu::winit::{
     ElementState, Event, EventsLoop, KeyboardInput, VirtualKeyCode, Window, WindowEvent,
@@ -105,7 +105,7 @@ fn main() {
 
                 if j % 2 == 0 && i % 2 == 0 {
                     batch.add(Shape::Circle(
-                        Vector2::new(x + sw / 2., y + sw / 2.),
+                        Point2::new(x + sw / 2., y + sw / 2.),
                         sw * 2.,
                         32,
                         Stroke::new(1.0, Rgba::new(0.5, c2, c1, 0.75)),

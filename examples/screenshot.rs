@@ -9,7 +9,7 @@ use rgx::core::*;
 use rgx::kit;
 
 use cgmath::prelude::*;
-use cgmath::{Matrix4, Vector2};
+use cgmath::{Matrix4, Point2};
 
 use image::png::PNGEncoder;
 use image::ColorType;
@@ -142,7 +142,7 @@ fn main() {
     let onscreen_binding = onscreen.binding(&r, &framebuffer, &sampler);
 
     let sv = shape2d::Batch::singleton(Shape::Circle(
-        Vector2::new(sw as f32 / 2., sh as f32 / 2.),
+        Point2::new(sw as f32 / 2., sh as f32 / 2.),
         sh as f32 / 2.0,
         128,
         Stroke::new(3.0, Rgba::new(1.0, 0.0, 1.0, 1.0)),

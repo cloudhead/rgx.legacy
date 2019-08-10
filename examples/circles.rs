@@ -7,7 +7,7 @@ use rgx::kit;
 use rgx::kit::shape2d::{Batch, Fill, Shape, Stroke};
 
 use cgmath::prelude::*;
-use cgmath::Vector2;
+use cgmath::{Point2, Vector2};
 
 use wgpu::winit::{
     ElementState, Event, EventsLoop, KeyboardInput, VirtualKeyCode, Window, WindowEvent,
@@ -110,7 +110,7 @@ fn main() {
                 let width = 1. + delta * (rad / 1.5);
 
                 batch.add(Shape::Circle(
-                    Vector2::new(x + rad, y + rad),
+                    Point2::new(x + rad, y + rad),
                     rad,
                     32,
                     Stroke::new(width, Rgba::new(0.5, c2, c1, 0.75)),
