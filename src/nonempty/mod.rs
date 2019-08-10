@@ -34,6 +34,13 @@ impl<T> NonEmpty<T> {
         }
     }
 
+    pub fn last_mut(&mut self) -> &mut T {
+        match self.1.last_mut() {
+            None => &mut self.0,
+            Some(e) => e,
+        }
+    }
+
     pub fn get(&self, index: usize) -> Option<&T> {
         if index == 0 {
             Some(&self.0)
@@ -53,6 +60,10 @@ impl<T> NonEmpty<T> {
     pub fn truncate(&mut self, len: usize) {
         assert!(len >= 1);
         self.1.truncate(len - 1);
+    }
+
+    pub fn iter<'a>(&'a self) -> impl Iterator + 'a {
+        std::iter::once(&self.0).chain(self.1.iter())
     }
 }
 
