@@ -887,6 +887,7 @@ impl<'a> AbstractPipeline<'a> for Pipeline {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Blending {
     src_factor: BlendFactor,
     dst_factor: BlendFactor,
@@ -894,6 +895,22 @@ pub struct Blending {
 }
 
 impl Blending {
+    pub fn new(src_factor: BlendFactor, dst_factor: BlendFactor, operation: BlendOp) -> Self {
+        Blending {
+            src_factor,
+            dst_factor,
+            operation,
+        }
+    }
+
+    pub fn constant() -> Self {
+        Blending {
+            src_factor: BlendFactor::One,
+            dst_factor: BlendFactor::Zero,
+            operation: BlendOp::Add,
+        }
+    }
+
     fn to_wgpu(&self) -> (wgpu::BlendFactor, wgpu::BlendFactor, wgpu::BlendOperation) {
         (
             self.src_factor.to_wgpu(),
@@ -913,6 +930,7 @@ impl Default for Blending {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum BlendFactor {
     One,
     Zero,
@@ -931,6 +949,7 @@ impl BlendFactor {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum BlendOp {
     Add,
 }
