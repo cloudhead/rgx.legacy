@@ -400,6 +400,8 @@ pub trait Canvas {
         buf: &[u8],
         w: u32,
         h: u32,
+        tw: u32,
+        th: u32,
         device: &mut Device,
         encoder: &mut wgpu::CommandEncoder,
     );
@@ -507,10 +509,12 @@ impl Canvas for Framebuffer {
         buf: &[u8],
         w: u32,
         h: u32,
+        tw: u32,
+        th: u32,
         device: &mut Device,
         encoder: &mut wgpu::CommandEncoder,
     ) {
-        Texture::transfer(&self.texture, buf, w, h, device, encoder);
+        Texture::transfer(&self.texture, buf, w, h, tw, th, device, encoder);
     }
 }
 
@@ -576,12 +580,19 @@ impl Texture {
         texels: &[u8],
         width: u32,
         height: u32,
+        transfer_w: u32,
+        transfer_h: u32,
         device: &mut Device,
         encoder: &mut wgpu::CommandEncoder,
     ) {
-        assert!(
-            (texels.len() as u32) < texture.w * texture.h * 4,
+        assert_eq!(
+            (texels.len() as u32 / 4),
+            width * height,
             "fatal: incorrect length for texel buffer"
+        );
+        assert!(
+            transfer_w * transfer_h <= texture.w * texture.h,
+            "fatal: transfer size must be <= texture size"
         );
 
         let buf = device
@@ -590,8 +601,8 @@ impl Texture {
             .fill_from_slice(&texels);
 
         let extent = wgpu::Extent3d {
-            width,
-            height,
+            width: transfer_w,
+            height: transfer_h,
             depth: 1,
         };
         Self::copy(&texture.wgpu, width, height, extent, &buf, encoder);
@@ -646,10 +657,12 @@ impl Canvas for Texture {
         buf: &[u8],
         w: u32,
         h: u32,
+        tw: u32,
+        th: u32,
         device: &mut Device,
         encoder: &mut wgpu::CommandEncoder,
     ) {
-        Texture::transfer(&self, buf, w, h, device, encoder);
+        Texture::transfer(&self, buf, w, h, tw, th, device, encoder);
     }
 }
 
@@ -1231,7 +1244,7 @@ impl Renderer {
 
 pub enum Op<'a> {
     Fill(&'a dyn Canvas, &'a [u8]),
-    Transfer(&'a dyn Canvas, &'a [u8], u32, u32),
+    Transfer(&'a dyn Canvas, &'a [u8], u32, u32, u32, u32),
     // TODO:
     // Blit(&'a dyn Canvas, &'a [u8], Rect<f32>, Rect<f32>),
 }
@@ -1242,8 +1255,8 @@ impl<'a> Op<'a> {
             Op::Fill(f, buf) => {
                 f.fill(buf, dev, encoder);
             }
-            Op::Transfer(f, buf, w, h) => {
-                f.transfer(buf, w, h, dev, encoder);
+            Op::Transfer(f, buf, w, h, tw, th) => {
+                f.transfer(buf, w, h, tw, th, dev, encoder);
             }
         }
     }
