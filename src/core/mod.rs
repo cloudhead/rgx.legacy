@@ -1107,6 +1107,7 @@ impl TextureView for &SwapChainTexture<'_> {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PresentMode {
     Vsync,
     NoVsync,
