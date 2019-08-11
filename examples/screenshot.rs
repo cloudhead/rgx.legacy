@@ -150,7 +150,7 @@ fn main() {
     let framebuffer = Framebuffer::new(sw, sh, &r);
 
     let sampler = r.sampler(Filter::Nearest, Filter::Nearest);
-    let mut textures = r.swap_chain(sw, sh);
+    let mut textures = r.swap_chain(sw, sh, PresentMode::default());
 
     let offscreen: kit::shape2d::Pipeline = r.pipeline(sw, sh, Blending::default());
     let onscreen: FramebufferPipeline = r.pipeline(sw, sh, Blending::default());

@@ -86,7 +86,11 @@ fn main() {
 
     let mut running = true;
     let mut transform;
-    let mut textures = renderer.swap_chain(size.width as u32, size.height as u32);
+    let mut textures = renderer.swap_chain(
+        size.width as u32,
+        size.height as u32,
+        PresentMode::default(),
+    );
 
     ///////////////////////////////////////////////////////////////////////////
     // Prepare resources
@@ -132,7 +136,7 @@ fn main() {
                         let (w, h) = (physical.width as u32, physical.height as u32);
 
                         pipeline.resize(w, h);
-                        textures = renderer.swap_chain(w, h);
+                        textures = renderer.swap_chain(w, h, PresentMode::default());
                     }
                     _ => {}
                 }

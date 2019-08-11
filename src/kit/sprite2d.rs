@@ -5,10 +5,10 @@ use cgmath::prelude::*;
 use cgmath::{Matrix4, Vector2, Vector3};
 
 use crate::core;
-use crate::core::{Binding, BindingType, PassOp, Rect, Rgba, Set, ShaderStage};
+use crate::core::{Binding, BindingType, Rect, Rgba, Set, ShaderStage};
 
 use crate::kit;
-use crate::kit::{AlignedBuffer, Model, Repeat, Rgba8};
+use crate::kit::{Model, Repeat, Rgba8};
 
 use crate::nonempty::NonEmpty;
 

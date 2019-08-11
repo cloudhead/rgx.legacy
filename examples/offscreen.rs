@@ -192,7 +192,7 @@ fn main() {
     // Render loop
     ///////////////////////////////////////////////////////////////////////////
 
-    let mut textures = r.swap_chain(sw, sh);
+    let mut textures = r.swap_chain(sw, sh, PresentMode::default());
     let mut running = true;
 
     while running {
@@ -219,7 +219,7 @@ fn main() {
 
                         offscreen.resize(w, h);
                         onscreen.resize(w, h);
-                        textures = r.swap_chain(w, h);
+                        textures = r.swap_chain(w, h, PresentMode::default());
                     }
                     _ => {}
                 }

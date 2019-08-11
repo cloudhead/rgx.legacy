@@ -1107,6 +1107,26 @@ impl TextureView for &SwapChainTexture<'_> {
     }
 }
 
+pub enum PresentMode {
+    Vsync,
+    NoVsync,
+}
+
+impl PresentMode {
+    fn to_wgpu(&self) -> wgpu::PresentMode {
+        match self {
+            PresentMode::Vsync => wgpu::PresentMode::Vsync,
+            PresentMode::NoVsync => wgpu::PresentMode::NoVsync,
+        }
+    }
+}
+
+impl Default for PresentMode {
+    fn default() -> Self {
+        PresentMode::Vsync
+    }
+}
+
 pub struct SwapChain {
     pub width: u32,
     pub height: u32,
@@ -1119,10 +1139,11 @@ impl SwapChain {
         SwapChainTexture(self.wgpu.get_next_texture())
     }
 
-    fn descriptor(width: u32, height: u32) -> wgpu::SwapChainDescriptor {
+    fn descriptor(width: u32, height: u32, mode: PresentMode) -> wgpu::SwapChainDescriptor {
         wgpu::SwapChainDescriptor {
             usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
             format: wgpu::TextureFormat::Bgra8Unorm,
+            present_mode: mode.to_wgpu(),
             width,
             height,
         }
@@ -1144,9 +1165,9 @@ impl Renderer {
         }
     }
 
-    pub fn swap_chain(&self, w: u32, h: u32) -> SwapChain {
+    pub fn swap_chain(&self, w: u32, h: u32, mode: PresentMode) -> SwapChain {
         SwapChain {
-            wgpu: self.device.create_swap_chain(w, h),
+            wgpu: self.device.create_swap_chain(w, h, mode),
             width: w,
             height: h,
         }
@@ -1345,8 +1366,8 @@ impl Device {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 })
     }
 
-    pub fn create_swap_chain(&self, w: u32, h: u32) -> wgpu::SwapChain {
-        let desc = SwapChain::descriptor(w, h);
+    pub fn create_swap_chain(&self, w: u32, h: u32, mode: PresentMode) -> wgpu::SwapChain {
+        let desc = SwapChain::descriptor(w, h, mode);
         self.device.create_swap_chain(&self.surface, &desc)
     }
 

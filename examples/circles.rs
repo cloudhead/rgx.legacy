@@ -34,7 +34,7 @@ fn main() {
         r.pipeline(win.width as u32, win.height as u32, Blending::default());
     let mut running = true;
 
-    let mut chain = r.swap_chain(win.width as u32, win.height as u32);
+    let mut chain = r.swap_chain(win.width as u32, win.height as u32, PresentMode::default());
 
     ///////////////////////////////////////////////////////////////////////////
     // Render loop
@@ -78,7 +78,7 @@ fn main() {
                         let (w, h) = (win.width as u32, win.height as u32);
 
                         pip.resize(w, h);
-                        chain = r.swap_chain(w, h);
+                        chain = r.swap_chain(w, h, PresentMode::default());
                     }
                     _ => {}
                 }

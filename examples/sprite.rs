@@ -104,7 +104,7 @@ fn main() {
     let mut rows: u32;
     let mut cols: u32;
 
-    let mut textures = r.swap_chain(win.width as u32, win.height as u32);
+    let mut textures = r.swap_chain(win.width as u32, win.height as u32, PresentMode::default());
 
     while running {
         events_loop.poll_events(|event| {
@@ -145,7 +145,7 @@ fn main() {
                         let (w, h) = (win.width as u32, win.height as u32);
 
                         pip.resize(w, h);
-                        textures = r.swap_chain(w, h);
+                        textures = r.swap_chain(w, h, PresentMode::default());
                     }
                     _ => {}
                 }

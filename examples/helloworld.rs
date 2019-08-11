@@ -53,7 +53,11 @@ fn main() {
     let buffer = batch.finish(&renderer);
 
     let mut running = true;
-    let mut textures = renderer.swap_chain(size.width as u32, size.height as u32);
+    let mut textures = renderer.swap_chain(
+        size.width as u32,
+        size.height as u32,
+        PresentMode::default(),
+    );
 
     // Prepare resources
     renderer.prepare(&[Op::Fill(&texture, &buf)]);
