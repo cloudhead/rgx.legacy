@@ -121,8 +121,8 @@ impl<'a> core::AbstractPipeline<'a> for Pipeline {
 
     fn apply(&self, pass: &mut core::Pass) {
         pass.set_pipeline(&self.pipeline);
-        pass.set_binding(&self.bindings, &[0]);
-        pass.set_binding(&self.model.binding, &[0]);
+        pass.set_binding(&self.bindings, &[]);
+        pass.set_binding(&self.model.binding, &[]);
     }
 
     fn prepare(

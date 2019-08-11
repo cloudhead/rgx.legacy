@@ -821,6 +821,7 @@ impl VertexLayout {
 /// A binding type.
 pub enum BindingType {
     UniformBuffer,
+    UniformBufferDynamic,
     Sampler,
     SampledTexture,
 }
@@ -828,7 +829,8 @@ pub enum BindingType {
 impl BindingType {
     fn to_wgpu(&self) -> wgpu::BindingType {
         match self {
-            BindingType::UniformBuffer => wgpu::BindingType::UniformBufferDynamic,
+            BindingType::UniformBuffer => wgpu::BindingType::UniformBuffer,
+            BindingType::UniformBufferDynamic => wgpu::BindingType::UniformBufferDynamic,
             BindingType::SampledTexture => wgpu::BindingType::SampledTexture,
             BindingType::Sampler => wgpu::BindingType::Sampler,
         }
