@@ -1183,7 +1183,7 @@ impl Renderer {
         self.device.create_framebuffer(w, h)
     }
 
-    pub fn vertexbuffer<T>(&self, verts: &[T]) -> VertexBuffer
+    pub fn vertex_buffer<T>(&self, verts: &[T]) -> VertexBuffer
     where
         T: 'static + Copy,
     {
