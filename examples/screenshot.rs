@@ -156,14 +156,14 @@ fn main() {
     let onscreen: FramebufferPipeline = r.pipeline(sw, sh, Blending::default());
     let onscreen_binding = onscreen.binding(&r, &framebuffer, &sampler);
 
-    let sv = shape2d::Batch::singleton(Shape::Circle(
+    let buffer = shape2d::Batch::singleton(Shape::Circle(
         Point2::new(sw as f32 / 2., sh as f32 / 2.),
         sh as f32 / 2.0,
         128,
         Stroke::new(3.0, Rgba::new(1.0, 0.0, 1.0, 1.0)),
         Fill::Empty(),
-    ));
-    let buffer = sv.finish(&r);
+    ))
+    .finish(&r);
 
     ///////////////////////////////////////////////////////////////////////////
     // Create frame & on-screen output texture

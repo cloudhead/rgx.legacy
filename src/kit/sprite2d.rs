@@ -241,6 +241,14 @@ impl Batch {
     }
 
     pub fn add(&mut self, src: Rect<f32>, dst: Rect<f32>, rgba: Rgba, opacity: f32, rep: Repeat) {
+        if rep != Repeat::default() {
+            assert!(
+                src == Rect::origin(self.w as f32, self.h as f32),
+                "using texture repeat is only valid when using the entire {}x{} texture",
+                self.w,
+                self.h
+            );
+        }
         self.items.push((src, dst, rgba, opacity, rep));
         self.size += 1;
     }

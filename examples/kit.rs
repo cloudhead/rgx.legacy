@@ -59,7 +59,7 @@ fn main() {
 
     let binding = pipeline.binding(&renderer, &texture, &sampler);
 
-    let bg_batch = sprite2d::Batch::singleton(
+    let bg_buffer = sprite2d::Batch::singleton(
         texture.w,
         texture.h,
         texture.rect(),
@@ -67,10 +67,10 @@ fn main() {
         Rgba::TRANSPARENT,
         1.0,
         kit::Repeat::new(24. * (size.width / size.height) as f32, 24.),
-    );
-    let bg_buffer = bg_batch.finish(&renderer);
+    )
+    .finish(&renderer);
 
-    let fg_batch = sprite2d::Batch::singleton(
+    let fg_buffer = sprite2d::Batch::singleton(
         texture.w,
         texture.h,
         texture.rect(),
@@ -78,8 +78,8 @@ fn main() {
         Rgba::new(1.0, 1.0, 0.0, 0.5),
         1.0,
         kit::Repeat::default(),
-    );
-    let fg_buffer = fg_batch.finish(&renderer);
+    )
+    .finish(&renderer);
 
     let mut x: f32 = 0.0;
     let mut y: f32 = 0.0;

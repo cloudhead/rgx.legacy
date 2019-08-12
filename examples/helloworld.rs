@@ -41,7 +41,7 @@ fn main() {
 
     // Setup sprite
     let binding = pipeline.binding(&renderer, &texture, &sampler);
-    let batch = sprite2d::Batch::singleton(
+    let buffer = sprite2d::Batch::singleton(
         texture.w,
         texture.h,
         texture.rect(),
@@ -49,8 +49,8 @@ fn main() {
         Rgba::new(0.5, 0.6, 0.8, 1.0),
         1.0,
         kit::Repeat::new(24. * (size.width / size.height) as f32, 24.),
-    );
-    let buffer = batch.finish(&renderer);
+    )
+    .finish(&renderer);
 
     let mut running = true;
     let mut textures = renderer.swap_chain(

@@ -7,7 +7,7 @@ pub mod sprite2d;
 
 use cgmath::{Matrix4, Ortho};
 
-#[derive(Clone, Debug)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct Repeat {
     pub x: f32,
     pub y: f32,
