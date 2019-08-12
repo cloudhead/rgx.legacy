@@ -236,8 +236,8 @@ fn main() {
         // Prepare pipeline
         ///////////////////////////////////////////////////////////////////////////
 
-        r.update(&offscreen, Matrix4::identity(), &mut frame);
-        r.update(&onscreen, Rgba::new(0.2, 0.2, 0.0, 1.0), &mut frame);
+        r.update_pipeline(&offscreen, Matrix4::identity(), &mut frame);
+        r.update_pipeline(&onscreen, Rgba::new(0.2, 0.2, 0.0, 1.0), &mut frame);
 
         ///////////////////////////////////////////////////////////////////////////
         // Draw frame

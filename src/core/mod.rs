@@ -1283,7 +1283,7 @@ impl Renderer {
 
     // MUTABLE API ////////////////////////////////////////////////////////////
 
-    pub fn update<'a, T>(&mut self, pip: &'a T, p: T::PrepareContext, f: &mut Frame)
+    pub fn update_pipeline<'a, T>(&mut self, pip: &'a T, p: T::PrepareContext, f: &mut Frame)
     where
         T: AbstractPipeline<'a>,
     {

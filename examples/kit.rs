@@ -159,7 +159,7 @@ fn main() {
         // Update uniform
         ///////////////////////////////////////////////////////////////////////////
 
-        renderer.update(&pipeline, transform, &mut frame);
+        renderer.update_pipeline(&pipeline, transform, &mut frame);
 
         ///////////////////////////////////////////////////////////////////////////
         // Draw frame
