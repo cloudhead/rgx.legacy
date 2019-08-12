@@ -311,6 +311,7 @@ pub trait Draw {
 /// Rgba
 ///////////////////////////////////////////////////////////////////////////////
 
+#[repr(C)]
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Rgba {
     pub r: f32,
@@ -1402,7 +1403,7 @@ impl Device {
             },
         };
         Shader {
-            module: self.device.create_shader_module(spv.as_binary_u8()),
+            module: self.device.create_shader_module(spv.as_binary()),
         }
     }
 
