@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Alexis Sellier <alexis@cloudhead.io>"]
 license = "MIT"
 edition = "2018"
-keywords = ["graphics", "gamedev"]
+keywords = ["graphics", "gamedev", "vulkan", "2d"]
 
 [lib]
 name = "rgx"
@@ -16,14 +16,13 @@ version = "*"
 features = ["vulkan"]
 
 [dependencies]
-env_logger = "*"
-shaderc = "*"
-cgmath = "*"
-arrayvec = "*"
+env_logger = "0.6.2"
+shaderc = "0.6.1"
+cgmath = "0.17.0"
 
 [dev-dependencies]
-image = "*"
-criterion = "*"
+image = "0.22.1"
+criterion = "0.2.11"
 
 [[bench]]
 name = "benchmark"
