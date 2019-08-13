@@ -11,7 +11,7 @@ name = "rgx"
 
 [dependencies.wgpu]
 git = "https://github.com/gfx-rs/wgpu-rs.git"
-rev = "e515a59309dbcbbdba20ed363cb88a0528fcfc15"
+rev = "d332eade8a186a12144bdbd389761fdb1da2969b"
 version = "*"
 features = ["vulkan"]
 
