@@ -186,8 +186,7 @@ fn main() {
     {
         let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &framebuffer.target);
         pass.set_pipeline(&offscreen);
-        pass.set_vertex_buffer(&buffer);
-        pass.draw_buffer(0..buffer.size, 0..1);
+        pass.draw_buffer(&buffer);
     }
 
     {

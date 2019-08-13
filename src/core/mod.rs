@@ -744,8 +744,7 @@ impl Draw for VertexBuffer {
         // so that we can check at creation time whether the data passed in matches
         // the format.
         pass.set_binding(binding, &[]);
-        pass.set_vertex_buffer(&self);
-        pass.draw_buffer(0..self.size, 0..1);
+        pass.draw_buffer(&self);
     }
 }
 
@@ -1070,8 +1069,13 @@ impl<'a> Pass<'a> {
     pub fn draw<T: Draw>(&mut self, drawable: &T, binding: &BindingGroup) {
         drawable.draw(binding, self);
     }
-    pub fn draw_buffer(&mut self, indices: Range<u32>, instances: Range<u32>) {
-        self.wgpu.draw(indices, instances)
+    pub fn draw_buffer(&mut self, buf: &VertexBuffer) {
+        self.set_vertex_buffer(buf);
+        self.wgpu.draw(0..buf.size, 0..1);
+    }
+    pub fn draw_buffer_range(&mut self, buf: &VertexBuffer, range: Range<u32>) {
+        self.set_vertex_buffer(buf);
+        self.wgpu.draw(range, 0..1);
     }
     pub fn draw_indexed(&mut self, indices: Range<u32>, instances: Range<u32>) {
         self.wgpu.draw_indexed(indices, 0, instances)
