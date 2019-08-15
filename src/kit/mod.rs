@@ -7,6 +7,8 @@ pub mod sprite2d;
 
 use cgmath::{Matrix4, Ortho};
 
+use std::time;
+
 #[derive(PartialEq, Clone, Debug)]
 pub struct Repeat {
     pub x: f32,
@@ -31,35 +33,35 @@ impl Default for Repeat {
 
 #[derive(Clone, Debug)]
 pub enum AnimationState {
-    Playing(u32, f64),
-    Paused(u32, f64),
+    Playing(u32, time::Duration),
+    Paused(u32, time::Duration),
     Stopped,
 }
 
 #[derive(Clone, Debug)]
 pub struct Animation<T> {
     pub state: AnimationState,
-    pub delay: f64,
+    pub delay: time::Duration,
     pub frames: Vec<T>,
 }
 
 impl<T> Animation<T> {
-    pub fn new(frames: &[T], delay: f64) -> Self
+    pub fn new(frames: &[T], delay: time::Duration) -> Self
     where
         T: Clone,
     {
         Self {
-            state: AnimationState::Playing(0, 0.0),
+            state: AnimationState::Playing(0, time::Duration::from_secs(0)),
             delay,
             frames: frames.to_vec(),
         }
     }
 
-    pub fn step(&mut self, delta: f64) {
+    pub fn step(&mut self, delta: time::Duration) {
         if let AnimationState::Playing(_, elapsed) = self.state {
             let elapsed = elapsed + delta;
-            let fraction = elapsed / self.delay;
-            let cursor = fraction.floor() as u32 % self.frames.len() as u32;
+            let fraction = elapsed.as_micros() / self.delay.as_micros();
+            let cursor = fraction as u32 % self.frames.len() as u32;
             self.state = AnimationState::Playing(cursor, elapsed);
         }
     }
@@ -73,7 +75,9 @@ impl<T> Animation<T> {
     pub fn play(&mut self) {
         match self.state {
             AnimationState::Paused(_, elapsed) => self.state = AnimationState::Playing(0, elapsed),
-            AnimationState::Stopped => self.state = AnimationState::Playing(0, 0.),
+            AnimationState::Stopped => {
+                self.state = AnimationState::Playing(0, time::Duration::new(0, 0))
+            }
             _ => {}
         }
     }
@@ -104,11 +108,11 @@ impl<T> Animation<T> {
         }
     }
 
-    pub fn elapsed(&self) -> f64 {
+    pub fn elapsed(&self) -> time::Duration {
         match self.state {
             AnimationState::Playing(_, elapsed) => elapsed,
             AnimationState::Paused(_, elapsed) => elapsed,
-            AnimationState::Stopped => 0.0,
+            AnimationState::Stopped => time::Duration::new(0, 0),
         }
     }
 

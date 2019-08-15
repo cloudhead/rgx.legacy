@@ -15,7 +15,7 @@ use wgpu::winit::{
     ElementState, Event, EventsLoop, KeyboardInput, VirtualKeyCode, Window, WindowEvent,
 };
 
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 fn main() {
     env_logger::init();
@@ -59,7 +59,7 @@ fn main() {
     let sprite_h = sprite.h as f32;
 
     let mut anim = {
-        let delay = 160.0; // Frame delay
+        let delay = Duration::from_millis(160); // Frame delay
 
         Animation::new(
             &[
@@ -78,7 +78,7 @@ fn main() {
     let mut x = 0.0;
 
     let frame_batch = 120;
-    let mut delta: f64;
+    let mut delta: Duration;
     let mut last_frame = Instant::now();
     let mut fts: VecDeque<f64> = VecDeque::with_capacity(frame_batch);
     let mut average_ft: f64;
@@ -159,7 +159,7 @@ fn main() {
 
         {
             let now = Instant::now();
-            delta = now.duration_since(last_frame).as_millis() as f64;
+            delta = now.duration_since(last_frame);
             last_frame = now;
         }
 
@@ -167,8 +167,8 @@ fn main() {
         // Update state
         ///////////////////////////////////////////////////////////////////////////
 
-        anim.step(delta as f64);
-        fts.push_front(delta as f64);
+        anim.step(delta);
+        fts.push_front(delta.as_millis() as f64);
         fts.truncate(frame_batch);
 
         ///////////////////////////////////////////////////////////////////////////
@@ -182,7 +182,7 @@ fn main() {
 
         let mut batch = sprite2d::Batch::new(sprite.w, sprite.h);
 
-        x += delta as f32 / move_speed;
+        x += delta.as_millis() as f32 / move_speed;
 
         for i in 0..rows {
             let y = i as f32 * sh;
