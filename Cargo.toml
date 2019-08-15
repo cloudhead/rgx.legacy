@@ -1,6 +1,7 @@
 [package]
 name = "rgx"
 version = "0.1.0"
+description = "Mid-level 2D graphics library built on wgpu"
 authors = ["Alexis Sellier <self@cloudhead.io>"]
 license = "MIT"
 edition = "2018"
