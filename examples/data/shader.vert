@@ -1,1 +1,0 @@
-../../src/kit/data/shader.vert
