@@ -94,7 +94,7 @@ impl<'a> core::AbstractPipeline<'a> for FramebufferPipeline {
 
     fn apply(&self, pass: &mut core::Pass) {
         pass.set_pipeline(&self.pipeline);
-        pass.set_binding(&self.bindings, &[0]);
+        pass.set_binding(&self.bindings, &[]);
     }
 
     fn prepare(&'a self, color: core::Rgba) -> Option<(&'a core::UniformBuffer, Vec<core::Rgba>)> {
