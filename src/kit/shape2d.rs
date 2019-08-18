@@ -82,8 +82,8 @@ impl<'a> core::AbstractPipeline<'a> for Pipeline {
                 }]),
             ],
             // TODO: Use `env("CARGO_MANIFEST_DIR")`
-            vertex_shader: include_str!("data/shape.vert"),
-            fragment_shader: include_str!("data/shape.frag"),
+            vertex_shader: include_bytes!("data/shape.vert.spv"),
+            fragment_shader: include_bytes!("data/shape.frag.spv"),
         }
     }
 

@@ -861,8 +861,8 @@ impl<'a> AbstractPipeline<'a> for Pipeline {
         PipelineDescription {
             vertex_layout: &[],
             pipeline_layout: &[],
-            vertex_shader: "",
-            fragment_shader: "",
+            vertex_shader: &[],
+            fragment_shader: &[],
         }
     }
 
@@ -989,8 +989,8 @@ pub trait AbstractPipeline<'a> {
 pub struct PipelineDescription<'a> {
     pub vertex_layout: &'a [VertexFormat],
     pub pipeline_layout: &'a [Set<'a>],
-    pub vertex_shader: &'static str,
-    pub fragment_shader: &'static str,
+    pub vertex_shader: &'static [u8],
+    pub fragment_shader: &'static [u8],
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1385,29 +1385,12 @@ impl Device {
         PipelineLayout { sets }
     }
 
-    pub fn create_shader(&self, name: &str, source: &str, stage: ShaderStage) -> Shader {
-        let ty = match stage {
-            ShaderStage::Vertex => shaderc::ShaderKind::Vertex,
-            ShaderStage::Fragment => shaderc::ShaderKind::Fragment,
-            ShaderStage::Compute => shaderc::ShaderKind::Compute,
-        };
+    pub fn create_shader(&self, _name: &str, source: &[u8], _stage: ShaderStage) -> Shader {
+        let buf = std::io::Cursor::new(source);
+        let spv = wgpu::read_spirv(buf).unwrap();
 
-        let mut compiler = shaderc::Compiler::new().unwrap();
-        let options = shaderc::CompileOptions::new().unwrap();
-
-        let result = compiler.compile_into_spirv(source, ty, name, "main", Some(&options));
-
-        let spv = match result {
-            Ok(spv) => spv,
-            Err(err) => match err {
-                shaderc::Error::CompilationError(_, err) => {
-                    panic!(err);
-                }
-                _ => unimplemented!(),
-            },
-        };
         Shader {
-            module: self.device.create_shader_module(spv.as_binary()),
+            module: self.device.create_shader_module(spv.as_slice()),
         }
     }
 
