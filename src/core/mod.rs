@@ -524,7 +524,7 @@ impl Canvas for Framebuffer {
     }
 }
 
-impl TextureView for &Framebuffer {
+impl TextureView for Framebuffer {
     fn texture_view(&self) -> &wgpu::TextureView {
         &self.texture.view
     }
@@ -1006,7 +1006,7 @@ impl Frame {
         Self { encoder }
     }
 
-    pub fn pass<T: TextureView>(&mut self, op: PassOp, view: T) -> Pass {
+    pub fn pass<T: TextureView>(&mut self, op: PassOp, view: &T) -> Pass {
         Pass::begin(&mut self.encoder, &view.texture_view(), op)
     }
 
@@ -1106,7 +1106,7 @@ pub trait TextureView {
 
 pub struct SwapChainTexture<'a>(wgpu::SwapChainOutput<'a>);
 
-impl TextureView for &SwapChainTexture<'_> {
+impl TextureView for SwapChainTexture<'_> {
     fn texture_view(&self) -> &wgpu::TextureView {
         &self.0.view
     }
