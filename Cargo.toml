@@ -10,11 +10,17 @@ keywords = ["graphics", "gamedev", "vulkan", "2d"]
 [lib]
 name = "rgx"
 
+[features]
+default = []
+vulkan = ["wgpu/vulkan"]
+metal = ["wgpu/metal"]
+dx11 = ["wgpu/dx11"]
+dx12 = ["wgpu/dx12"]
+
 [dependencies.wgpu]
 git = "https://github.com/gfx-rs/wgpu-rs.git"
 rev = "d332eade8a186a12144bdbd389761fdb1da2969b"
 version = "*"
-features = ["vulkan"]
 
 [dependencies]
 env_logger = "0.6.2"
