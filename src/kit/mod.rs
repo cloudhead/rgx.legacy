@@ -9,6 +9,13 @@ use cgmath::{Matrix4, Ortho};
 
 use std::time;
 
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub enum Origin {
+    Center,
+    BottomLeft,
+    TopLeft,
+}
+
 #[derive(PartialEq, Clone, Debug)]
 pub struct Repeat {
     pub x: f32,
