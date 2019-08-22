@@ -13,8 +13,11 @@ use cgmath::Matrix4;
 
 use image::ImageDecoder;
 
-use wgpu::winit::{
-    ElementState, Event, EventsLoop, KeyboardInput, VirtualKeyCode, Window, WindowEvent,
+use raw_window_handle::HasRawWindowHandle;
+use winit::{
+    event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
+    event_loop::{ControlFlow, EventLoop},
+    window::Window,
 };
 
 pub struct Framebuffer {
@@ -131,19 +134,15 @@ impl FramebufferPipeline {
 fn main() {
     env_logger::init();
 
-    let mut events_loop = EventsLoop::new();
-    let window = Window::new(&events_loop).unwrap();
+    let event_loop = EventLoop::new();
+    let window = Window::new(&event_loop).unwrap();
 
     ///////////////////////////////////////////////////////////////////////////
     // Setup renderer
     ///////////////////////////////////////////////////////////////////////////
 
-    let mut r = Renderer::new(&window);
-
-    let size = window
-        .get_inner_size()
-        .unwrap()
-        .to_physical(window.get_hidpi_factor());
+    let mut r = Renderer::new(window.raw_window_handle());
+    let size = window.inner_size().to_physical(window.hidpi_factor());
 
     let (sw, sh) = (size.width as u32, size.height as u32);
     let mut offscreen: kit::sprite2d::Pipeline = r.pipeline(sw, sh, Blending::default());
@@ -193,70 +192,69 @@ fn main() {
     ///////////////////////////////////////////////////////////////////////////
 
     let mut textures = r.swap_chain(sw, sh, PresentMode::default());
-    let mut running = true;
 
-    while running {
-        events_loop.poll_events(|event| {
-            if let Event::WindowEvent { event, .. } = event {
-                match event {
-                    WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                virtual_keycode: Some(VirtualKeyCode::Escape),
-                                state: ElementState::Pressed,
-                                ..
-                            },
+    event_loop.run(move |event, _, control_flow| match event {
+        Event::WindowEvent { event, .. } => match event {
+            WindowEvent::KeyboardInput {
+                input:
+                    KeyboardInput {
+                        virtual_keycode: Some(VirtualKeyCode::Escape),
+                        state: ElementState::Pressed,
                         ..
-                    } => {
-                        running = false;
-                    }
-                    WindowEvent::CloseRequested => {
-                        running = false;
-                    }
-                    WindowEvent::Resized(size) => {
-                        let physical = size.to_physical(window.get_hidpi_factor());
-                        let (w, h) = (physical.width as u32, physical.height as u32);
-
-                        offscreen.resize(w, h);
-                        onscreen.resize(w, h);
-                        textures = r.swap_chain(w, h, PresentMode::default());
-                    }
-                    _ => {}
-                }
+                    },
+                ..
+            } => {
+                *control_flow = ControlFlow::Exit;
             }
-        });
+            WindowEvent::CloseRequested => {
+                *control_flow = ControlFlow::Exit;
+            }
+            WindowEvent::Resized(size) => {
+                let physical = size.to_physical(window.hidpi_factor());
+                let (w, h) = (physical.width as u32, physical.height as u32);
 
-        ///////////////////////////////////////////////////////////////////////////
-        // Create frame
-        ///////////////////////////////////////////////////////////////////////////
+                offscreen.resize(w, h);
+                onscreen.resize(w, h);
+                textures = r.swap_chain(w, h, PresentMode::default());
+            }
+            _ => {}
+        },
+        Event::EventsCleared => {
+            *control_flow = ControlFlow::Wait;
 
-        let mut frame = r.frame();
+            ///////////////////////////////////////////////////////////////////////////
+            // Create frame
+            ///////////////////////////////////////////////////////////////////////////
 
-        ///////////////////////////////////////////////////////////////////////////
-        // Prepare pipeline
-        ///////////////////////////////////////////////////////////////////////////
+            let mut frame = r.frame();
 
-        r.update_pipeline(&offscreen, Matrix4::identity(), &mut frame);
-        r.update_pipeline(&onscreen, Rgba::new(0.2, 0.2, 0.0, 1.0), &mut frame);
+            ///////////////////////////////////////////////////////////////////////////
+            // Prepare pipeline
+            ///////////////////////////////////////////////////////////////////////////
 
-        ///////////////////////////////////////////////////////////////////////////
-        // Draw frame
-        ///////////////////////////////////////////////////////////////////////////
+            r.update_pipeline(&offscreen, Matrix4::identity(), &mut frame);
+            r.update_pipeline(&onscreen, Rgba::new(0.2, 0.2, 0.0, 1.0), &mut frame);
 
-        let out = textures.next();
+            ///////////////////////////////////////////////////////////////////////////
+            // Draw frame
+            ///////////////////////////////////////////////////////////////////////////
 
-        {
-            let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &framebuffer.target);
-            pass.set_pipeline(&offscreen);
-            pass.draw(&buffer, &offscreen_binding);
+            let out = textures.next();
+
+            {
+                let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &framebuffer.target);
+                pass.set_pipeline(&offscreen);
+                pass.draw(&buffer, &offscreen_binding);
+            }
+
+            {
+                let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &out);
+                pass.set_pipeline(&onscreen);
+                pass.draw(&framebuffer.vertices, &onscreen_binding);
+            }
+
+            r.submit(frame);
         }
-
-        {
-            let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &out);
-            pass.set_pipeline(&onscreen);
-            pass.draw(&framebuffer.vertices, &onscreen_binding);
-        }
-
-        r.submit(frame);
-    }
+        _ => {}
+    });
 }

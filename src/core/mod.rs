@@ -5,6 +5,8 @@ use std::fmt;
 use std::ops::Range;
 use std::str::FromStr;
 
+use raw_window_handle::RawWindowHandle;
+
 use cgmath::{Point2, Vector2};
 
 ///////////////////////////////////////////////////////////////////////////
@@ -346,10 +348,10 @@ impl Rgba {
 
     fn to_wgpu(&self) -> wgpu::Color {
         wgpu::Color {
-            r: self.r,
-            g: self.g,
-            b: self.b,
-            a: self.a,
+            r: self.r as f64,
+            g: self.g as f64,
+            b: self.b as f64,
+            a: self.a as f64,
         }
     }
 }
@@ -584,7 +586,7 @@ impl Texture {
 
         let buf = device
             .device
-            .create_buffer_mapped(texels.len(), wgpu::BufferUsage::TRANSFER_SRC)
+            .create_buffer_mapped(texels.len(), wgpu::BufferUsage::COPY_SRC)
             .fill_from_slice(&texels);
 
         Self::copy(
@@ -619,7 +621,7 @@ impl Texture {
 
         let buf = device
             .device
-            .create_buffer_mapped(texels.len(), wgpu::BufferUsage::TRANSFER_SRC)
+            .create_buffer_mapped(texels.len(), wgpu::BufferUsage::COPY_SRC)
             .fill_from_slice(&texels);
 
         let extent = wgpu::Extent3d {
@@ -829,9 +831,12 @@ pub enum BindingType {
 impl BindingType {
     fn to_wgpu(&self) -> wgpu::BindingType {
         match self {
-            BindingType::UniformBuffer => wgpu::BindingType::UniformBuffer,
-            BindingType::UniformBufferDynamic => wgpu::BindingType::UniformBufferDynamic,
-            BindingType::SampledTexture => wgpu::BindingType::SampledTexture,
+            BindingType::UniformBuffer => wgpu::BindingType::UniformBuffer { dynamic: false },
+            BindingType::UniformBufferDynamic => wgpu::BindingType::UniformBuffer { dynamic: true },
+            BindingType::SampledTexture => wgpu::BindingType::SampledTexture {
+                multisampled: false,
+                dimension: wgpu::TextureViewDimension::D2,
+            },
             BindingType::Sampler => wgpu::BindingType::Sampler,
         }
     }
@@ -1064,7 +1069,7 @@ impl<'a> Pass<'a> {
         self.wgpu.set_index_buffer(&index_buf.wgpu, 0)
     }
     pub fn set_vertex_buffer(&mut self, vertex_buf: &VertexBuffer) {
-        self.wgpu.set_vertex_buffers(&[(&vertex_buf.wgpu, 0)])
+        self.wgpu.set_vertex_buffers(0, &[(&vertex_buf.wgpu, 0)])
     }
     pub fn draw<T: Draw>(&mut self, drawable: &T, binding: &BindingGroup) {
         drawable.draw(binding, self);
@@ -1165,7 +1170,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(window: &wgpu::winit::Window) -> Self {
+    pub fn new(window: RawWindowHandle) -> Self {
         Self {
             device: Device::new(window),
         }
@@ -1243,7 +1248,7 @@ impl Renderer {
         let bytesize = 4 * fb.size();
         let dst = self.device.device.create_buffer(&wgpu::BufferDescriptor {
             size: bytesize as u64,
-            usage: wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::TRANSFER_DST,
+            usage: wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::COPY_DST,
         });
 
         encoder.copy_texture_to_buffer(
@@ -1349,12 +1354,12 @@ pub struct Device {
 }
 
 impl Device {
-    pub fn new(window: &wgpu::winit::Window) -> Self {
+    pub fn new(window: RawWindowHandle) -> Self {
         let instance = wgpu::Instance::new();
-        let adapter = instance.get_adapter(&wgpu::AdapterDescriptor {
+        let adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::LowPower,
         });
-        let surface = instance.create_surface(&window);
+        let surface = instance.create_surface(window);
 
         Self {
             device: adapter.request_device(&wgpu::DeviceDescriptor {
@@ -1412,7 +1417,7 @@ impl Device {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::Rgba8Unorm,
-            usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::TRANSFER_DST,
+            usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::COPY_DST,
         });
         let texture_view = texture.create_default_view();
 
@@ -1439,8 +1444,8 @@ impl Device {
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::Bgra8Unorm,
             usage: wgpu::TextureUsage::SAMPLED
-                | wgpu::TextureUsage::TRANSFER_DST
-                | wgpu::TextureUsage::TRANSFER_SRC
+                | wgpu::TextureUsage::COPY_DST
+                | wgpu::TextureUsage::COPY_SRC
                 | wgpu::TextureUsage::OUTPUT_ATTACHMENT,
         });
         let view = texture.create_default_view();
@@ -1506,8 +1511,8 @@ impl Device {
                 .create_buffer_mapped::<T>(
                     buf.len(),
                     wgpu::BufferUsage::UNIFORM
-                        | wgpu::BufferUsage::TRANSFER_DST
-                        | wgpu::BufferUsage::TRANSFER_SRC,
+                        | wgpu::BufferUsage::COPY_DST
+                        | wgpu::BufferUsage::COPY_SRC,
                 )
                 .fill_from_slice(buf),
         }
@@ -1566,7 +1571,7 @@ impl Device {
             .create_buffer_mapped::<T>(
                 slice.len(),
                 wgpu::BufferUsage::UNIFORM
-                    | wgpu::BufferUsage::TRANSFER_SRC
+                    | wgpu::BufferUsage::COPY_SRC
                     | wgpu::BufferUsage::MAP_WRITE,
             )
             .fill_from_slice(slice);
@@ -1614,21 +1619,21 @@ impl Device {
             .device
             .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 layout,
-                vertex_stage: wgpu::PipelineStageDescriptor {
+                vertex_stage: wgpu::ProgrammableStageDescriptor {
                     module: &vs.module,
                     entry_point: "main",
                 },
-                fragment_stage: Some(wgpu::PipelineStageDescriptor {
+                fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
                     module: &fs.module,
                     entry_point: "main",
                 }),
-                rasterization_state: wgpu::RasterizationStateDescriptor {
+                rasterization_state: Some(wgpu::RasterizationStateDescriptor {
                     front_face: wgpu::FrontFace::Ccw,
                     cull_mode: wgpu::CullMode::None,
                     depth_bias: 0,
                     depth_bias_slope_scale: 0.0,
                     depth_bias_clamp: 0.0,
-                },
+                }),
                 primitive_topology: wgpu::PrimitiveTopology::TriangleList,
                 color_states: &[wgpu::ColorStateDescriptor {
                     // TODO: Try Bgra8UnormSrgb
@@ -1649,6 +1654,8 @@ impl Device {
                 index_format: wgpu::IndexFormat::Uint16,
                 vertex_buffers: &[vertex_attrs],
                 sample_count: 1,
+                sample_mask: !0,
+                alpha_to_coverage_enabled: false,
             });
 
         Pipeline {

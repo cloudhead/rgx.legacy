@@ -11,8 +11,11 @@ use rgx::kit::*;
 
 use image::ImageDecoder;
 
-use wgpu::winit::{
-    ElementState, Event, EventsLoop, KeyboardInput, VirtualKeyCode, Window, WindowEvent,
+use raw_window_handle::HasRawWindowHandle;
+use winit::{
+    event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
+    event_loop::{ControlFlow, EventLoop},
+    window::Window,
 };
 
 use std::time::{Duration, Instant};
@@ -20,20 +23,15 @@ use std::time::{Duration, Instant};
 fn main() {
     env_logger::init();
 
-    let mut events_loop = EventsLoop::new();
-    let window = Window::new(&events_loop).unwrap();
+    let event_loop = EventLoop::new();
+    let window = Window::new(&event_loop).unwrap();
 
     ///////////////////////////////////////////////////////////////////////////
     // Setup renderer
     ///////////////////////////////////////////////////////////////////////////
 
-    let mut r = Renderer::new(&window);
-
-    let mut win = window
-        .get_inner_size()
-        .unwrap()
-        .to_physical(window.get_hidpi_factor());
-
+    let mut r = Renderer::new(window.raw_window_handle());
+    let mut win = window.inner_size().to_physical(window.hidpi_factor());
     let mut pip: kit::sprite2d::Pipeline =
         r.pipeline(win.width as u32, win.height as u32, Blending::default());
 
@@ -78,13 +76,9 @@ fn main() {
     let mut x = 0.0;
 
     let frame_batch = 120;
-    let mut delta: Duration;
     let mut last_frame = Instant::now();
     let mut fts: VecDeque<f64> = VecDeque::with_capacity(frame_batch);
-    let mut average_ft: f64;
     let mut frames_total = 0;
-
-    let mut running = true;
 
     ///////////////////////////////////////////////////////////////////////////
     // Prepare resources
@@ -98,155 +92,150 @@ fn main() {
 
     let mut mx: f32 = 0.;
     let mut my: f32 = 0.;
-
     let mut scale = 1.0;
-    let (mut sw, mut sh);
-    let mut rows: u32;
-    let mut cols: u32;
-
     let mut textures = r.swap_chain(win.width as u32, win.height as u32, PresentMode::default());
 
-    while running {
-        events_loop.poll_events(|event| {
-            if let Event::WindowEvent { event, .. } = event {
-                match event {
-                    WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                virtual_keycode: Some(key),
-                                state: ElementState::Pressed,
-                                ..
-                            },
-                        ..
-                    } => match key {
-                        VirtualKeyCode::Escape => {
-                            running = false;
-                        }
-                        VirtualKeyCode::Up => {
-                            my += 24.;
-                        }
-                        VirtualKeyCode::Down => {
-                            my -= 24.;
-                        }
-                        VirtualKeyCode::Left => {
-                            mx -= 24.;
-                        }
-                        VirtualKeyCode::Right => {
-                            mx += 24.;
-                        }
-                        _ => {}
-                    },
-                    WindowEvent::CloseRequested => {
-                        running = false;
+    event_loop.run(move |event, _, control_flow| {
+        match event {
+            Event::WindowEvent { event, .. } => match event {
+                WindowEvent::KeyboardInput {
+                    input:
+                        KeyboardInput {
+                            virtual_keycode: Some(key),
+                            state: ElementState::Pressed,
+                            ..
+                        },
+                    ..
+                } => match key {
+                    VirtualKeyCode::Escape => {
+                        *control_flow = ControlFlow::Exit;
                     }
-                    WindowEvent::Resized(size) => {
-                        win = size.to_physical(window.get_hidpi_factor());
-
-                        let (w, h) = (win.width as u32, win.height as u32);
-
-                        pip.resize(w, h);
-                        textures = r.swap_chain(w, h, PresentMode::default());
+                    VirtualKeyCode::Up => {
+                        my += 24.;
+                    }
+                    VirtualKeyCode::Down => {
+                        my -= 24.;
+                    }
+                    VirtualKeyCode::Left => {
+                        mx -= 24.;
+                    }
+                    VirtualKeyCode::Right => {
+                        mx += 24.;
                     }
                     _ => {}
+                },
+                WindowEvent::CloseRequested => {
+                    *control_flow = ControlFlow::Exit;
                 }
+                WindowEvent::Resized(size) => {
+                    win = size.to_physical(window.hidpi_factor());
+
+                    let (w, h) = (win.width as u32, win.height as u32);
+
+                    pip.resize(w, h);
+                    textures = r.swap_chain(w, h, PresentMode::default());
+                }
+                _ => (),
+            },
+            Event::EventsCleared => {
+                *control_flow = ControlFlow::Poll;
+
+                let sw = sprite_w as f32 * scale;
+                let sh = sprite_h as f32 * scale;
+                let rows = (win.height as f32 / sh) as u32;
+                let cols = (win.width as f32 / (sw / 2.0)) as u32;
+
+                let delta: Duration;
+                {
+                    let now = Instant::now();
+                    delta = now.duration_since(last_frame);
+                    last_frame = now;
+                }
+
+                ///////////////////////////////////////////////////////////////////////////
+                // Update state
+                ///////////////////////////////////////////////////////////////////////////
+
+                anim.step(delta);
+                fts.push_front(delta.as_millis() as f64);
+                fts.truncate(frame_batch);
+
+                ///////////////////////////////////////////////////////////////////////////
+                // Prepare sprite batch
+                ///////////////////////////////////////////////////////////////////////////
+
+                let win = window.inner_size().to_physical(window.hidpi_factor());
+
+                let mut batch = sprite2d::Batch::new(sprite.w, sprite.h);
+
+                x += delta.as_millis() as f32 / move_speed;
+
+                for i in 0..rows {
+                    let y = i as f32 * sh;
+
+                    for j in 0..cols {
+                        let pad = j as f32 * sw / 2.0;
+
+                        let rect = if i % 2 == 0 {
+                            Rect::new(
+                                win.width as f32 - x - pad,
+                                y,
+                                win.width as f32 - x - pad - sw,
+                                y + sh,
+                            )
+                        } else {
+                            Rect::new(pad + x, y, pad + x + sw, y + sh)
+                        };
+
+                        batch.add(
+                            anim.val(),
+                            rect,
+                            Rgba::new(i as f32 / rows as f32, j as f32 / cols as f32, 0.5, 0.75),
+                            1.0,
+                            Repeat::default(),
+                        );
+                    }
+                }
+                batch.offset(mx, my);
+
+                let buffer = batch.finish(&r);
+
+                ///////////////////////////////////////////////////////////////////////////
+                // Create frame & output
+                ///////////////////////////////////////////////////////////////////////////
+
+                let mut frame = r.frame();
+                let out = textures.next();
+
+                ///////////////////////////////////////////////////////////////////////////
+                // Draw frame
+                ///////////////////////////////////////////////////////////////////////////
+
+                {
+                    let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &out);
+
+                    pass.set_pipeline(&pip);
+                    pass.draw(&buffer, &binding);
+                }
+
+                r.submit(frame);
+
+                if frames_total >= frame_batch && frames_total % frame_batch == 0 {
+                    let average_ft = fts.iter().sum::<f64>() / fts.len() as f64;
+
+                    println!("sprites/frame: {}", rows * cols);
+                    println!("time/frame:    {:.2}ms\n", average_ft);
+
+                    if average_ft as u32 <= 16 && scale > 0.1 {
+                        scale -= 0.1;
+                        x = 0.;
+                    } else {
+                        *control_flow = ControlFlow::Exit;
+                    }
+                }
+                frames_total += 1;
             }
-        });
-
-        sw = sprite_w as f32 * scale;
-        sh = sprite_h as f32 * scale;
-        rows = (win.height as f32 / sh) as u32;
-        cols = (win.width as f32 / (sw / 2.0)) as u32;
-
-        {
-            let now = Instant::now();
-            delta = now.duration_since(last_frame);
-            last_frame = now;
+            _ => (),
         }
-
-        ///////////////////////////////////////////////////////////////////////////
-        // Update state
-        ///////////////////////////////////////////////////////////////////////////
-
-        anim.step(delta);
-        fts.push_front(delta.as_millis() as f64);
-        fts.truncate(frame_batch);
-
-        ///////////////////////////////////////////////////////////////////////////
-        // Prepare sprite batch
-        ///////////////////////////////////////////////////////////////////////////
-
-        let win = window
-            .get_inner_size()
-            .unwrap()
-            .to_physical(window.get_hidpi_factor());
-
-        let mut batch = sprite2d::Batch::new(sprite.w, sprite.h);
-
-        x += delta.as_millis() as f32 / move_speed;
-
-        for i in 0..rows {
-            let y = i as f32 * sh;
-
-            for j in 0..cols {
-                let pad = j as f32 * sw / 2.0;
-
-                let rect = if i % 2 == 0 {
-                    Rect::new(
-                        win.width as f32 - x - pad,
-                        y,
-                        win.width as f32 - x - pad - sw,
-                        y + sh,
-                    )
-                } else {
-                    Rect::new(pad + x, y, pad + x + sw, y + sh)
-                };
-
-                batch.add(
-                    anim.val(),
-                    rect,
-                    Rgba::new(i as f32 / rows as f32, j as f32 / cols as f32, 0.5, 0.75),
-                    1.0,
-                    Repeat::default(),
-                );
-            }
-        }
-        batch.offset(mx, my);
-
-        let buffer = batch.finish(&r);
-
-        ///////////////////////////////////////////////////////////////////////////
-        // Create frame & output
-        ///////////////////////////////////////////////////////////////////////////
-
-        let mut frame = r.frame();
-        let out = textures.next();
-
-        ///////////////////////////////////////////////////////////////////////////
-        // Draw frame
-        ///////////////////////////////////////////////////////////////////////////
-
-        {
-            let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &out);
-
-            pass.set_pipeline(&pip);
-            pass.draw(&buffer, &binding);
-        }
-
-        r.submit(frame);
-
-        if frames_total >= frame_batch && frames_total % frame_batch == 0 {
-            average_ft = fts.iter().sum::<f64>() / fts.len() as f64;
-
-            println!("sprites/frame: {}", rows * cols);
-            println!("time/frame:    {:.2}ms\n", average_ft);
-
-            if average_ft as u32 <= 16 && scale > 0.1 {
-                scale -= 0.1;
-                x = 0.;
-            } else {
-                break;
-            }
-        }
-        frames_total += 1;
-    }
+    });
 }

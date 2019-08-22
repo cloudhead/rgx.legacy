@@ -10,20 +10,23 @@ use rgx::kit::shape2d::{Fill, Shape, Stroke};
 
 use std::sync::{Arc, Mutex};
 use std::thread;
-use wgpu::winit::*;
+
+use raw_window_handle::HasRawWindowHandle;
+use winit::{
+    event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
+    event_loop::{ControlFlow, EventLoop},
+    window::Window,
+};
 
 fn main() {
     env_logger::init();
 
-    let mut events_loop = EventsLoop::new();
-    let window = Window::new(&events_loop).unwrap();
-    let mut size = window
-        .get_inner_size()
-        .unwrap()
-        .to_physical(window.get_hidpi_factor());
+    let event_loop = EventLoop::new();
+    let window = Window::new(&event_loop).unwrap();
+    let mut size = window.inner_size().to_physical(window.hidpi_factor());
 
     // Setup renderer
-    let mut renderer = Renderer::new(&window);
+    let mut renderer = Renderer::new(window.raw_window_handle());
 
     let shared_size = Arc::new(Mutex::new(size));
     let shared_coords = Arc::new(Mutex::new((0., 0.)));
@@ -68,37 +71,37 @@ fn main() {
     });
 
     let mut running = true;
-    while running {
-        events_loop.poll_events(|event| {
-            if let Event::WindowEvent { event, .. } = event {
-                match event {
-                    WindowEvent::CursorMoved { position, .. } => {
-                        let mut m = shared_coords.lock().unwrap();
-                        m.0 = position.x as f32;
-                        m.1 = position.y as f32;
-                    }
-                    WindowEvent::Resized(s) => {
-                        size = s.to_physical(window.get_hidpi_factor());
+    event_loop.run(move |event, _, control_flow| match event {
+        Event::WindowEvent { event, .. } => match event {
+            WindowEvent::CursorMoved { position, .. } => {
+                let mut m = shared_coords.lock().unwrap();
+                m.0 = position.x as f32;
+                m.1 = position.y as f32;
+            }
+            WindowEvent::Resized(s) => {
+                size = s.to_physical(window.hidpi_factor());
 
-                        let mut shared = shared_size.lock().unwrap();
-                        *shared = size;
-                    }
-                    WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                virtual_keycode: Some(code),
-                                state: ElementState::Pressed,
-                                ..
-                            },
+                let mut shared = shared_size.lock().unwrap();
+                *shared = size;
+            }
+            WindowEvent::KeyboardInput {
+                input:
+                    KeyboardInput {
+                        virtual_keycode: Some(code),
+                        state: ElementState::Pressed,
                         ..
-                    } => {
-                        if let VirtualKeyCode::Escape = code {
-                            running = false;
-                        }
-                    }
-                    _ => {}
+                    },
+                ..
+            } => {
+                if let VirtualKeyCode::Escape = code {
+                    running = false;
                 }
             }
-        });
-    }
+            _ => {}
+        },
+        Event::EventsCleared => {
+            *control_flow = ControlFlow::Poll;
+        }
+        _ => {}
+    });
 }

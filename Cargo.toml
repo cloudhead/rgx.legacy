@@ -17,16 +17,14 @@ metal = ["wgpu/metal"]
 dx11 = ["wgpu/dx11"]
 dx12 = ["wgpu/dx12"]
 
-[dependencies.wgpu]
-git = "https://github.com/gfx-rs/wgpu-rs.git"
-rev = "d332eade8a186a12144bdbd389761fdb1da2969b"
-version = "*"
-
 [dependencies]
+wgpu = "0.3.0"
 env_logger = "0.6.2"
 cgmath = "0.17.0"
+raw-window-handle = "0.1"
 
 [dev-dependencies]
+winit = "0.20.0-alpha3"
 image = "0.22.1"
 criterion = "0.2.11"
 

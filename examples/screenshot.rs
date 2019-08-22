@@ -16,7 +16,8 @@ use image::ColorType;
 
 use std::fs::File;
 
-use wgpu::winit::{EventsLoop, Window};
+use raw_window_handle::HasRawWindowHandle;
+use winit::{event_loop::EventLoop, window::Window};
 
 pub struct Framebuffer {
     target: core::Framebuffer,
@@ -132,19 +133,15 @@ impl FramebufferPipeline {
 fn main() {
     env_logger::init();
 
-    let events_loop = EventsLoop::new();
-    let window = Window::new(&events_loop).unwrap();
+    let event_loop = EventLoop::new();
+    let window = Window::new(&event_loop).unwrap();
 
     ///////////////////////////////////////////////////////////////////////////
     // Setup renderer
     ///////////////////////////////////////////////////////////////////////////
 
-    let mut r = Renderer::new(&window);
-
-    let size = window
-        .get_inner_size()
-        .unwrap()
-        .to_physical(window.get_hidpi_factor());
+    let mut r = Renderer::new(window.raw_window_handle());
+    let size = window.inner_size().to_physical(window.hidpi_factor());
 
     let (sw, sh) = (size.width as u32, size.height as u32);
     let framebuffer = Framebuffer::new(sw, sh, &r);
