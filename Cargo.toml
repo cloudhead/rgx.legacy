@@ -2,6 +2,9 @@
 name = "rgx"
 version = "0.1.0"
 description = "Mid-level 2D graphics library built on wgpu"
+repository = "https://github.com/cloudhead/rgx"
+homepage = "https://github.com/cloudhead/rgx"
+documentation = "https://docs.rs/rgx"
 authors = ["Alexis Sellier <self@cloudhead.io>"]
 license = "MIT"
 edition = "2018"
