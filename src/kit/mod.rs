@@ -40,8 +40,8 @@ impl Default for Repeat {
 
 #[derive(Clone, Debug)]
 pub enum AnimationState {
-    Playing(u32, time::Duration),
-    Paused(u32, time::Duration),
+    Playing(u64, time::Duration),
+    Paused(u64, time::Duration),
     Stopped,
 }
 
@@ -68,8 +68,7 @@ impl<T> Animation<T> {
         if let AnimationState::Playing(_, elapsed) = self.state {
             let elapsed = elapsed + delta;
             let fraction = elapsed.as_micros() / self.delay.as_micros();
-            let cursor = fraction as u32 % self.frames.len() as u32;
-            self.state = AnimationState::Playing(cursor, elapsed);
+            self.state = AnimationState::Playing(fraction as u64, elapsed);
         }
     }
 
@@ -123,20 +122,21 @@ impl<T> Animation<T> {
         }
     }
 
-    pub fn cursor(&self) -> u32 {
-        match self.state {
+    pub fn cursor(&self) -> u64 {
+        let cursor = match self.state {
             AnimationState::Playing(cursor, _) => cursor,
             AnimationState::Paused(cursor, _) => cursor,
             AnimationState::Stopped => 0,
-        }
+        };
+        cursor % self.len() as u64
     }
 
     pub fn push_frame(&mut self, frame: T) {
         self.frames.push(frame);
     }
 
-    pub fn pop_frame(&mut self) {
-        self.frames.pop();
+    pub fn pop_frame(&mut self) -> Option<T> {
+        self.frames.pop()
     }
 }
 
