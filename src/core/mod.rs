@@ -1171,8 +1171,18 @@ pub struct Renderer {
 
 impl Renderer {
     pub fn new(window: RawWindowHandle) -> Self {
+        let instance = wgpu::Instance::new();
+        let adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::LowPower,
+        });
+        let surface = instance.create_surface(window);
+
+        Self::from(adapter, surface)
+    }
+
+    pub fn from(adapter: wgpu::Adapter, surface: wgpu::Surface) -> Self {
         Self {
-            device: Device::new(window),
+            device: Device::new(adapter, surface),
         }
     }
 
@@ -1354,13 +1364,7 @@ pub struct Device {
 }
 
 impl Device {
-    pub fn new(window: RawWindowHandle) -> Self {
-        let instance = wgpu::Instance::new();
-        let adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::LowPower,
-        });
-        let surface = instance.create_surface(window);
-
+    pub fn new(adapter: wgpu::Adapter, surface: wgpu::Surface) -> Self {
         Self {
             device: adapter.request_device(&wgpu::DeviceDescriptor {
                 extensions: wgpu::Extensions {
