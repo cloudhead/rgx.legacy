@@ -458,6 +458,7 @@ pub trait Bind {
 pub struct UniformBuffer {
     wgpu: wgpu::Buffer,
     size: usize,
+    count: usize,
 }
 
 impl Bind for UniformBuffer {
@@ -1071,7 +1072,7 @@ impl Frame {
             0,
             &dst.wgpu,
             0,
-            src.size as wgpu::BufferAddress,
+            (src.size * src.count) as wgpu::BufferAddress,
         );
     }
 }
@@ -1557,7 +1558,8 @@ impl Device {
         T: 'static + Copy,
     {
         UniformBuffer {
-            size: std::mem::size_of::<T>() * buf.len(),
+            size: std::mem::size_of::<T>(),
+            count: buf.len(),
             wgpu: self
                 .device
                 .create_buffer_mapped::<T>(
