@@ -409,6 +409,7 @@ pub trait Canvas {
         device: &mut Device,
         encoder: &mut wgpu::CommandEncoder,
     );
+    fn blit(&self, from: Rect<f32>, dst: Rect<f32>, encoder: &mut wgpu::CommandEncoder);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -524,6 +525,10 @@ impl Canvas for Framebuffer {
     ) {
         Texture::transfer(&self.texture, buf, w, h, tw, th, device, encoder);
     }
+
+    fn blit(&self, from: Rect<f32>, dst: Rect<f32>, encoder: &mut wgpu::CommandEncoder) {
+        Texture::blit(&self.texture, from, dst, encoder);
+    }
 }
 
 impl TextureView for Framebuffer {
@@ -632,6 +637,47 @@ impl Texture {
         Self::copy(&texture.wgpu, width, height, extent, &buf, encoder);
     }
 
+    fn blit(&self, src: Rect<f32>, dst: Rect<f32>, encoder: &mut wgpu::CommandEncoder) {
+        assert_eq!(
+            src.width(),
+            dst.width(),
+            "source and destination rectangles must be of the same size"
+        );
+        assert_eq!(
+            src.height(),
+            dst.height(),
+            "source and destination rectangles must be of the same size"
+        );
+
+        encoder.copy_texture_to_texture(
+            wgpu::TextureCopyView {
+                texture: &self.wgpu,
+                mip_level: 0,
+                array_layer: 0,
+                origin: wgpu::Origin3d {
+                    x: src.x1,
+                    y: src.y1,
+                    z: 0.0,
+                },
+            },
+            wgpu::TextureCopyView {
+                texture: &self.wgpu,
+                mip_level: 0,
+                array_layer: 0,
+                origin: wgpu::Origin3d {
+                    x: dst.x1,
+                    y: dst.y1,
+                    z: 0.0,
+                },
+            },
+            wgpu::Extent3d {
+                width: src.width() as u32,
+                height: src.height() as u32,
+                depth: 1,
+            },
+        );
+    }
+
     fn copy(
         texture: &wgpu::Texture,
         w: u32,
@@ -691,6 +737,10 @@ impl Canvas for Texture {
         encoder: &mut wgpu::CommandEncoder,
     ) {
         Texture::transfer(&self, buf, w, h, tw, th, device, encoder);
+    }
+
+    fn blit(&self, src: Rect<f32>, dst: Rect<f32>, encoder: &mut wgpu::CommandEncoder) {
+        Texture::blit(&self, src, dst, encoder);
     }
 }
 
@@ -1324,8 +1374,7 @@ pub enum Op<'a> {
     Clear(&'a dyn Canvas, Rgba),
     Fill(&'a dyn Canvas, &'a [u8]),
     Transfer(&'a dyn Canvas, &'a [u8], u32, u32, u32, u32),
-    // TODO:
-    // Blit(&'a dyn Canvas, &'a [u8], Rect<f32>, Rect<f32>),
+    Blit(&'a dyn Canvas, Rect<f32>, Rect<f32>),
 }
 
 impl<'a> Op<'a> {
@@ -1339,6 +1388,9 @@ impl<'a> Op<'a> {
             }
             Op::Transfer(f, buf, w, h, tw, th) => {
                 f.transfer(buf, w, h, tw, th, dev, encoder);
+            }
+            Op::Blit(f, src, dst) => {
+                f.blit(src, dst, encoder);
             }
         }
     }
