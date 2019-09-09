@@ -2,8 +2,8 @@
 #![allow(clippy::unreadable_literal)]
 #![allow(clippy::single_match)]
 
-use cgmath::Point2;
 use rgx::core::*;
+use rgx::math::Point2;
 
 use rgx::kit::shape2d;
 use rgx::kit::shape2d::{Fill, Shape, Stroke};

@@ -7,9 +7,7 @@ use self::kit::shape2d::*;
 use rgx::core;
 use rgx::core::*;
 use rgx::kit;
-
-use cgmath::prelude::*;
-use cgmath::{Matrix4, Point2};
+use rgx::math::*;
 
 use image::png::PNGEncoder;
 use image::ColorType;

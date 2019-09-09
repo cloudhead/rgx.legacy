@@ -5,7 +5,7 @@ pub use crate::core::{Rgba, Rgba8};
 pub mod shape2d;
 pub mod sprite2d;
 
-use cgmath::{Matrix4, Ortho};
+use crate::math::{Matrix4, Ortho};
 
 use std::time;
 

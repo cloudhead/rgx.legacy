@@ -3,8 +3,7 @@
 
 use std::f32;
 
-use cgmath::prelude::*;
-use cgmath::{Matrix4, Point2, Vector2};
+use crate::math::*;
 
 use crate::core;
 use crate::core::{Binding, BindingType, Rect, Rgba, Set, ShaderStage};

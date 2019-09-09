@@ -7,7 +7,8 @@ use std::str::FromStr;
 
 use raw_window_handle::RawWindowHandle;
 
-use cgmath::{Point2, Vector2};
+use crate::math;
+use crate::math::{Point2, Vector2};
 
 ///////////////////////////////////////////////////////////////////////////
 // Rgba8
@@ -122,7 +123,7 @@ impl<T> Rect<T> {
 
     pub fn empty() -> Self
     where
-        T: cgmath::Zero,
+        T: math::Zero,
     {
         Self {
             x1: T::zero(),
@@ -134,7 +135,7 @@ impl<T> Rect<T> {
 
     pub fn origin(w: T, h: T) -> Self
     where
-        T: cgmath::Zero,
+        T: math::Zero,
     {
         Self::new(T::zero(), T::zero(), w, h)
     }
@@ -172,14 +173,14 @@ impl<T> Rect<T> {
 
     pub fn is_zero(&self) -> bool
     where
-        T: cgmath::Zero,
+        T: math::Zero,
     {
         self.x1.is_zero() && self.x2.is_zero() && self.y1.is_zero() && self.y2.is_zero()
     }
 
     pub fn width(&self) -> T
     where
-        T: Copy + PartialOrd + std::ops::Sub<Output = T> + std::ops::Neg<Output = T> + cgmath::Zero,
+        T: Copy + PartialOrd + std::ops::Sub<Output = T> + std::ops::Neg<Output = T> + math::Zero,
     {
         let w = self.x2 - self.x1;
         if w < T::zero() {
@@ -191,7 +192,7 @@ impl<T> Rect<T> {
 
     pub fn height(&self) -> T
     where
-        T: Copy + PartialOrd + std::ops::Sub<Output = T> + std::ops::Neg<Output = T> + cgmath::Zero,
+        T: Copy + PartialOrd + std::ops::Sub<Output = T> + std::ops::Neg<Output = T> + math::Zero,
     {
         let h = self.y2 - self.y1;
         if h < T::zero() {
@@ -207,7 +208,7 @@ impl<T> Rect<T> {
             + Copy
             + From<i16>
             + PartialOrd
-            + cgmath::Zero
+            + math::Zero
             + std::ops::Neg<Output = T>
             + std::ops::Sub<Output = T>,
     {
@@ -224,7 +225,7 @@ impl<T> Rect<T> {
             + Copy
             + From<i16>
             + PartialOrd
-            + cgmath::Zero
+            + math::Zero
             + std::ops::Neg<Output = T>
             + std::ops::Sub<Output = T>,
     {

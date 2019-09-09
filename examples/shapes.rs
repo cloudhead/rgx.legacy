@@ -6,7 +6,7 @@ use rgx::core::*;
 use rgx::kit;
 use rgx::kit::shape2d::{Batch, Fill, Line, Shape, Stroke};
 
-use cgmath::Point2;
+use rgx::math::*;
 
 use raw_window_handle::HasRawWindowHandle;
 use winit::{

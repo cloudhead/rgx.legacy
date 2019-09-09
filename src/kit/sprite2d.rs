@@ -1,11 +1,10 @@
 #![deny(clippy::all, clippy::use_self)]
 #![allow(clippy::new_without_default)]
 
-use cgmath::prelude::*;
-use cgmath::{Matrix4, Vector2, Vector3};
-
 use crate::core;
 use crate::core::{Binding, BindingType, Rect, Rgba, Set, ShaderStage};
+
+use crate::math::*;
 
 use crate::kit;
 use crate::kit::{Model, Repeat, Rgba8};
@@ -93,7 +92,7 @@ impl<'a> Frame<'a> {
     where
         F: FnOnce(&mut Self),
     {
-        self.transforms.push(self.transforms.last() * t);
+        self.transforms.push(*self.transforms.last() * t);
         inner(self);
         self.transforms.pop();
     }
