@@ -40,15 +40,20 @@ fn main() {
         let mut chain = renderer.swap_chain(w, h, PresentMode::NoVsync);
 
         loop {
-            let s = t_shared_size.lock().unwrap();
-            let (w, h) = (s.width as u32, s.height as u32);
+            let (w, h) = {
+                let s = t_shared_size.lock().unwrap();
+                (s.width as u32, s.height as u32)
+            };
+
             if chain.width != w || chain.height != h {
                 pipeline.resize(w, h);
                 chain = renderer.swap_chain(w, h, PresentMode::NoVsync);
             }
 
-            let (mx, my) = *t_shared_coords.lock().unwrap();
-
+            let (mx, my) = {
+                *t_shared_coords.lock().unwrap()
+            };
+            
             let buffer = shape2d::Batch::singleton(Shape::Circle(
                 Point2::new(mx, size.height as f32 - my),
                 20.,
