@@ -182,6 +182,18 @@ impl<T> Rect<T> {
         Self::new(T::zero(), T::zero(), w, h)
     }
 
+    pub fn map<F, S>(self, f: F) -> Rect<S>
+    where
+        F: Fn(T) -> S,
+    {
+        Rect {
+            x1: f(self.x1),
+            x2: f(self.x2),
+            y1: f(self.y1),
+            y2: f(self.y2),
+        }
+    }
+
     pub fn scale(&self, x: T, y: T) -> Self
     where
         T: std::ops::Mul<Output = T> + Copy,
