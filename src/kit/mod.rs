@@ -9,7 +9,7 @@ use crate::math::{Matrix4, Ortho};
 
 use std::time;
 
-#[derive(PartialEq, Eq, Clone, Debug)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum Origin {
     Center,
     BottomLeft,
