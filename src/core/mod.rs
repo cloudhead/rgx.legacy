@@ -61,7 +61,7 @@ impl Rgba8 {
         a: 0xff,
     };
 
-    pub fn new(r: u8, g: u8, b: u8, a: u8) -> Self {
+    pub const fn new(r: u8, g: u8, b: u8, a: u8) -> Self {
         Self { r, g, b, a }
     }
 }
@@ -117,7 +117,7 @@ pub struct Rect<T> {
 }
 
 impl<T> Rect<T> {
-    pub fn new(x1: T, y1: T, x2: T, y2: T) -> Self {
+    pub const fn new(x1: T, y1: T, x2: T, y2: T) -> Self {
         Self { x1, y1, x2, y2 }
     }
 
@@ -343,7 +343,7 @@ impl Rgba {
         a: 0.0,
     };
 
-    pub fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
+    pub const fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
         Self { r, g, b, a }
     }
 
