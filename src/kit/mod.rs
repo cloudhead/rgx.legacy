@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 pub use crate::core;
-pub use crate::core::{Rgba, Rgba8};
+pub use crate::core::{Bgra8, Rgba, Rgba8};
 
 pub mod shape2d;
 pub mod sprite2d;

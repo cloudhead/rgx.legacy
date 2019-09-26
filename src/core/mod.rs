@@ -108,6 +108,44 @@ impl FromStr for Rgba8 {
     }
 }
 
+/// A BGRA color, used when dealing with framebuffers.
+#[repr(C)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub struct Bgra8 {
+    pub b: u8,
+    pub g: u8,
+    pub r: u8,
+    pub a: u8,
+}
+
+impl Bgra8 {
+    pub const fn new(b: u8, g: u8, r: u8, a: u8) -> Self {
+        Bgra8 { b, g, r, a }
+    }
+}
+
+impl From<Rgba8> for Bgra8 {
+    fn from(rgba: Rgba8) -> Self {
+        Self {
+            b: rgba.b,
+            g: rgba.g,
+            r: rgba.r,
+            a: rgba.a,
+        }
+    }
+}
+
+impl Into<Rgba8> for Bgra8 {
+    fn into(self) -> Rgba8 {
+        Rgba8 {
+            r: self.r,
+            g: self.g,
+            b: self.b,
+            a: self.a,
+        }
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 /// Rect
 ///////////////////////////////////////////////////////////////////////////////
@@ -512,7 +550,12 @@ impl Bind for Framebuffer {
 
 impl Canvas for Framebuffer {
     fn clear(&self, color: Rgba, device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
-        Texture::clear(&self.texture, color, device, encoder);
+        Texture::clear(
+            &self.texture,
+            Bgra8::from(Rgba8::from(color)),
+            device,
+            encoder,
+        );
     }
 
     fn fill(&self, buf: &[u8], device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
@@ -567,14 +610,16 @@ impl Texture {
         }
     }
 
-    fn clear(
+    fn clear<T>(
         texture: &Texture,
-        color: Rgba,
+        color: T,
         device: &mut Device,
         encoder: &mut wgpu::CommandEncoder,
-    ) {
-        let mut texels: Vec<Rgba8> = Vec::with_capacity(texture.w as usize * texture.h as usize);
-        texels.resize(texture.w as usize * texture.h as usize, color.into());
+    ) where
+        T: Into<Rgba8> + Clone,
+    {
+        let mut texels: Vec<T> = Vec::with_capacity(texture.w as usize * texture.h as usize);
+        texels.resize(texture.w as usize * texture.h as usize, color);
 
         let (head, body, tail) = unsafe { texels.align_to::<u8>() };
         assert!(head.is_empty());
