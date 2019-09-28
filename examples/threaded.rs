@@ -70,7 +70,6 @@ fn main() {
         }
     });
 
-    let mut running = true;
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent { event, .. } => match event {
             WindowEvent::CursorMoved { position, .. } => {
@@ -94,8 +93,11 @@ fn main() {
                 ..
             } => {
                 if let VirtualKeyCode::Escape = code {
-                    running = false;
+                    *control_flow = ControlFlow::Exit;
                 }
+            }
+            WindowEvent::CloseRequested => {
+                *control_flow = ControlFlow::Exit;
             }
             _ => {}
         },

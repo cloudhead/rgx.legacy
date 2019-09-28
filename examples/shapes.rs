@@ -30,7 +30,6 @@ fn main() {
 
     let mut pip: kit::shape2d::Pipeline =
         r.pipeline(win.width as u32, win.height as u32, Blending::default());
-    let mut running = true;
 
     ///////////////////////////////////////////////////////////////////////////
     // Render loop
@@ -64,8 +63,7 @@ fn main() {
                 my = position.y;
             }
             WindowEvent::CloseRequested => {
-                running = false;
-                *control_flow = ControlFlow::Wait;
+                *control_flow = ControlFlow::Exit;
             }
             WindowEvent::Resized(size) => {
                 win = size.to_physical(window.hidpi_factor());
