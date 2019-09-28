@@ -41,6 +41,8 @@ fn main() {
     let (mut mx, mut my) = (0., 0.);
 
     let mut textures = r.swap_chain(win.width as u32, win.height as u32, PresentMode::default());
+    
+    let mut redraw = true;
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent { event, .. } => match event {
@@ -61,6 +63,7 @@ fn main() {
             WindowEvent::CursorMoved { position, .. } => {
                 mx = position.x;
                 my = position.y;
+                redraw = true;
             }
             WindowEvent::CloseRequested => {
                 *control_flow = ControlFlow::Exit;
@@ -73,13 +76,21 @@ fn main() {
                 pip.resize(w, h);
                 textures = r.swap_chain(w, h, PresentMode::default());
             }
+            WindowEvent::RedrawRequested => {
+                redraw = true;
+            }
             _ => {}
         },
         Event::EventsCleared => {
+            if !redraw {
+                // By only redrawing as necessary we reduce CPU usage
+                return;
+            }
             *control_flow = ControlFlow::Wait;
+            redraw = false;
 
             let rows = (win.height as f32 / sh) as u32;
-            let cols = (win.width as f32 / (sw / 2.0) / 2.0) as u32;
+            let cols = (win.width as f32 / sw) as u32;
 
             ///////////////////////////////////////////////////////////////////////////
             // Prepare shape view
