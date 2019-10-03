@@ -1251,6 +1251,10 @@ impl Default for PresentMode {
     }
 }
 
+/// A handle to a swap chain.
+/// 
+/// A `SwapChain` represents the image or series of images that will be presented to a [`Renderer`].
+/// A `SwapChain` may be created with [`Renderer::swap_chain`].
 pub struct SwapChain {
     pub width: u32,
     pub height: u32,
@@ -1259,6 +1263,16 @@ pub struct SwapChain {
 }
 
 impl SwapChain {
+    /// Convenience method to retrieve `(width, height)`
+    #[inline]
+    pub fn size(&self) -> (u32, u32) {
+        (self.width, self.height)
+    }
+    
+    /// Returns the next texture to be presented by the swapchain for drawing.
+    /// 
+    /// When the [`SwapChainTexture`] returned by this method is dropped, the
+    /// swapchain will present the texture to the associated [`Renderer`].
     pub fn next(&mut self) -> SwapChainTexture {
         SwapChainTexture(self.wgpu.get_next_texture())
     }
