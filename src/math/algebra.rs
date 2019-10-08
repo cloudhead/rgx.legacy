@@ -274,7 +274,7 @@ pub struct Matrix4<S> {
     pub w: Vector4<S>,
 }
 
-impl<S: Copy + Zero + One> Matrix4<S> {
+impl<S: Copy + Zero + One + Float> Matrix4<S> {
     /// Create a new matrix, providing values for each index.
     #[inline]
     #[rustfmt::skip]
@@ -299,6 +299,17 @@ impl<S: Copy + Zero + One> Matrix4<S> {
             S::one(), S::zero(), S::zero(), S::zero(),
             S::zero(), S::one(), S::zero(), S::zero(),
             S::zero(), S::zero(), S::one(), S::zero(),
+            S::zero(), S::zero(), S::zero(), S::one(),
+        )
+    }
+
+    #[inline]
+    #[rustfmt::skip]
+    pub fn from_rotation(a: S) -> Self {
+        Matrix4::new(
+            a.cos(),   -a.sin(),  S::zero(), S::zero(),
+            a.sin(),   a.cos(),   S::zero(), S::zero(),
+            S::zero(), S::zero(), S::one(),  S::zero(),
             S::zero(), S::zero(), S::zero(), S::one(),
         )
     }

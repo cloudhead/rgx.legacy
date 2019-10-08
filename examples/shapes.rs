@@ -41,7 +41,6 @@ fn main() {
     let (mut mx, mut my) = (0., 0.);
 
     let mut textures = r.swap_chain(win.width as u32, win.height as u32, PresentMode::default());
-    
     event_loop.run(move |event, _, control_flow| match event {
         Event::NewEvents(StartCause::Init) => {
             window.request_redraw();
@@ -61,7 +60,7 @@ fn main() {
                     *control_flow = ControlFlow::Exit;
                 }
                 _ => {}
-            }
+            },
             WindowEvent::CursorMoved { position, .. } => {
                 mx = position.x;
                 my = position.y;
@@ -113,6 +112,7 @@ fn main() {
                                 Rect::new(x, y, x + sw, y + sh),
                                 Stroke::new(3.0, Rgba::new(c1, c2, 0.5, 1.0)),
                                 Fill::Solid(Rgba::new(1.0, dx, dy, 0.1)),
+                                Matrix4::identity(),
                             ));
                         } else {
                             batch.add(Shape::Line(
@@ -153,7 +153,7 @@ fn main() {
                 r.submit(frame);
             }
             _ => {}
-        }
+        },
         _ => {}
     });
 }
