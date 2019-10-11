@@ -89,7 +89,7 @@ fn main() {
                 ));
 
                 let x = (win.width as f32 / 2.);
-                let y = (win.height as f32);
+                let y = (win.height as f32 / 2.);
 
                 // batch.add(Shape::Line(
                 //     Line::new(x, y, x, y - (win.height as f32 / 2.)),
@@ -98,7 +98,7 @@ fn main() {
                 // ));
 
                 batch.add(Shape::Line(
-                    Line::new(x, y, x, y - (win.height as f32 / 2.)),
+                    Line::new(x, y, x + (win.height as f32 / 2.), y),
                     Stroke::new(5.0, Rgba::new(1.0, 0.0, 0.0, 1.0)),
                     Matrix4::from_rotation(0.0),
                 ));

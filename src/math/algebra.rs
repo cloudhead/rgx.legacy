@@ -307,8 +307,8 @@ impl<S: Copy + Zero + One + Float> Matrix4<S> {
     #[rustfmt::skip]
     pub fn from_rotation(a: S) -> Self {
         Matrix4::new(
-            a.cos(),   -a.sin(),  S::zero(), S::zero(),
-            a.sin(),   a.cos(),   S::zero(), S::zero(),
+            a.cos(),   a.sin(),  S::zero(), S::zero(),
+            -a.sin(),   a.cos(),   S::zero(), S::zero(),
             S::zero(), S::zero(), S::one(),  S::zero(),
             S::zero(), S::zero(), S::zero(), S::one(),
         )

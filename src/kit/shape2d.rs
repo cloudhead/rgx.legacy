@@ -198,10 +198,10 @@ impl Shape {
                 vec![
                     vertex(l.p1.x - wx, l.p1.y + wy, rgba8, transform),
                     vertex(l.p1.x + wx, l.p1.y - wy, rgba8, transform),
-                    vertex(l.p2.x - wx, l.p2.y + wy, rgba8, Matrix4::identity()),
-                    vertex(l.p2.x - wx, l.p2.y + wy, rgba8, Matrix4::identity()),
+                    vertex(l.p2.x - wx, l.p2.y + wy, rgba8, transform),
+                    vertex(l.p2.x - wx, l.p2.y + wy, rgba8, transform),
                     vertex(l.p1.x + wx, l.p1.y - wy, rgba8, transform),
-                    vertex(l.p2.x + wx, l.p2.y - wy, rgba8, Matrix4::identity()),
+                    vertex(l.p2.x + wx, l.p2.y - wy, rgba8, transform),
                 ]
             }
             Shape::Rectangle(r, stroke, fill, transform) => {
