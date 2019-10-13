@@ -41,10 +41,13 @@ fn main() {
     let (mut mx, mut my) = (0., 0.);
 
     let mut textures = r.swap_chain(win.width as u32, win.height as u32, PresentMode::default());
+
+    let mut rotation = 0.0;
+
     event_loop.run(move |event, _, control_flow| match event {
         Event::NewEvents(StartCause::Init) => {
             window.request_redraw();
-            *control_flow = ControlFlow::Wait;
+            *control_flow = ControlFlow::Poll;
         }
         Event::WindowEvent { event, .. } => match event {
             WindowEvent::KeyboardInput {
@@ -76,9 +79,13 @@ fn main() {
 
                 pip.resize(w, h);
                 textures = r.swap_chain(w, h, PresentMode::default());
+
+                *control_flow = ControlFlow::Poll;
             }
             WindowEvent::RedrawRequested => {
                 let mut batch = Batch::new();
+
+                rotation += 0.01;
 
                 batch.add(Shape::Circle(
                     Point2::new(win.width as f32 / 2.0, win.height as f32 / 2.0),
@@ -91,16 +98,40 @@ fn main() {
                 let x = (win.width as f32 / 2.);
                 let y = (win.height as f32 / 2.);
 
-                // batch.add(Shape::Line(
-                //     Line::new(x, y, x, y - (win.height as f32 / 2.)),
-                //     Stroke::new(5.0, Rgba::new(0.8, 0.3, 0.3, 1.0)),
-                //     Matrix4::identity(),
-                // ));
-
                 batch.add(Shape::Line(
                     Line::new(x, y, x + (win.height as f32 / 2.), y),
                     Stroke::new(5.0, Rgba::new(1.0, 0.0, 0.0, 1.0)),
-                    Matrix4::from_rotation(0.0),
+                    rotation,
+                ));
+
+                batch.add(Shape::Line(
+                    Line::new(0.0, 0.0, win.width as f32 / 2.0, win.height as f32 / 2.0),
+                    Stroke::new(5.0, Rgba::new(1.0, 0.0, 0.0, 1.0)),
+                    rotation,
+                ));
+
+                batch.add(Shape::Rectangle(
+                    Rect::new(
+                        win.width as f32 / 2.0 - 50.0,
+                        win.height as f32 / 2.0 + 50.0,
+                        win.width as f32 / 2.0 + 50.0,
+                        win.height as f32 / 2.0 - 50.0,
+                    ),
+                    Stroke::new(5.0, Rgba::new(1.0, 0.0, 0.0, 1.0)),
+                    Fill::Empty(),
+                    rotation,
+                ));
+
+                batch.add(Shape::Rectangle(
+                    Rect::new(
+                        win.width as f32 / 2.0 - 50.0,
+                        win.height as f32 / 2.0 + 150.0,
+                        win.width as f32 / 2.0 + 50.0,
+                        win.height as f32 / 2.0 + 50.0,
+                    ),
+                    Stroke::new(5.0, Rgba::new(1.0, 0.0, 0.0, 1.0)),
+                    Fill::Empty(),
+                    rotation,
                 ));
 
                 let buffer = batch.finish(&r);
@@ -123,9 +154,12 @@ fn main() {
                     pass.draw_buffer(&buffer);
                 }
                 r.submit(frame);
+
+                *control_flow = ControlFlow::Poll;
+                window.request_redraw();
             }
-            _ => {}
+            _ => *control_flow = ControlFlow::Poll,
         },
-        _ => {}
+        _ => *control_flow = ControlFlow::Poll,
     });
 }
