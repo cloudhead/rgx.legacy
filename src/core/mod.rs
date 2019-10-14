@@ -244,6 +244,16 @@ impl<T> Rect<T> {
         }
     }
 
+    /// Return the height of the rectangle.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rgx::core::Rect;
+    ///
+    /// let r = Rect::origin(-6, -6);
+    /// assert_eq!(r.height(), 6);
+    /// ```
     pub fn height(&self) -> T
     where
         T: Copy + PartialOrd + std::ops::Sub<Output = T> + std::ops::Neg<Output = T> + math::Zero,
@@ -256,21 +266,33 @@ impl<T> Rect<T> {
         }
     }
 
-    pub fn center(&self) -> Vector2<T>
+    /// Return the center of the rectangle.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rgx::core::Rect;
+    /// use rgx::math::Point2;
+    ///
+    /// let r = Rect::origin(8, 8);
+    /// assert_eq!(r.center(), Point2::new(4, 4));
+    ///
+    /// let r = Rect::new(0, 0, -8, -8);
+    /// assert_eq!(r.center(), Point2::new(-4, -4));
+    /// ```
+    pub fn center(&self) -> Point2<T>
     where
         T: std::ops::Div<Output = T>
             + Copy
+            + Ord
             + From<i16>
             + PartialOrd
             + math::Zero
             + std::ops::Neg<Output = T>
             + std::ops::Sub<Output = T>,
     {
-        // TODO: Should be normalized for inverted rectangles.
-        Vector2::new(
-            self.x1 + self.width() / 2.into(),
-            self.y1 + self.height() / 2.into(),
-        )
+        let r = self.normalized();
+        Point2::new(r.x1 + r.width() / 2.into(), r.y1 + r.height() / 2.into())
     }
 
     pub fn radius(&self) -> T
