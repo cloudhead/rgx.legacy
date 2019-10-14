@@ -266,6 +266,42 @@ impl<T> Rect<T> {
         }
     }
 
+    /// Return the minimum point of a rectangle.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rgx::core::Rect;
+    /// use rgx::math::Point2;
+    ///
+    /// let r = Rect::new(0, 0, 1, -1);
+    /// assert_eq!(r.min(), Point2::new(0, -1));
+    /// ```
+    pub fn min(&self) -> Point2<T>
+    where
+        T: Ord + Copy,
+    {
+        Point2::new(T::min(self.x1, self.x2), T::min(self.y1, self.y2))
+    }
+
+    /// Return the maximum point of a rectangle.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rgx::core::Rect;
+    /// use rgx::math::Point2;
+    ///
+    /// let r = Rect::origin(-1, 1);
+    /// assert_eq!(r.max(), Point2::new(0, 1));
+    /// ```
+    pub fn max(&self) -> Point2<T>
+    where
+        T: Ord + Copy,
+    {
+        Point2::new(T::max(self.x1, self.x2), T::max(self.y1, self.y2))
+    }
+
     /// Return the center of the rectangle.
     ///
     /// # Examples
