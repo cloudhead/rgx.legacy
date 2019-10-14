@@ -407,6 +407,18 @@ where
     }
 }
 
+impl<T> std::ops::AddAssign<Vector2<T>> for Rect<T>
+where
+    T: std::ops::AddAssign<T> + Copy,
+{
+    fn add_assign(&mut self, vec: Vector2<T>) {
+        self.x1 += vec.x;
+        self.y1 += vec.y;
+        self.x2 += vec.x;
+        self.y2 += vec.y;
+    }
+}
+
 impl<T> std::ops::Sub<Vector2<T>> for Rect<T>
 where
     T: std::ops::Sub<Output = T> + Copy,
@@ -420,6 +432,18 @@ where
             x2: self.x2 - vec.x,
             y2: self.y2 - vec.y,
         }
+    }
+}
+
+impl<T> std::ops::SubAssign<Vector2<T>> for Rect<T>
+where
+    T: std::ops::SubAssign<T> + Copy,
+{
+    fn sub_assign(&mut self, vec: Vector2<T>) {
+        self.x1 -= vec.x;
+        self.y1 -= vec.y;
+        self.x2 -= vec.x;
+        self.y2 -= vec.y;
     }
 }
 
