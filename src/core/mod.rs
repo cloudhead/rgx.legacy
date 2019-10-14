@@ -306,6 +306,31 @@ impl<T> Rect<T> {
     {
         self.y2 > other.y1 && self.y1 < other.y2 && self.x1 < other.x2 && self.x2 > other.x1
     }
+
+    /// Return the normalized rectangle.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rgx::core::Rect;
+    ///
+    /// let r = Rect::new(3, 3, 1, 1).normalized();
+    /// assert_eq!(r, Rect::new(1, 1, 3, 3));
+    ///
+    /// let r = Rect::new(-1, -1, 1, 1).normalized();
+    /// assert_eq!(r, Rect::new(-1, -1, 1, 1));
+    /// ```
+    pub fn normalized(&self) -> Rect<T>
+    where
+        T: Ord + Copy,
+    {
+        Rect::new(
+            T::min(self.x1, self.x2),
+            T::min(self.y1, self.y2),
+            T::max(self.x1, self.x2),
+            T::max(self.y1, self.y2),
+        )
+    }
 }
 
 impl<T> std::ops::Add<Vector2<T>> for Rect<T>
