@@ -163,7 +163,7 @@ impl<T> Rect<T> {
         Self { x1, y1, x2, y2 }
     }
 
-    pub fn empty() -> Self
+    pub fn zero() -> Self
     where
         T: math::Zero,
     {
@@ -1359,7 +1359,7 @@ impl Default for PresentMode {
 }
 
 /// A handle to a swap chain.
-/// 
+///
 /// A `SwapChain` represents the image or series of images that will be presented to a [`Renderer`].
 /// A `SwapChain` may be created with [`Renderer::swap_chain`].
 pub struct SwapChain {
@@ -1375,9 +1375,9 @@ impl SwapChain {
     pub fn size(&self) -> (u32, u32) {
         (self.width, self.height)
     }
-    
+
     /// Returns the next texture to be presented by the swapchain for drawing.
-    /// 
+    ///
     /// When the [`SwapChainTexture`] returned by this method is dropped, the
     /// swapchain will present the texture to the associated [`Renderer`].
     pub fn next(&mut self) -> SwapChainTexture {
