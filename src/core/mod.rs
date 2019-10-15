@@ -389,6 +389,36 @@ impl<T> Rect<T> {
             T::max(self.y1, self.y2),
         )
     }
+
+    /// Return a rectangle clamped to the given bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rgx::core::Rect;
+    ///
+    /// let bounds = Rect::new(0, 0, 3, 3);
+    ///
+    /// let r = Rect::new(1, 1, 6, 6);
+    /// assert_eq!(r.clamped(bounds), Rect::new(1, 1, 3, 3));
+    ///
+    /// let r = Rect::new(1, 1, 2, 2);
+    /// assert_eq!(r.clamped(bounds), Rect::new(1, 1, 2, 2));
+    ///
+    /// let r = Rect::new(-1, -1, 3, 3);
+    /// assert_eq!(r.clamped(bounds), Rect::new(0, 0, 3, 3));
+    /// ```
+    pub fn clamped(&self, bounds: Rect<T>) -> Self
+    where
+        T: Ord + Copy,
+    {
+        Rect::new(
+            T::max(self.x1, bounds.x1),
+            T::max(self.y1, bounds.y1),
+            T::min(self.x2, bounds.x2),
+            T::min(self.y2, bounds.y2),
+        )
+    }
 }
 
 impl<T> std::ops::Add<Vector2<T>> for Rect<T>
