@@ -355,7 +355,7 @@ impl<T> Rect<T> {
     where
         T: PartialOrd,
     {
-        p.x >= self.x1 && p.x < self.x2 && p.y >= self.y1 && p.y < self.y2
+        p.x >= self.x1 && p.x <= self.x2 && p.y >= self.y1 && p.y <= self.y2
     }
 
     pub fn intersects(&self, other: Rect<T>) -> bool
