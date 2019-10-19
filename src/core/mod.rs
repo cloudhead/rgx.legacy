@@ -620,8 +620,7 @@ pub trait Canvas {
         buf: &[u8],
         w: u32,
         h: u32,
-        tw: u32,
-        th: u32,
+        r: Rect<i32>,
         device: &mut Device,
         encoder: &mut wgpu::CommandEncoder,
     );
@@ -740,12 +739,11 @@ impl Canvas for Framebuffer {
         buf: &[u8],
         w: u32,
         h: u32,
-        tw: u32,
-        th: u32,
+        rect: Rect<i32>,
         device: &mut Device,
         encoder: &mut wgpu::CommandEncoder,
     ) {
-        Texture::transfer(&self.texture, buf, w, h, tw, th, device, encoder);
+        Texture::transfer(&self.texture, buf, w, h, rect, device, encoder);
     }
 
     fn blit(&self, from: Rect<f32>, dst: Rect<f32>, encoder: &mut wgpu::CommandEncoder) {
@@ -822,6 +820,8 @@ impl Texture {
             &texture.wgpu,
             texture.w,
             texture.h,
+            0.,
+            0.,
             texture.extent,
             &buf,
             encoder,
@@ -833,18 +833,28 @@ impl Texture {
         texels: &[u8],
         width: u32,
         height: u32,
-        transfer_w: u32,
-        transfer_h: u32,
+        rect: Rect<i32>,
         device: &mut Device,
         encoder: &mut wgpu::CommandEncoder,
     ) {
+        // Wgpu's coordinate system has a downwards pointing Y axis.
+        let rect = rect.normalized().flip_y();
+
+        // The width and height of the transfer area.
+        let tx_w = rect.width() as u32;
+        let tx_h = rect.height() as u32;
+
+        // The destination coordinate of the transfer, on the texture.
+        // We have to invert the Y coordinate as explained above.
+        let (dst_x, dst_y) = (rect.x1 as f32, texture.h as f32 - rect.y1 as f32);
+
         assert_eq!(
             (texels.len() as u32 / 4),
             width * height,
             "fatal: incorrect length for texel buffer"
         );
         assert!(
-            transfer_w * transfer_h <= texture.w * texture.h,
+            tx_w * tx_h <= texture.w * texture.h,
             "fatal: transfer size must be <= texture size"
         );
 
@@ -854,11 +864,20 @@ impl Texture {
             .fill_from_slice(&texels);
 
         let extent = wgpu::Extent3d {
-            width: transfer_w,
-            height: transfer_h,
+            width: tx_w,
+            height: tx_h,
             depth: 1,
         };
-        Self::copy(&texture.wgpu, width, height, extent, &buf, encoder);
+        Self::copy(
+            &texture.wgpu,
+            width,
+            height,
+            dst_x,
+            dst_y,
+            extent,
+            &buf,
+            encoder,
+        );
     }
 
     fn blit(&self, src: Rect<f32>, dst: Rect<f32>, encoder: &mut wgpu::CommandEncoder) {
@@ -906,6 +925,8 @@ impl Texture {
         texture: &wgpu::Texture,
         w: u32,
         h: u32,
+        x: f32,
+        y: f32,
         extent: wgpu::Extent3d,
         buffer: &wgpu::Buffer,
         encoder: &mut wgpu::CommandEncoder,
@@ -921,11 +942,7 @@ impl Texture {
                 texture,
                 mip_level: 0,
                 array_layer: 0,
-                origin: wgpu::Origin3d {
-                    x: 0.0,
-                    y: 0.0,
-                    z: 0.0,
-                },
+                origin: wgpu::Origin3d { x, y, z: 0.0 },
             },
             extent,
         );
@@ -955,12 +972,11 @@ impl Canvas for Texture {
         buf: &[u8],
         w: u32,
         h: u32,
-        tw: u32,
-        th: u32,
+        rect: Rect<i32>,
         device: &mut Device,
         encoder: &mut wgpu::CommandEncoder,
     ) {
-        Texture::transfer(&self, buf, w, h, tw, th, device, encoder);
+        Texture::transfer(&self, buf, w, h, rect, device, encoder);
     }
 
     fn blit(&self, src: Rect<f32>, dst: Rect<f32>, encoder: &mut wgpu::CommandEncoder) {
@@ -1611,7 +1627,7 @@ impl Renderer {
 pub enum Op<'a> {
     Clear(&'a dyn Canvas, Rgba),
     Fill(&'a dyn Canvas, &'a [u8]),
-    Transfer(&'a dyn Canvas, &'a [u8], u32, u32, u32, u32),
+    Transfer(&'a dyn Canvas, &'a [u8], u32, u32, Rect<i32>),
     Blit(&'a dyn Canvas, Rect<f32>, Rect<f32>),
 }
 
@@ -1624,8 +1640,8 @@ impl<'a> Op<'a> {
             Op::Fill(f, buf) => {
                 f.fill(buf, dev, encoder);
             }
-            Op::Transfer(f, buf, w, h, tw, th) => {
-                f.transfer(buf, w, h, tw, th, dev, encoder);
+            Op::Transfer(f, buf, w, h, rect) => {
+                f.transfer(buf, w, h, rect, dev, encoder);
             }
             Op::Blit(f, src, dst) => {
                 f.blit(src, dst, encoder);
