@@ -218,6 +218,22 @@ impl<T> Rect<T> {
         }
     }
 
+    /// Return the rectangle flipped in the Y axis.
+    pub fn flip_y(&self) -> Self
+    where
+        T: Copy,
+    {
+        Rect::new(self.x1, self.y2, self.x2, self.y1)
+    }
+
+    /// Return the rectangle flipped in the X axis.
+    pub fn flip_x(&self) -> Self
+    where
+        T: Copy,
+    {
+        Rect::new(self.x2, self.y1, self.x1, self.y2)
+    }
+
     pub fn is_empty(&self) -> bool
     where
         T: PartialEq,
