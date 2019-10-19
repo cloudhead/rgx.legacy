@@ -204,7 +204,7 @@ pub struct Point2<S> {
 }
 
 impl<S> Point2<S> {
-    pub fn new(x: S, y: S) -> Self {
+    pub const fn new(x: S, y: S) -> Self {
         Point2 { x, y }
     }
 
