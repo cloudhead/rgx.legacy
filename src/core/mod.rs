@@ -248,15 +248,24 @@ impl<T> Rect<T> {
         self.x1.is_zero() && self.x2.is_zero() && self.y1.is_zero() && self.y2.is_zero()
     }
 
+    /// Return the width of the rectangle.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rgx::core::Rect;
+    ///
+    /// let r = Rect::new(0, 0, 3, 3);
+    /// assert_eq!(r.width(), 3);
+    /// ```
     pub fn width(&self) -> T
     where
-        T: Copy + PartialOrd + std::ops::Sub<Output = T> + std::ops::Neg<Output = T> + math::Zero,
+        T: Copy + PartialOrd + std::ops::Sub<Output = T>,
     {
-        let w = self.x2 - self.x1;
-        if w < T::zero() {
-            -w
+        if self.x1 < self.x2 {
+            self.x2 - self.x1
         } else {
-            w
+            self.x1 - self.x2
         }
     }
 
@@ -272,13 +281,12 @@ impl<T> Rect<T> {
     /// ```
     pub fn height(&self) -> T
     where
-        T: Copy + PartialOrd + std::ops::Sub<Output = T> + std::ops::Neg<Output = T> + math::Zero,
+        T: Copy + PartialOrd + std::ops::Sub<Output = T>,
     {
-        let h = self.y2 - self.y1;
-        if h < T::zero() {
-            -h
+        if self.y1 < self.y2 {
+            self.y2 - self.y1
         } else {
-            h
+            self.y1 - self.y2
         }
     }
 
