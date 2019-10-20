@@ -171,6 +171,8 @@ impl<'a> core::AbstractPipeline<'a> for Pipeline {
     }
 
     fn resize(&mut self, w: u32, h: u32) {
+        self.width = w;
+        self.height = h;
         self.ortho = kit::ortho(w, h);
     }
 
