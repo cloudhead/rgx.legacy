@@ -29,16 +29,14 @@ fn main() {
 
     // Setup texture & sampler
     #[rustfmt::skip]
-    let texels: [u32; 16] = [
-        0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
-        0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
-        0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
-        0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
+    let texels: [u8; 16] = [
+        0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF,
     ];
-    let buf: [u8; 64] = unsafe { std::mem::transmute(texels) };
+    let buf = Rgba8::align(&texels);
 
     // Create 4 by 4 texture and sampler.
-    let texture = renderer.texture(4, 4);
+    let texture = renderer.texture(2, 2);
     let sampler = renderer.sampler(Filter::Nearest, Filter::Nearest);
 
     // Setup sprite
@@ -61,7 +59,7 @@ fn main() {
     );
 
     // Prepare resources
-    renderer.prepare(&[Op::Fill(&texture, &buf)]);
+    renderer.prepare(&[Op::Fill(&texture, buf)]);
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent { event, .. } => match event {

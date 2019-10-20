@@ -64,6 +64,16 @@ impl Rgba8 {
     pub const fn new(r: u8, g: u8, b: u8, a: u8) -> Self {
         Self { r, g, b, a }
     }
+
+    pub fn align<T: AsRef<[u8]>>(bytes: &T) -> &[Rgba8] {
+        let bytes = bytes.as_ref();
+        let (head, body, tail) = unsafe { bytes.align_to::<Rgba8>() };
+
+        if !(head.is_empty() && tail.is_empty()) {
+            panic!("Rgba8::align: input is not a valid Rgba8 buffer");
+        }
+        body
+    }
 }
 
 impl fmt::Display for Rgba8 {
@@ -119,8 +129,20 @@ pub struct Bgra8 {
 }
 
 impl Bgra8 {
+    pub const TRANSPARENT: Self = Bgra8::new(0, 0, 0, 0);
+
     pub const fn new(b: u8, g: u8, r: u8, a: u8) -> Self {
         Bgra8 { b, g, r, a }
+    }
+
+    pub fn align<T: AsRef<[u8]>>(bytes: &T) -> &[Self] {
+        let bytes = bytes.as_ref();
+        let (head, body, tail) = unsafe { bytes.align_to::<Self>() };
+
+        if !(head.is_empty() && tail.is_empty()) {
+            panic!("Bgra8::align: input is not a valid Rgba8 buffer");
+        }
+        body
     }
 }
 
@@ -621,11 +643,13 @@ impl ShaderStage {
 ///////////////////////////////////////////////////////////////////////////////
 
 pub trait Canvas {
-    fn clear(&self, color: Rgba, device: &mut Device, encoder: &mut wgpu::CommandEncoder);
-    fn fill(&self, buf: &[u8], device: &mut Device, encoder: &mut wgpu::CommandEncoder);
+    type Color;
+
+    fn clear(&self, color: Self::Color, device: &mut Device, encoder: &mut wgpu::CommandEncoder);
+    fn fill(&self, buf: &[Self::Color], device: &mut Device, encoder: &mut wgpu::CommandEncoder);
     fn transfer(
         &self,
-        buf: &[u8],
+        buf: &[Self::Color],
         w: u32,
         h: u32,
         r: Rect<i32>,
@@ -729,22 +753,19 @@ impl Bind for Framebuffer {
 }
 
 impl Canvas for Framebuffer {
-    fn clear(&self, color: Rgba, device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
-        Texture::clear(
-            &self.texture,
-            Bgra8::from(Rgba8::from(color)),
-            device,
-            encoder,
-        );
+    type Color = Bgra8;
+
+    fn clear(&self, color: Bgra8, device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
+        Texture::clear(&self.texture, color, device, encoder);
     }
 
-    fn fill(&self, buf: &[u8], device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
+    fn fill(&self, buf: &[Bgra8], device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
         Texture::fill(&self.texture, buf, device, encoder);
     }
 
     fn transfer(
         &self,
-        buf: &[u8],
+        buf: &[Bgra8],
         w: u32,
         h: u32,
         rect: Rect<i32>,
@@ -800,22 +821,24 @@ impl Texture {
         let mut texels: Vec<T> = Vec::with_capacity(texture.w as usize * texture.h as usize);
         texels.resize(texture.w as usize * texture.h as usize, color);
 
-        let (head, body, tail) = unsafe { texels.align_to::<u8>() };
+        let (head, body, tail) = unsafe { texels.align_to::<Rgba8>() };
         assert!(head.is_empty());
         assert!(tail.is_empty());
 
         Self::fill(texture, body, device, encoder);
     }
 
-    fn fill(
+    fn fill<T: 'static>(
         texture: &Texture,
-        texels: &[u8],
+        texels: &[T],
         device: &mut Device,
         encoder: &mut wgpu::CommandEncoder,
-    ) {
+    ) where
+        T: Into<Rgba8> + Clone + Copy,
+    {
         assert_eq!(
             texels.len() as u32,
-            texture.w * texture.h * 4,
+            texture.w * texture.h,
             "fatal: incorrect length for texel buffer"
         );
 
@@ -836,15 +859,17 @@ impl Texture {
         );
     }
 
-    fn transfer(
+    fn transfer<T: 'static>(
         texture: &Texture,
-        texels: &[u8],
+        texels: &[T],
         width: u32,
         height: u32,
         rect: Rect<i32>,
         device: &mut Device,
         encoder: &mut wgpu::CommandEncoder,
-    ) {
+    ) where
+        T: Into<Rgba8> + Clone + Copy,
+    {
         // Wgpu's coordinate system has a downwards pointing Y axis.
         let rect = rect.normalized().flip_y();
 
@@ -857,7 +882,7 @@ impl Texture {
         let (dst_x, dst_y) = (rect.x1 as f32, texture.h as f32 - rect.y1 as f32);
 
         assert_eq!(
-            (texels.len() as u32 / 4),
+            texels.len() as u32,
             width * height,
             "fatal: incorrect length for texel buffer"
         );
@@ -967,17 +992,19 @@ impl Bind for Texture {
 }
 
 impl Canvas for Texture {
-    fn fill(&self, buf: &[u8], device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
+    type Color = Rgba8;
+
+    fn fill(&self, buf: &[Rgba8], device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
         Texture::fill(&self, buf, device, encoder);
     }
 
-    fn clear(&self, color: Rgba, device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
+    fn clear(&self, color: Rgba8, device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
         Texture::clear(&self, color, device, encoder);
     }
 
     fn transfer(
         &self,
-        buf: &[u8],
+        buf: &[Rgba8],
         w: u32,
         h: u32,
         rect: Rect<i32>,
@@ -1623,7 +1650,7 @@ impl Renderer {
         self.device.submit(&[frame.encoder.finish()]);
     }
 
-    pub fn prepare(&mut self, commands: &[Op]) {
+    pub fn prepare<T: Copy>(&mut self, commands: &[Op<T>]) {
         let mut encoder = self.device.create_command_encoder();
         for c in commands.iter() {
             c.encode(&mut self.device, &mut encoder);
@@ -1632,14 +1659,17 @@ impl Renderer {
     }
 }
 
-pub enum Op<'a> {
-    Clear(&'a dyn Canvas, Rgba),
-    Fill(&'a dyn Canvas, &'a [u8]),
-    Transfer(&'a dyn Canvas, &'a [u8], u32, u32, Rect<i32>),
-    Blit(&'a dyn Canvas, Rect<f32>, Rect<f32>),
+pub enum Op<'a, T> {
+    Clear(&'a dyn Canvas<Color = T>, T),
+    Fill(&'a dyn Canvas<Color = T>, &'a [T]),
+    Transfer(&'a dyn Canvas<Color = T>, &'a [T], u32, u32, Rect<i32>),
+    Blit(&'a dyn Canvas<Color = T>, Rect<f32>, Rect<f32>),
 }
 
-impl<'a> Op<'a> {
+impl<'a, T> Op<'a, T>
+where
+    T: Copy,
+{
     fn encode(&self, dev: &mut Device, encoder: &mut wgpu::CommandEncoder) {
         match *self {
             Op::Clear(f, color) => {

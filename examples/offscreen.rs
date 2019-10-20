@@ -159,8 +159,9 @@ fn main() {
         let decoder = image::tga::TGADecoder::new(tga).unwrap();
         let (w, h) = decoder.dimensions();
         let pixels = decoder.read_image().unwrap();
+        let pixels = Rgba8::align(&pixels);
 
-        (r.texture(w as u32, h as u32), pixels)
+        (r.texture(w as u32, h as u32), pixels.to_owned())
     };
 
     let offscreen_binding = offscreen.binding(&r, &texture, &sampler); // Texture binding
