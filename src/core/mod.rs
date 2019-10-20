@@ -234,6 +234,14 @@ impl<T> Rect<T> {
         Rect::new(self.x2, self.y1, self.x1, self.y2)
     }
 
+    /// Return the area of a rectangle.
+    pub fn area(&self) -> T
+    where
+        T: Copy + std::ops::Sub<Output = T> + std::cmp::PartialOrd + std::ops::Mul<Output = T>,
+    {
+        self.width() * self.height()
+    }
+
     pub fn is_empty(&self) -> bool
     where
         T: PartialEq,
