@@ -21,6 +21,7 @@ dx11 = ["wgpu/dx11"]
 dx12 = ["wgpu/dx12"]
 
 [dependencies]
+chrono = "0.4"
 wgpu = "0.3.0"
 env_logger = "0.6.2"
 cgmath = { version = "0.17.0", optional = true }

@@ -10,62 +10,35 @@ layout(set = 1, binding = 0) uniform Model {
 } model;
 
 layout(location = 0) in vec2 position;
-layout(location = 1) in vec4 color;
-layout(location = 2) in float angle;
+layout(location = 1) in float angle;
+layout(location = 2) in vec2 center;
+layout(location = 3) in vec4 color;
 
 layout(location = 0) out vec4 f_color;
 
-// vec2 new_pos(vec2 oldpos, float angle) {
-//   float x = oldpos.x * cos(angle) + oldpos.y * sin(angle);
-//   float y = oldpos.x * -sin(angle) + oldpos.y * cos(angle);
-//   return vec2(x, y);
-// }
-// 
-// vec4 rotate(vec2 p, vec3 axis, float angle) {
-//   mat4 m = rotationMatrix(axis, angle);
-//   return m * vec4(p, 0.0, 1.0);
-// }
-// 
-// mat2 rotate2d(float _angle) {
-//   return mat2(cos(_angle), -sin(_angle),
-//               sin(_angle),  cos(_angle));
-// }
+mat4 rotationZ(float angle ) {
+	return mat4(cos(angle),		-sin(angle),	0,	0,
+			 		    sin(angle),		cos(angle),		0,	0,
+              0,				    0,		        1,	0,
+              0,				    0,		        0,	1);
+}
 
-mat4 rotationMatrix(vec3 axis, float angle)
-{
-    axis = normalize(axis);
-    float s = sin(angle);
-    float c = cos(angle);
-    float oc = 1.0 - c;
+mat2 rotate2d(float a) {
+	float s = sin(a);
+	float c = cos(a);
+	return mat2(c, -s, s, c);
+}
 
-    return mat4(oc * axis.x * axis.x + c,           oc * axis.x * axis.y - axis.z * s,  oc * axis.z * axis.x + axis.y * s,  0.0,
-                oc * axis.x * axis.y + axis.z * s,  oc * axis.y * axis.y + c,           oc * axis.y * axis.z - axis.x * s,  0.0,
-                oc * axis.z * axis.x - axis.y * s,  oc * axis.y * axis.z + axis.x * s,  oc * axis.z * axis.z + c,           0.0,
-                0.0,                                0.0,                                0.0,                                1.0);
+vec2 rotate(vec2 position, vec2 around, float angle) {
+  mat2 m = rotate2d(angle);
+  vec2 rotated = m * (position - around);
+  return rotated + around;
 }
 
 void main() {
 	f_color = color;
 
-  mat4 rotated = rotationMatrix(vec3(0.0, 0.0, 1.0), angle);
+  vec2 r = rotate(position, center, angle);
 
-  gl_Position = global.ortho * global.transform * model.transform * rotated * vec4(position, 0.0, 1.0);
-
-  // float ct = cos(angle);
-  // float st = sin(angle);
-	// vec4 p = vec4(
-	//     position.x * ct - position.y * st,
-	//     position.x * st + position.y * ct,
-	//     0.0, 1.0
-  //   );
-  // vec2 pos = rotate2d(angle) * position;
-
-  // gl_Position = global.ortho * global.transform * model.transform * vec4(pos, 0.0, 1.0);
-  // gl_Position = global.ortho * global.transform * model.transform * vec4(new_pos(position, angle), 0.0, 1.0);
-  // gl_Position = global.ortho * global.transform * model.transform * rotate(position, vec3(0.0, 0.0, 1.0), angle);
-
-  // gl_Position = global.ortho * global.transform * model.transform * rotate(position, vec3(0.0, 0.0, 1.0), angle);
-  // gl_Position *= rotated;
-
-	// gl_Position = global.ortho * global.transform * model.transform * vec4(new_pos(position, angle), 0.0, 1.0);
+  gl_Position = global.ortho * global.transform * model.transform * vec4(r, 0.0, 1.0);
 }

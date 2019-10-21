@@ -30,23 +30,25 @@ pub struct Uniforms {
 #[derive(Copy, Clone, Debug)]
 pub struct Vertex {
     position: Vector2<f32>,
+    angle: f32,
+    center: Vector2<f32>,
     color: Rgba8,
-    rotation: f32,
 }
 
 impl Vertex {
-    const fn new(x: f32, y: f32, color: Rgba8, rotation: f32) -> Self {
+    const fn new(x: f32, y: f32, angle: f32, center: Point2<f32>, color: Rgba8) -> Self {
         Self {
             position: Vector2::new(x, y),
+            angle,
+            center: Vector2::new(center.x, center.y),
             color,
-            rotation,
         }
     }
 }
 
 #[inline]
-pub const fn vertex(x: f32, y: f32, color: Rgba8, rotation: f32) -> Vertex {
-    Vertex::new(x, y, color, rotation)
+pub const fn vertex(x: f32, y: f32, angle: f32, center: Point2<f32>, color: Rgba8) -> Vertex {
+    Vertex::new(x, y, angle, center, color)
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -74,10 +76,12 @@ impl<'a> core::AbstractPipeline<'a> for Pipeline {
             vertex_layout: &[
                 // Position
                 core::VertexFormat::Float2,
+                // Roation angle.
+                core::VertexFormat::Float,
+                // Center of rotation.
+                core::VertexFormat::Float2,
                 // Color
                 core::VertexFormat::UByte4,
-                // Rotation
-                core::VertexFormat::Float,
             ],
             pipeline_layout: &[
                 Set(&[Binding {
@@ -175,17 +179,38 @@ pub enum Fill {
     Gradient(Rgba, Rgba),
 }
 
+// angle, center of rotation
+
+#[derive(Clone, Debug)]
+pub struct Rotation {
+    angle: f32,
+    center: Point2<f32>,
+}
+
+impl Rotation {
+    pub const fn zero() -> Self {
+        Self {
+            angle: 0.0,
+            center: Point2 { x: 0.0, y: 0.0 },
+        }
+    }
+
+    pub fn new(angle: f32, center: Point2<f32>) -> Self {
+        Self { angle, center }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum Shape {
-    Line(Line, Stroke, f32),
-    Rectangle(Rect<f32>, Stroke, Fill, f32),
+    Line(Line, Rotation, Stroke),
+    Rectangle(Rect<f32>, Rotation, Stroke, Fill),
     Circle(Point2<f32>, f32, u32, Stroke, Fill),
 }
 
 impl Shape {
     pub fn triangulate(&self) -> Vec<Vertex> {
         match *self {
-            Shape::Line(l, Stroke { width, color }, rotation) => {
+            Shape::Line(l, Rotation { angle, center }, Stroke { width, color }) => {
                 let v = (l.p2 - l.p1).normalize();
 
                 let wx = width / 2.0 * v.y;
@@ -193,15 +218,15 @@ impl Shape {
                 let rgba8 = color.into();
 
                 vec![
-                    vertex(l.p1.x - wx, l.p1.y + wy, rgba8, rotation),
-                    vertex(l.p1.x + wx, l.p1.y - wy, rgba8, rotation),
-                    vertex(l.p2.x - wx, l.p2.y + wy, rgba8, rotation),
-                    vertex(l.p2.x - wx, l.p2.y + wy, rgba8, rotation),
-                    vertex(l.p1.x + wx, l.p1.y - wy, rgba8, rotation),
-                    vertex(l.p2.x + wx, l.p2.y - wy, rgba8, rotation),
+                    vertex(l.p1.x - wx, l.p1.y + wy, angle, center, rgba8),
+                    vertex(l.p1.x + wx, l.p1.y - wy, angle, center, rgba8),
+                    vertex(l.p2.x - wx, l.p2.y + wy, angle, center, rgba8),
+                    vertex(l.p2.x - wx, l.p2.y + wy, angle, center, rgba8),
+                    vertex(l.p1.x + wx, l.p1.y - wy, angle, center, rgba8),
+                    vertex(l.p2.x + wx, l.p2.y - wy, angle, center, rgba8),
                 ]
             }
-            Shape::Rectangle(r, stroke, fill, rotation) => {
+            Shape::Rectangle(r, Rotation { angle, center }, stroke, fill) => {
                 let width = stroke.width;
                 let inner = Rect::new(r.x1 + width, r.y1 + width, r.x2 - width, r.y2 - width);
 
@@ -212,33 +237,33 @@ impl Shape {
 
                     vec![
                         // Bottom
-                        vertex(outer.x1, outer.y1, rgba8, rotation),
-                        vertex(outer.x2, outer.y1, rgba8, rotation),
-                        vertex(inner.x1, inner.y1, rgba8, rotation),
-                        vertex(inner.x1, inner.y1, rgba8, rotation),
-                        vertex(outer.x2, outer.y1, rgba8, rotation),
-                        vertex(inner.x2, inner.y1, rgba8, rotation),
+                        vertex(outer.x1, outer.y1, angle, center, rgba8),
+                        vertex(outer.x2, outer.y1, angle, center, rgba8),
+                        vertex(inner.x1, inner.y1, angle, center, rgba8),
+                        vertex(inner.x1, inner.y1, angle, center, rgba8),
+                        vertex(outer.x2, outer.y1, angle, center, rgba8),
+                        vertex(inner.x2, inner.y1, angle, center, rgba8),
                         // Left
-                        vertex(outer.x1, outer.y1, rgba8, rotation),
-                        vertex(inner.x1, inner.y1, rgba8, rotation),
-                        vertex(outer.x1, outer.y2, rgba8, rotation),
-                        vertex(outer.x1, outer.y2, rgba8, rotation),
-                        vertex(inner.x1, inner.y1, rgba8, rotation),
-                        vertex(inner.x1, inner.y2, rgba8, rotation),
+                        vertex(outer.x1, outer.y1, angle, center, rgba8),
+                        vertex(inner.x1, inner.y1, angle, center, rgba8),
+                        vertex(outer.x1, outer.y2, angle, center, rgba8),
+                        vertex(outer.x1, outer.y2, angle, center, rgba8),
+                        vertex(inner.x1, inner.y1, angle, center, rgba8),
+                        vertex(inner.x1, inner.y2, angle, center, rgba8),
                         // Right
-                        vertex(inner.x2, inner.y1, rgba8, rotation),
-                        vertex(outer.x2, outer.y1, rgba8, rotation),
-                        vertex(outer.x2, outer.y2, rgba8, rotation),
-                        vertex(inner.x2, inner.y1, rgba8, rotation),
-                        vertex(inner.x2, inner.y2, rgba8, rotation),
-                        vertex(outer.x2, outer.y2, rgba8, rotation),
+                        vertex(inner.x2, inner.y1, angle, center, rgba8),
+                        vertex(outer.x2, outer.y1, angle, center, rgba8),
+                        vertex(outer.x2, outer.y2, angle, center, rgba8),
+                        vertex(inner.x2, inner.y1, angle, center, rgba8),
+                        vertex(inner.x2, inner.y2, angle, center, rgba8),
+                        vertex(outer.x2, outer.y2, angle, center, rgba8),
                         // Top
-                        vertex(outer.x1, outer.y2, rgba8, rotation),
-                        vertex(outer.x2, outer.y2, rgba8, rotation),
-                        vertex(inner.x1, inner.y2, rgba8, rotation),
-                        vertex(inner.x1, inner.y2, rgba8, rotation),
-                        vertex(outer.x2, outer.y2, rgba8, rotation),
-                        vertex(inner.x2, inner.y2, rgba8, rotation),
+                        vertex(outer.x1, outer.y2, angle, center, rgba8),
+                        vertex(outer.x2, outer.y2, angle, center, rgba8),
+                        vertex(inner.x1, inner.y2, angle, center, rgba8),
+                        vertex(inner.x1, inner.y2, angle, center, rgba8),
+                        vertex(outer.x2, outer.y2, angle, center, rgba8),
+                        vertex(inner.x2, inner.y2, angle, center, rgba8),
                     ]
                 } else {
                     Vec::with_capacity(6)
@@ -249,12 +274,12 @@ impl Shape {
                         let rgba8 = color.into();
 
                         verts.extend_from_slice(&[
-                            vertex(inner.x1, inner.y1, rgba8, rotation),
-                            vertex(inner.x2, inner.y1, rgba8, rotation),
-                            vertex(inner.x2, inner.y2, rgba8, rotation),
-                            vertex(inner.x1, inner.y1, rgba8, rotation),
-                            vertex(inner.x1, inner.y2, rgba8, rotation),
-                            vertex(inner.x2, inner.y2, rgba8, rotation),
+                            vertex(inner.x1, inner.y1, angle, center, rgba8),
+                            vertex(inner.x2, inner.y1, angle, center, rgba8),
+                            vertex(inner.x2, inner.y2, angle, center, rgba8),
+                            vertex(inner.x1, inner.y1, angle, center, rgba8),
+                            vertex(inner.x1, inner.y2, angle, center, rgba8),
+                            vertex(inner.x2, inner.y2, angle, center, rgba8),
                         ]);
                     }
                     Fill::Gradient(_, _) => {
@@ -279,12 +304,12 @@ impl Shape {
                         let (o0, o1) = (outer[i], outer[i + 1]);
 
                         vs.extend_from_slice(&[
-                            vertex(i0.x, i0.y, rgba8, 0.0),
-                            vertex(o0.x, o0.y, rgba8, 0.0),
-                            vertex(o1.x, o1.y, rgba8, 0.0),
-                            vertex(i0.x, i0.y, rgba8, 0.0),
-                            vertex(o1.x, o1.y, rgba8, 0.0),
-                            vertex(i1.x, i1.y, rgba8, 0.0),
+                            vertex(i0.x, i0.y, 0.0, Point2::new(0.0, 0.0), rgba8),
+                            vertex(o0.x, o0.y, 0.0, Point2::new(0.0, 0.0), rgba8),
+                            vertex(o1.x, o1.y, 0.0, Point2::new(0.0, 0.0), rgba8),
+                            vertex(i0.x, i0.y, 0.0, Point2::new(0.0, 0.0), rgba8),
+                            vertex(o1.x, o1.y, 0.0, Point2::new(0.0, 0.0), rgba8),
+                            vertex(i1.x, i1.y, 0.0, Point2::new(0.0, 0.0), rgba8),
                         ]);
                     }
                     vs
@@ -295,10 +320,11 @@ impl Shape {
                 match fill {
                     Fill::Solid(color) => {
                         let rgba8 = color.into();
-                        let center = Vertex::new(position.x, position.y, rgba8, 0.0);
+                        let center =
+                            Vertex::new(position.x, position.y, 0.0, Point2::new(0.0, 0.0), rgba8);
                         let inner_verts: Vec<Vertex> = inner
                             .iter()
-                            .map(|p| Vertex::new(p.x, p.y, rgba8, 0.0))
+                            .map(|p| Vertex::new(p.x, p.y, 0.0, Point2::new(0.0, 0.0), rgba8))
                             .collect();
                         for i in 0..sides as usize {
                             verts.extend_from_slice(&[center, inner_verts[i], inner_verts[i + 1]]);
