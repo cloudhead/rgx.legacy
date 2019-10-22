@@ -1349,6 +1349,14 @@ impl Frame {
             (src.size * src.count) as wgpu::BufferAddress,
         );
     }
+
+    pub fn encoder(&self) -> &wgpu::CommandEncoder {
+        &self.encoder
+    }
+
+    pub fn encoder_mut(&mut self) -> &mut wgpu::CommandEncoder {
+        &mut self.encoder
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1487,6 +1495,11 @@ impl SwapChain {
     /// swapchain will present the texture to the associated [`Renderer`].
     pub fn next(&mut self) -> SwapChainTexture {
         SwapChainTexture(self.wgpu.get_next_texture())
+    }
+
+    /// Get the texture format in use
+    pub fn format(&self) -> wgpu::TextureFormat {
+        wgpu::TextureFormat::Bgra8Unorm
     }
 
     fn descriptor(width: u32, height: u32, mode: PresentMode) -> wgpu::SwapChainDescriptor {
@@ -1714,6 +1727,14 @@ impl Device {
             }),
             surface,
         }
+    }
+
+    pub fn device(&self) -> &wgpu::Device {
+        &self.device
+    }
+
+    pub fn device_mut(&mut self) -> &mut wgpu::Device {
+        &mut self.device
     }
 
     pub fn create_command_encoder(&self) -> wgpu::CommandEncoder {
