@@ -45,8 +45,6 @@ pub struct FramebufferPipeline {
     pipeline: core::Pipeline,
     bindings: core::BindingGroup,
     buf: core::UniformBuffer,
-    width: u32,
-    height: u32,
 }
 
 impl<'a> core::AbstractPipeline<'a> for FramebufferPipeline {
@@ -78,7 +76,7 @@ impl<'a> core::AbstractPipeline<'a> for FramebufferPipeline {
         }
     }
 
-    fn setup(pipeline: core::Pipeline, dev: &core::Device, width: u32, height: u32) -> Self {
+    fn setup(pipeline: core::Pipeline, dev: &core::Device) -> Self {
         let buf = dev.create_uniform_buffer(&[core::Rgba::TRANSPARENT]);
         let bindings = dev.create_binding_group(&pipeline.layout.sets[0], &[&buf]);
 
@@ -86,8 +84,6 @@ impl<'a> core::AbstractPipeline<'a> for FramebufferPipeline {
             pipeline,
             buf,
             bindings,
-            width,
-            height,
         }
     }
 
@@ -98,19 +94,6 @@ impl<'a> core::AbstractPipeline<'a> for FramebufferPipeline {
 
     fn prepare(&'a self, color: core::Rgba) -> Option<(&'a core::UniformBuffer, Vec<core::Rgba>)> {
         Some((&self.buf, vec![color]))
-    }
-
-    fn resize(&mut self, w: u32, h: u32) {
-        self.width = w;
-        self.height = h;
-    }
-
-    fn width(&self) -> u32 {
-        self.width
-    }
-
-    fn height(&self) -> u32 {
-        self.height
     }
 }
 
@@ -147,8 +130,8 @@ fn main() {
     let sampler = r.sampler(Filter::Nearest, Filter::Nearest);
     let mut textures = r.swap_chain(sw, sh, PresentMode::default());
 
-    let offscreen: kit::shape2d::Pipeline = r.pipeline(sw, sh, Blending::default());
-    let onscreen: FramebufferPipeline = r.pipeline(sw, sh, Blending::default());
+    let offscreen: kit::shape2d::Pipeline = r.pipeline(Blending::default());
+    let onscreen: FramebufferPipeline = r.pipeline(Blending::default());
     let onscreen_binding = onscreen.binding(&r, &framebuffer, &sampler);
 
     let buffer = shape2d::Batch::singleton(Shape::Circle(
@@ -171,7 +154,7 @@ fn main() {
     // Update pipeline
     ///////////////////////////////////////////////////////////////////////////
 
-    r.update_pipeline(&offscreen, Matrix4::identity(), &mut frame);
+    r.update_pipeline(&offscreen, kit::ortho(out.width, out.height), &mut frame);
     r.update_pipeline(&onscreen, Rgba::TRANSPARENT, &mut frame);
 
     ///////////////////////////////////////////////////////////////////////////

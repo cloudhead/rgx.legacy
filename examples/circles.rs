@@ -28,8 +28,7 @@ fn main() {
     let mut r = Renderer::new(window.raw_window_handle());
     let mut win = window.inner_size().to_physical(window.hidpi_factor());
 
-    let mut pip: kit::shape2d::Pipeline =
-        r.pipeline(win.width as u32, win.height as u32, Blending::default());
+    let pip: kit::shape2d::Pipeline = r.pipeline(Blending::default());
     let mut chain = r.swap_chain(win.width as u32, win.height as u32, PresentMode::default());
 
     ///////////////////////////////////////////////////////////////////////////
@@ -68,8 +67,6 @@ fn main() {
                 win = size.to_physical(window.hidpi_factor());
 
                 let (w, h) = (win.width as u32, win.height as u32);
-
-                pip.resize(w, h);
                 chain = r.swap_chain(w, h, PresentMode::default());
             }
             _ => {}
@@ -124,7 +121,8 @@ fn main() {
             // Draw frame
             ///////////////////////////////////////////////////////////////////////////
 
-            r.update_pipeline(&pip, Matrix4::identity(), &mut frame);
+            r.update_pipeline(&pip, kit::ortho(out.width, out.height), &mut frame);
+
             {
                 let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &out);
 

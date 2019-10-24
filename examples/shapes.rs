@@ -28,8 +28,7 @@ fn main() {
     let mut r = Renderer::new(window.raw_window_handle());
     let mut win = window.inner_size().to_physical(window.hidpi_factor());
 
-    let mut pip: kit::shape2d::Pipeline =
-        r.pipeline(win.width as u32, win.height as u32, Blending::default());
+    let pip: kit::shape2d::Pipeline = r.pipeline(Blending::default());
 
     ///////////////////////////////////////////////////////////////////////////
     // Render loop
@@ -41,7 +40,7 @@ fn main() {
     let (mut mx, mut my) = (0., 0.);
 
     let mut textures = r.swap_chain(win.width as u32, win.height as u32, PresentMode::default());
-    
+
     event_loop.run(move |event, _, control_flow| match event {
         Event::NewEvents(StartCause::Init) => {
             window.request_redraw();
@@ -61,7 +60,7 @@ fn main() {
                     *control_flow = ControlFlow::Exit;
                 }
                 _ => {}
-            }
+            },
             WindowEvent::CursorMoved { position, .. } => {
                 mx = position.x;
                 my = position.y;
@@ -74,8 +73,6 @@ fn main() {
                 win = size.to_physical(window.hidpi_factor());
 
                 let (w, h) = (win.width as u32, win.height as u32);
-
-                pip.resize(w, h);
                 textures = r.swap_chain(w, h, PresentMode::default());
             }
             WindowEvent::RedrawRequested => {
@@ -139,11 +136,14 @@ fn main() {
 
                 let mut frame = r.frame();
 
+                let out = textures.next();
+
+                r.update_pipeline(&pip, kit::ortho(out.width, out.height), &mut frame);
+
                 ///////////////////////////////////////////////////////////////////////////
                 // Draw frame
                 ///////////////////////////////////////////////////////////////////////////
 
-                let out = textures.next();
                 {
                     let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &out);
 
@@ -153,7 +153,7 @@ fn main() {
                 r.submit(frame);
             }
             _ => {}
-        }
+        },
         _ => {}
     });
 }

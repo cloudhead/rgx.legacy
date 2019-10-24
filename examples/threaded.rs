@@ -5,6 +5,7 @@
 use rgx::core::*;
 use rgx::math::Point2;
 
+use rgx::kit;
 use rgx::kit::shape2d;
 use rgx::kit::shape2d::{Fill, Shape, Stroke};
 
@@ -36,7 +37,7 @@ fn main() {
 
     thread::spawn(move || {
         let (w, h) = (size.width as u32, size.height as u32);
-        let mut pipeline: shape2d::Pipeline = renderer.pipeline(w, h, Blending::default());
+        let pipeline: shape2d::Pipeline = renderer.pipeline(Blending::default());
         let mut chain = renderer.swap_chain(w, h, PresentMode::NoVsync);
 
         loop {
@@ -46,14 +47,11 @@ fn main() {
             };
 
             if chain.width != w || chain.height != h {
-                pipeline.resize(w, h);
                 chain = renderer.swap_chain(w, h, PresentMode::NoVsync);
             }
 
-            let (mx, my) = {
-                *t_shared_coords.lock().unwrap()
-            };
-            
+            let (mx, my) = { *t_shared_coords.lock().unwrap() };
+
             let buffer = shape2d::Batch::singleton(Shape::Circle(
                 Point2::new(mx, size.height as f32 - my),
                 20.,
@@ -65,6 +63,13 @@ fn main() {
 
             let output = chain.next();
             let mut frame = renderer.frame();
+
+            renderer.update_pipeline(
+                &pipeline,
+                kit::ortho(output.width, output.height),
+                &mut frame,
+            );
+
             {
                 let mut pass = frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &output);
 

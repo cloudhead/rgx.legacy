@@ -24,8 +24,7 @@ fn main() {
     let mut renderer = Renderer::new(window.raw_window_handle());
 
     // Setup render pipeline
-    let pipeline: kit::sprite2d::Pipeline =
-        renderer.pipeline(size.width as u32, size.height as u32, Blending::default());
+    let pipeline: kit::sprite2d::Pipeline = renderer.pipeline(Blending::default());
 
     // Setup texture & sampler
     #[rustfmt::skip]
@@ -84,6 +83,13 @@ fn main() {
         Event::EventsCleared => {
             let output = textures.next();
             let mut frame = renderer.frame();
+
+            renderer.update_pipeline(
+                &pipeline,
+                kit::ortho(output.width, output.height),
+                &mut frame,
+            );
+
             {
                 let mut pass = frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &output);
 

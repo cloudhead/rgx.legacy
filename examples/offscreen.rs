@@ -7,7 +7,6 @@ use rgx::core::*;
 use rgx::kit;
 use rgx::kit::sprite2d;
 use rgx::kit::*;
-use rgx::math::*;
 
 use image::ImageDecoder;
 
@@ -46,8 +45,6 @@ pub struct FramebufferPipeline {
     pipeline: core::Pipeline,
     bindings: core::BindingGroup,
     buf: core::UniformBuffer,
-    width: u32,
-    height: u32,
 }
 
 impl<'a> core::AbstractPipeline<'a> for FramebufferPipeline {
@@ -79,7 +76,7 @@ impl<'a> core::AbstractPipeline<'a> for FramebufferPipeline {
         }
     }
 
-    fn setup(pipeline: core::Pipeline, dev: &core::Device, width: u32, height: u32) -> Self {
+    fn setup(pipeline: core::Pipeline, dev: &core::Device) -> Self {
         let buf = dev.create_uniform_buffer(&[core::Rgba::TRANSPARENT]);
         let bindings = dev.create_binding_group(&pipeline.layout.sets[0], &[&buf]);
 
@@ -87,8 +84,6 @@ impl<'a> core::AbstractPipeline<'a> for FramebufferPipeline {
             pipeline,
             buf,
             bindings,
-            width,
-            height,
         }
     }
 
@@ -99,19 +94,6 @@ impl<'a> core::AbstractPipeline<'a> for FramebufferPipeline {
 
     fn prepare(&'a self, color: core::Rgba) -> Option<(&'a core::UniformBuffer, Vec<core::Rgba>)> {
         Some((&self.buf, vec![color]))
-    }
-
-    fn resize(&mut self, w: u32, h: u32) {
-        self.width = w;
-        self.height = h;
-    }
-
-    fn width(&self) -> u32 {
-        self.width
-    }
-
-    fn height(&self) -> u32 {
-        self.height
     }
 }
 
@@ -143,8 +125,8 @@ fn main() {
     let size = window.inner_size().to_physical(window.hidpi_factor());
 
     let (sw, sh) = (size.width as u32, size.height as u32);
-    let mut offscreen: kit::sprite2d::Pipeline = r.pipeline(sw, sh, Blending::default());
-    let mut onscreen: FramebufferPipeline = r.pipeline(sw, sh, Blending::default());
+    let offscreen: kit::sprite2d::Pipeline = r.pipeline(Blending::default());
+    let onscreen: FramebufferPipeline = r.pipeline(Blending::default());
     let framebuffer = Framebuffer::new(sw, sh, &r);
 
     ///////////////////////////////////////////////////////////////////////////
@@ -212,8 +194,6 @@ fn main() {
                 let physical = size.to_physical(window.hidpi_factor());
                 let (w, h) = (physical.width as u32, physical.height as u32);
 
-                offscreen.resize(w, h);
-                onscreen.resize(w, h);
                 textures = r.swap_chain(w, h, PresentMode::default());
             }
             _ => {}
@@ -231,14 +211,14 @@ fn main() {
             // Prepare pipeline
             ///////////////////////////////////////////////////////////////////////////
 
-            r.update_pipeline(&offscreen, Matrix4::identity(), &mut frame);
+            let out = textures.next();
+
+            r.update_pipeline(&offscreen, kit::ortho(out.width, out.height), &mut frame);
             r.update_pipeline(&onscreen, Rgba::new(0.2, 0.2, 0.0, 1.0), &mut frame);
 
             ///////////////////////////////////////////////////////////////////////////
             // Draw frame
             ///////////////////////////////////////////////////////////////////////////
-
-            let out = textures.next();
 
             {
                 let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &framebuffer.target);

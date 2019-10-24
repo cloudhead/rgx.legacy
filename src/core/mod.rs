@@ -1196,23 +1196,13 @@ impl<'a> AbstractPipeline<'a> for Pipeline {
         }
     }
 
-    fn setup(pipeline: Self, _dev: &Device, _w: u32, _h: u32) -> Self {
+    fn setup(pipeline: Self, _dev: &Device) -> Self {
         pipeline
     }
 
     fn apply(&self, pass: &mut Pass) {
         pass.wgpu.set_pipeline(&self.wgpu);
     }
-
-    fn width(&self) -> u32 {
-        unimplemented!()
-    }
-
-    fn height(&self) -> u32 {
-        unimplemented!()
-    }
-
-    fn resize(&mut self, _w: u32, _h: u32) {}
 
     fn prepare(&'a self, _unused: ()) -> Option<(&'a UniformBuffer, Vec<()>)> {
         None
@@ -1305,11 +1295,8 @@ pub trait AbstractPipeline<'a> {
     type Uniforms: Copy + 'static;
 
     fn description() -> PipelineDescription<'a>;
-    fn setup(pip: Pipeline, dev: &Device, w: u32, h: u32) -> Self;
+    fn setup(pip: Pipeline, dev: &Device) -> Self;
     fn apply(&self, pass: &mut Pass);
-    fn resize(&mut self, w: u32, h: u32);
-    fn width(&self) -> u32;
-    fn height(&self) -> u32;
     fn prepare(
         &'a self,
         t: Self::PrepareContext,
@@ -1442,11 +1429,16 @@ pub trait TextureView {
     fn texture_view(&self) -> &wgpu::TextureView;
 }
 
-pub struct SwapChainTexture<'a>(wgpu::SwapChainOutput<'a>);
+pub struct SwapChainTexture<'a> {
+    pub width: u32,
+    pub height: u32,
+
+    wgpu: wgpu::SwapChainOutput<'a>,
+}
 
 impl TextureView for SwapChainTexture<'_> {
     fn texture_view(&self) -> &wgpu::TextureView {
-        &self.0.view
+        &self.wgpu.view
     }
 }
 
@@ -1494,7 +1486,11 @@ impl SwapChain {
     /// When the [`SwapChainTexture`] returned by this method is dropped, the
     /// swapchain will present the texture to the associated [`Renderer`].
     pub fn next(&mut self) -> SwapChainTexture {
-        SwapChainTexture(self.wgpu.get_next_texture())
+        SwapChainTexture {
+            wgpu: self.wgpu.get_next_texture(),
+            width: self.width,
+            height: self.height,
+        }
     }
 
     /// Get the texture format in use
@@ -1566,7 +1562,7 @@ impl Renderer {
         self.device.create_sampler(min_filter, mag_filter)
     }
 
-    pub fn pipeline<T>(&self, w: u32, h: u32, blending: Blending) -> T
+    pub fn pipeline<T>(&self, blending: Blending) -> T
     where
         T: AbstractPipeline<'static>,
     {
@@ -1586,8 +1582,6 @@ impl Renderer {
             self.device
                 .create_pipeline(pip_layout, vertex_layout, blending, &vs, &fs),
             &self.device,
-            w,
-            h,
         )
     }
 
