@@ -268,4 +268,8 @@ impl Batch {
             *dst = *dst + Vector2::new(x, y);
         }
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.items.is_empty()
+    }
 }
