@@ -185,6 +185,13 @@ impl<T> Rect<T> {
         Self { x1, y1, x2, y2 }
     }
 
+    pub fn sized(x1: T, y1: T, w: T, h: T) -> Self
+    where
+        T: std::ops::Add<Output = T> + Copy,
+    {
+        Self::new(x1, y1, x1 + w, y1 + h)
+    }
+
     pub fn zero() -> Self
     where
         T: math::Zero,
@@ -228,7 +235,17 @@ impl<T> Rect<T> {
         }
     }
 
-    pub fn translate(&self, x: T, y: T) -> Self
+    /// Return the rectangle with a different origin.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rgx::core::Rect;
+    ///
+    /// let r = Rect::new(1, 1, 4, 4);
+    /// assert_eq!(r.with_origin(0, 0), Rect::new(0, 0, 3, 3));
+    /// ```
+    pub fn with_origin(&self, x: T, y: T) -> Self
     where
         T: std::ops::Add<Output = T> + std::ops::Sub<Output = T> + Copy,
     {
@@ -237,6 +254,50 @@ impl<T> Rect<T> {
             y1: y,
             x2: x + (self.x2 - self.x1),
             y2: y + (self.y2 - self.y1),
+        }
+    }
+
+    /// Return the rectangle with a different size.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rgx::core::Rect;
+    ///
+    /// let r = Rect::new(1, 1, 4, 4);
+    /// assert_eq!(r.with_size(9, 9), Rect::new(1, 1, 10, 10));
+    /// ```
+    pub fn with_size(&self, w: T, h: T) -> Self
+    where
+        T: std::ops::Add<Output = T> + std::ops::Sub<Output = T> + Copy,
+    {
+        Self {
+            x1: self.x1,
+            y1: self.y1,
+            x2: self.x1 + w,
+            y2: self.y1 + h,
+        }
+    }
+
+    /// Return an expanded rectangle by a constant amount.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rgx::core::Rect;
+    ///
+    /// let r = Rect::new(0, 0, 3, 3);
+    /// assert_eq!(r.expand(-1, -1, 1, 1), Rect::new(-1, -1, 4, 4));
+    /// ```
+    pub fn expand(&self, x1: T, y1: T, x2: T, y2: T) -> Self
+    where
+        T: std::ops::Add<Output = T> + Copy,
+    {
+        Self {
+            x1: self.x1 + x1,
+            y1: self.y1 + y1,
+            x2: self.x2 + x2,
+            y2: self.y2 + y2,
         }
     }
 
@@ -381,7 +442,7 @@ impl<T> Rect<T> {
             + std::ops::Neg<Output = T>
             + std::ops::Sub<Output = T>,
     {
-        let r = self.normalized();
+        let r = self.abs();
         Point2::new(r.x1 + r.width() / 2.into(), r.y1 + r.height() / 2.into())
     }
 
@@ -419,20 +480,20 @@ impl<T> Rect<T> {
         self.y2 > other.y1 && self.y1 < other.y2 && self.x1 < other.x2 && self.x2 > other.x1
     }
 
-    /// Return the normalized rectangle.
+    /// Return the absolute rectangle.
     ///
     /// # Examples
     ///
     /// ```
     /// use rgx::core::Rect;
     ///
-    /// let r = Rect::new(3, 3, 1, 1).normalized();
+    /// let r = Rect::new(3, 3, 1, 1).abs();
     /// assert_eq!(r, Rect::new(1, 1, 3, 3));
     ///
-    /// let r = Rect::new(-1, -1, 1, 1).normalized();
+    /// let r = Rect::new(-1, -1, 1, 1).abs();
     /// assert_eq!(r, Rect::new(-1, -1, 1, 1));
     /// ```
-    pub fn normalized(&self) -> Rect<T>
+    pub fn abs(&self) -> Rect<T>
     where
         T: Ord + Copy,
     {
@@ -871,7 +932,7 @@ impl Texture {
         T: Into<Rgba8> + Clone + Copy,
     {
         // Wgpu's coordinate system has a downwards pointing Y axis.
-        let rect = rect.normalized().flip_y();
+        let rect = rect.abs().flip_y();
 
         // The width and height of the transfer area.
         let tx_w = rect.width() as u32;
