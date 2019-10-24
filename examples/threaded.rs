@@ -76,7 +76,7 @@ fn main() {
                 pass.set_pipeline(&pipeline);
                 pass.draw_buffer(&buffer);
             }
-            renderer.submit(frame);
+            renderer.present(frame);
         }
     });
 

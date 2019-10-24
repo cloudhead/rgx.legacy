@@ -1714,11 +1714,11 @@ impl Renderer {
         Frame::new(encoder)
     }
 
-    pub fn submit(&mut self, frame: Frame) {
+    pub fn present(&mut self, frame: Frame) {
         self.device.submit(&[frame.encoder.finish()]);
     }
 
-    pub fn prepare<T: Copy>(&mut self, commands: &[Op<T>]) {
+    pub fn submit<T: Copy>(&mut self, commands: &[Op<T>]) {
         let mut encoder = self.device.create_command_encoder();
         for c in commands.iter() {
             c.encode(&mut self.device, &mut encoder);

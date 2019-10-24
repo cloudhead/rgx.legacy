@@ -58,7 +58,7 @@ fn main() {
     );
 
     // Prepare resources
-    renderer.prepare(&[Op::Fill(&texture, buf)]);
+    renderer.submit(&[Op::Fill(&texture, buf)]);
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent { event, .. } => match event {
@@ -96,7 +96,7 @@ fn main() {
                 pass.set_pipeline(&pipeline);
                 pass.draw(&buffer, &binding);
             }
-            renderer.submit(frame);
+            renderer.present(frame);
         }
         _ => {}
     });

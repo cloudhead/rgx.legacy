@@ -173,8 +173,8 @@ fn main() {
         pass.draw(&framebuffer.vertices, &onscreen_binding);
     }
 
-    // Submit frame first, so that we can read it below.
-    r.submit(frame);
+    // Present frame first, so that we can read it below.
+    r.present(frame);
 
     ///////////////////////////////////////////////////////////////////////////
     // Read the framebuffer into host memory and write it to an image file

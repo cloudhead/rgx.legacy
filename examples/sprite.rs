@@ -84,7 +84,7 @@ fn main() {
     // Prepare resources
     ///////////////////////////////////////////////////////////////////////////
 
-    r.prepare(&[Op::Fill(&sprite, texels.as_slice())]);
+    r.submit(&[Op::Fill(&sprite, texels.as_slice())]);
 
     ///////////////////////////////////////////////////////////////////////////
     // Render loop
@@ -217,7 +217,7 @@ fn main() {
                     pass.draw(&buffer, &binding);
                 }
 
-                r.submit(frame);
+                r.present(frame);
 
                 if frames_total >= frame_batch && frames_total % frame_batch == 0 {
                     let average_ft = fts.iter().sum::<f64>() / fts.len() as f64;

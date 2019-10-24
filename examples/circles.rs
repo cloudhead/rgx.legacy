@@ -129,7 +129,7 @@ fn main() {
                 pass.set_pipeline(&pip);
                 pass.draw_buffer(&buffer);
             }
-            r.submit(frame);
+            r.present(frame);
         }
         _ => {}
     });

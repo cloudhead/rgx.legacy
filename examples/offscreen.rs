@@ -166,7 +166,7 @@ fn main() {
     // Prepare resources
     ///////////////////////////////////////////////////////////////////////////
 
-    r.prepare(&[Op::Fill(&texture, pixels.as_slice())]);
+    r.submit(&[Op::Fill(&texture, pixels.as_slice())]);
 
     ///////////////////////////////////////////////////////////////////////////
     // Render loop
@@ -232,7 +232,7 @@ fn main() {
                 pass.draw(&framebuffer.vertices, &onscreen_binding);
             }
 
-            r.submit(frame);
+            r.present(frame);
         }
         _ => {}
     });
