@@ -49,7 +49,6 @@ See [examples/helloworld.rs](examples/helloworld.rs) for a simple usage example.
 
 Rebuilding the shaders
 ----------------------
-
 To rebuild the shaders run the following:
 
 ```bash
