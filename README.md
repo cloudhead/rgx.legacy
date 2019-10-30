@@ -50,7 +50,7 @@ See [examples/helloworld.rs](examples/helloworld.rs) for a simple usage example.
 Rebuilding the shaders
 ----------------------
 
-To manually rebuild the shaders on MacOS and Linux, run the following:
+To rebuild the shaders run the following:
 
 ```bash
 glslc -c -Werror --target-env=vulkan ./examples/data/framebuffer.vert -o ./examples/data/framebuffer.vert.spv
