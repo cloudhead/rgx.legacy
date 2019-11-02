@@ -46,6 +46,18 @@ Usage
 -----
 See [examples/helloworld.rs](examples/helloworld.rs) for a simple usage example.
 
+
+Rebuilding the shaders
+----------------------
+To rebuild the shaders run the following:
+
+    glslc -c -Werror --target-env=vulkan ./examples/data/framebuffer.vert -o ./examples/data/framebuffer.vert.spv
+    glslc -c -Werror --target-env=vulkan ./examples/data/framebuffer.frag -o ./examples/data/framebuffer.frag.spv
+    glslc -c -Werror --target-env=vulkan ./src/kit/data/shape.frag        -o ./src/kit/data/shape.frag.spv
+    glslc -c -Werror --target-env=vulkan ./src/kit/data/sprite.frag       -o ./src/kit/data/sprite.frag.spv
+    glslc -c -Werror --target-env=vulkan ./src/kit/data/shape.vert        -o ./src/kit/data/shape.vert.spv
+    glslc -c -Werror --target-env=vulkan ./src/kit/data/sprite.vert       -o ./src/kit/data/sprite.vert.spv
+
 Support
 -------
 If you find this project useful, consider supporting it by sending ₿ (Bitcoin) to
