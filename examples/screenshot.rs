@@ -14,7 +14,6 @@ use image::ColorType;
 
 use std::fs::File;
 
-use raw_window_handle::HasRawWindowHandle;
 use winit::{event_loop::EventLoop, window::Window};
 
 pub struct Framebuffer {
@@ -121,7 +120,7 @@ fn main() {
     // Setup renderer
     ///////////////////////////////////////////////////////////////////////////
 
-    let mut r = Renderer::new(window.raw_window_handle());
+    let mut r = Renderer::new(&window);
     let size = window.inner_size().to_physical(window.hidpi_factor());
 
     let (sw, sh) = (size.width as u32, size.height as u32);

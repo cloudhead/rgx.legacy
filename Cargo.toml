@@ -15,20 +15,16 @@ name = "rgx"
 
 [features]
 default = []
-vulkan = ["wgpu/vulkan"]
-metal = ["wgpu/metal"]
-dx11 = ["wgpu/dx11"]
-dx12 = ["wgpu/dx12"]
 
 [dependencies]
-wgpu = "0.3.0"
+wgpu = "0.4.0"
 env_logger = "0.6.2"
 cgmath = { version = "0.17.0", optional = true }
 num-traits = "0.2.8"
-raw-window-handle = "0.1"
+raw-window-handle = "0.3"
 
 [dev-dependencies]
-winit = "0.20.0-alpha3"
+winit = "0.20.0-alpha4"
 image = "0.22.1"
 criterion = "0.2.11"
 

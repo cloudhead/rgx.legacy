@@ -11,7 +11,6 @@ use rgx::kit::*;
 
 use image::ImageDecoder;
 
-use raw_window_handle::HasRawWindowHandle;
 use winit::{
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
@@ -30,7 +29,7 @@ fn main() {
     // Setup renderer
     ///////////////////////////////////////////////////////////////////////////
 
-    let mut r = Renderer::new(window.raw_window_handle());
+    let mut r = Renderer::new(&window);
     let mut win = window.inner_size().to_physical(window.hidpi_factor());
     let pip: kit::sprite2d::Pipeline = r.pipeline(Blending::default());
 

@@ -12,7 +12,6 @@ use rgx::kit::shape2d::{Fill, Shape, Stroke};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use raw_window_handle::HasRawWindowHandle;
 use winit::{
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
@@ -27,7 +26,7 @@ fn main() {
     let mut size = window.inner_size().to_physical(window.hidpi_factor());
 
     // Setup renderer
-    let mut renderer = Renderer::new(window.raw_window_handle());
+    let mut renderer = Renderer::new(&window);
 
     let shared_size = Arc::new(Mutex::new(size));
     let shared_coords = Arc::new(Mutex::new((0., 0.)));

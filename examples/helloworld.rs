@@ -6,7 +6,6 @@ use rgx::core::*;
 use rgx::kit;
 use rgx::kit::sprite2d;
 
-use raw_window_handle::HasRawWindowHandle;
 use winit::{
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
@@ -21,7 +20,7 @@ fn main() {
     let size = window.inner_size().to_physical(window.hidpi_factor());
 
     // Setup renderer
-    let mut renderer = Renderer::new(window.raw_window_handle());
+    let mut renderer = Renderer::new(&window);
 
     // Setup render pipeline
     let pipeline: kit::sprite2d::Pipeline = renderer.pipeline(Blending::default());

@@ -5,7 +5,7 @@ use std::fmt;
 use std::ops::Range;
 use std::str::FromStr;
 
-use raw_window_handle::RawWindowHandle;
+use raw_window_handle::HasRawWindowHandle;
 
 use crate::math;
 use crate::math::{Point2, Vector2};
@@ -1613,7 +1613,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(window: RawWindowHandle) -> Self {
+    pub fn new<W: HasRawWindowHandle>(window: &W) -> Self {
         Self {
             device: Device::new(window),
         }
@@ -1796,24 +1796,29 @@ where
 
 pub struct Device {
     device: wgpu::Device,
+    queue: wgpu::Queue,
     surface: wgpu::Surface,
 }
 
 impl Device {
-    pub fn new(window: RawWindowHandle) -> Self {
-        let instance = wgpu::Instance::new();
-        let adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
+    pub fn new<W: HasRawWindowHandle>(window: &W) -> Self {
+        let adapter = wgpu::Adapter::request(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::LowPower,
+            backends: wgpu::BackendBit::PRIMARY,
+        })
+        .unwrap();
+
+        let surface = wgpu::Surface::create(window);
+        let (device, queue) = adapter.request_device(&wgpu::DeviceDescriptor {
+            extensions: wgpu::Extensions {
+                anisotropic_filtering: false,
+            },
+            limits: wgpu::Limits::default(),
         });
-        let surface = instance.create_surface(window);
 
         Self {
-            device: adapter.request_device(&wgpu::DeviceDescriptor {
-                extensions: wgpu::Extensions {
-                    anisotropic_filtering: false,
-                },
-                limits: wgpu::Limits::default(),
-            }),
+            device,
+            queue,
             surface,
         }
     }
@@ -2043,7 +2048,7 @@ impl Device {
     // MUTABLE API ////////////////////////////////////////////////////////////
 
     pub fn submit(&mut self, cmds: &[wgpu::CommandBuffer]) {
-        self.device.get_queue().submit(cmds);
+        self.queue.submit(cmds);
     }
 
     // PRIVATE API ////////////////////////////////////////////////////////////
