@@ -65,6 +65,18 @@ impl Rgba8 {
         Self { r, g, b, a }
     }
 
+    /// Return the color with a changed alpha.
+    ///
+    /// ```
+    /// use rgx::core::Rgba8;
+    ///
+    /// let c = Rgba8::WHITE;
+    /// assert_eq!(c.alpha(0x88), Rgba8::new(c.r, c.g, c.b, 0x88))
+    /// ```
+    pub fn alpha(self, a: u8) -> Self {
+        Self::new(self.r, self.g, self.b, a)
+    }
+
     pub fn align<T: AsRef<[u8]>>(bytes: &T) -> &[Rgba8] {
         let bytes = bytes.as_ref();
         let (head, body, tail) = unsafe { bytes.align_to::<Rgba8>() };
