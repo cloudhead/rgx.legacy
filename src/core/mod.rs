@@ -505,34 +505,40 @@ impl<T> Rect<T> {
         )
     }
 
-    /// Return a rectangle clamped to the given bounds.
+    /// Return the intersection between two rectangles.
     ///
     /// # Examples
     ///
     /// ```
     /// use rgx::core::Rect;
     ///
-    /// let bounds = Rect::new(0, 0, 3, 3);
+    /// let other = Rect::new(0, 0, 3, 3);
     ///
     /// let r = Rect::new(1, 1, 6, 6);
-    /// assert_eq!(r.clamped(bounds), Rect::new(1, 1, 3, 3));
+    /// assert_eq!(r.intersection(other), Rect::new(1, 1, 3, 3));
     ///
     /// let r = Rect::new(1, 1, 2, 2);
-    /// assert_eq!(r.clamped(bounds), Rect::new(1, 1, 2, 2));
+    /// assert_eq!(r.intersection(other), Rect::new(1, 1, 2, 2));
     ///
     /// let r = Rect::new(-1, -1, 3, 3);
-    /// assert_eq!(r.clamped(bounds), Rect::new(0, 0, 3, 3));
+    /// assert_eq!(r.intersection(other), Rect::new(0, 0, 3, 3));
+    ///
+    /// let r = Rect::new(-1, -1, 4, 4);
+    /// assert_eq!(r.intersection(other), other);
+    ///
+    /// let r = Rect::new(4, 4, 5, 5);
+    /// assert!(r.intersection(other).is_empty());
     /// ```
-    pub fn clamped(&self, bounds: Rect<T>) -> Self
+    pub fn intersection(&self, other: Rect<T>) -> Self
     where
         T: Ord + Copy,
     {
-        Rect::new(
-            T::max(self.x1, bounds.x1),
-            T::max(self.y1, bounds.y1),
-            T::min(self.x2, bounds.x2),
-            T::min(self.y2, bounds.y2),
-        )
+        let x1 = T::max(self.x1, other.x1);
+        let y1 = T::max(self.y1, other.y1);
+        let x2 = T::min(self.x2, other.x2);
+        let y2 = T::min(self.y2, other.y2);
+
+        Rect::new(x1, y1, T::max(x1, x2), T::max(y1, y2))
     }
 }
 
