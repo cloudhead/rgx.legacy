@@ -133,6 +133,12 @@ where
     }
 }
 
+impl<S> From<Point2<S>> for Vector2<S> {
+    fn from(p: Point2<S>) -> Self {
+        Self::new(p.x, p.y)
+    }
+}
+
 /// 3D vector.
 #[repr(C)]
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
@@ -213,6 +219,12 @@ impl<S> Point2<S> {
         F: FnMut(S) -> T,
     {
         Point2::new(f(self.x), f(self.y))
+    }
+}
+
+impl<S> From<Vector2<S>> for Point2<S> {
+    fn from(v: Vector2<S>) -> Self {
+        Self::new(v.x, v.y)
     }
 }
 
