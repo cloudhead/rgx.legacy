@@ -478,11 +478,27 @@ impl<T> Rect<T> {
         }
     }
 
+    /// Check whether the given point is contained in the rectangle.
+    ///
+    /// ```
+    /// use rgx::core::Rect;
+    /// use rgx::math::Point2;
+    ///
+    /// let r = Rect::origin(6, 6);
+    /// assert!(r.contains(Point2::new(0, 0)));
+    /// assert!(r.contains(Point2::new(3, 3)));
+    /// assert!(!r.contains(Point2::new(6, 6)));
+    ///
+    /// let r = Rect::new(0, 0, -6, -6);
+    /// assert!(r.contains(Point2::new(-3, -3)));
+    /// ```
     pub fn contains(&self, p: Point2<T>) -> bool
     where
-        T: PartialOrd,
+        T: Copy + Ord + PartialOrd,
     {
-        p.x >= self.x1 && p.x < self.x2 && p.y >= self.y1 && p.y < self.y2
+        let min = self.min();
+        let max = self.max();
+        p.x >= min.x && p.x < max.x && p.y >= min.y && p.y < max.y
     }
 
     pub fn intersects(&self, other: Rect<T>) -> bool
