@@ -406,9 +406,12 @@ impl<T> Rect<T> {
     /// ```
     pub fn min(&self) -> Point2<T>
     where
-        T: Ord + Copy,
+        T: PartialOrd + Copy,
     {
-        Point2::new(T::min(self.x1, self.x2), T::min(self.y1, self.y2))
+        let x = if self.x1 < self.x2 { self.x1 } else { self.x2 };
+        let y = if self.y1 < self.y2 { self.y1 } else { self.y2 };
+
+        Point2::new(x, y)
     }
 
     /// Return the maximum point of a rectangle.
@@ -424,9 +427,12 @@ impl<T> Rect<T> {
     /// ```
     pub fn max(&self) -> Point2<T>
     where
-        T: Ord + Copy,
+        T: PartialOrd + Copy,
     {
-        Point2::new(T::max(self.x1, self.x2), T::max(self.y1, self.y2))
+        let x = if self.x1 > self.x2 { self.x1 } else { self.x2 };
+        let y = if self.y1 > self.y2 { self.y1 } else { self.y2 };
+
+        Point2::new(x, y)
     }
 
     /// Return the center of the rectangle.
@@ -494,7 +500,7 @@ impl<T> Rect<T> {
     /// ```
     pub fn contains(&self, p: Point2<T>) -> bool
     where
-        T: Copy + Ord + PartialOrd,
+        T: Copy + PartialOrd,
     {
         let min = self.min();
         let max = self.max();
