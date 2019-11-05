@@ -24,6 +24,7 @@ num-traits = "0.2.8"
 raw-window-handle = "0.3"
 
 [dev-dependencies]
+chrono = "0.4"
 winit = "0.20.0-alpha4"
 image = "0.22.1"
 criterion = "0.2.11"
