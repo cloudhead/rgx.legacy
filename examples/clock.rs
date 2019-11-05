@@ -29,8 +29,6 @@ fn main() {
     let mut r = Renderer::new(&window);
     let mut win = window.inner_size();
 
-    println!("{:?}", window.inner_size());
-
     let pip: kit::shape2d::Pipeline = r.pipeline(Blending::default());
 
     ///////////////////////////////////////////////////////////////////////////
