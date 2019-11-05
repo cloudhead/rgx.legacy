@@ -10,9 +10,7 @@ use rgx::kit::shape2d::{Batch, Fill, Line, Rotation, Shape, Stroke};
 
 use rgx::math::*;
 
-use raw_window_handle::HasRawWindowHandle;
 use winit::{
-    dpi::LogicalSize,
     event::{ElementState, Event, KeyboardInput, StartCause, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::Window,
@@ -33,7 +31,7 @@ fn main() {
 
     println!("{:?}", window.inner_size());
 
-    let mut pip: kit::shape2d::Pipeline = r.pipeline(Blending::default());
+    let pip: kit::shape2d::Pipeline = r.pipeline(Blending::default());
 
     ///////////////////////////////////////////////////////////////////////////
     // Render loop

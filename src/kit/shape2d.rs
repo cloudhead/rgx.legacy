@@ -153,8 +153,6 @@ pub enum Fill {
     Gradient(Rgba, Rgba),
 }
 
-// angle, center of rotation
-
 #[derive(Clone, Debug)]
 pub struct Rotation {
     angle: f32,
