@@ -11,7 +11,6 @@ use rgx::kit::*;
 
 use image::ImageDecoder;
 
-use raw_window_handle::HasRawWindowHandle;
 use winit::{
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
@@ -30,10 +29,9 @@ fn main() {
     // Setup renderer
     ///////////////////////////////////////////////////////////////////////////
 
-    let mut r = Renderer::new(window.raw_window_handle());
+    let mut r = Renderer::new(&window);
     let mut win = window.inner_size().to_physical(window.hidpi_factor());
-    let mut pip: kit::sprite2d::Pipeline =
-        r.pipeline(win.width as u32, win.height as u32, Blending::default());
+    let pip: kit::sprite2d::Pipeline = r.pipeline(Blending::default());
 
     ///////////////////////////////////////////////////////////////////////////
     // Setup sampler & load texture
@@ -47,8 +45,9 @@ fn main() {
         let decoder = image::tga::TGADecoder::new(tga).unwrap();
         let (w, h) = decoder.dimensions();
         let pixels = decoder.read_image().unwrap();
+        let pixels = Rgba8::align(&pixels);
 
-        (r.texture(w as u32, h as u32), pixels)
+        (r.texture(w as u32, h as u32), pixels.to_owned())
     };
 
     let binding = pip.binding(&r, &sprite, &sampler); // Texture binding
@@ -84,7 +83,7 @@ fn main() {
     // Prepare resources
     ///////////////////////////////////////////////////////////////////////////
 
-    r.prepare(&[Op::Fill(&sprite, texels.as_slice())]);
+    r.submit(&[Op::Fill(&sprite, texels.as_slice())]);
 
     ///////////////////////////////////////////////////////////////////////////
     // Render loop
@@ -131,8 +130,6 @@ fn main() {
                     win = size.to_physical(window.hidpi_factor());
 
                     let (w, h) = (win.width as u32, win.height as u32);
-
-                    pip.resize(w, h);
                     textures = r.swap_chain(w, h, PresentMode::default());
                 }
                 _ => (),
@@ -211,6 +208,7 @@ fn main() {
                 // Draw frame
                 ///////////////////////////////////////////////////////////////////////////
 
+                r.update_pipeline(&pip, kit::ortho(out.width, out.height), &mut frame);
                 {
                     let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &out);
 
@@ -218,7 +216,7 @@ fn main() {
                     pass.draw(&buffer, &binding);
                 }
 
-                r.submit(frame);
+                r.present(frame);
 
                 if frames_total >= frame_batch && frames_total % frame_batch == 0 {
                     let average_ft = fts.iter().sum::<f64>() / fts.len() as f64;

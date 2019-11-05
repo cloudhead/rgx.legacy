@@ -4,11 +4,10 @@
 
 use rgx::core::*;
 use rgx::kit;
-use rgx::kit::shape2d::{Batch, Fill, Line, Shape, Stroke};
+use rgx::kit::shape2d::{Batch, Fill, Line, Rotation, Shape, Stroke};
 
 use rgx::math::*;
 
-use raw_window_handle::HasRawWindowHandle;
 use winit::{
     event::{ElementState, Event, KeyboardInput, StartCause, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
@@ -25,11 +24,10 @@ fn main() {
     // Setup renderer
     ///////////////////////////////////////////////////////////////////////////
 
-    let mut r = Renderer::new(window.raw_window_handle());
+    let mut r = Renderer::new(&window);
     let mut win = window.inner_size().to_physical(window.hidpi_factor());
 
-    let mut pip: kit::shape2d::Pipeline =
-        r.pipeline(win.width as u32, win.height as u32, Blending::default());
+    let pip: kit::shape2d::Pipeline = r.pipeline(Blending::default());
 
     ///////////////////////////////////////////////////////////////////////////
     // Render loop
@@ -41,6 +39,7 @@ fn main() {
     let (mut mx, mut my) = (0., 0.);
 
     let mut textures = r.swap_chain(win.width as u32, win.height as u32, PresentMode::default());
+
     event_loop.run(move |event, _, control_flow| match event {
         Event::NewEvents(StartCause::Init) => {
             window.request_redraw();
@@ -73,8 +72,6 @@ fn main() {
                 win = size.to_physical(window.hidpi_factor());
 
                 let (w, h) = (win.width as u32, win.height as u32);
-
-                pip.resize(w, h);
                 textures = r.swap_chain(w, h, PresentMode::default());
             }
             WindowEvent::RedrawRequested => {
@@ -110,13 +107,14 @@ fn main() {
                         if j * i % 2 != 0 {
                             batch.add(Shape::Rectangle(
                                 Rect::new(x, y, x + sw, y + sh),
+                                Rotation::zero(),
                                 Stroke::new(3.0, Rgba::new(c1, c2, 0.5, 1.0)),
                                 Fill::Solid(Rgba::new(1.0, dx, dy, 0.1)),
-                                Matrix4::identity(),
                             ));
                         } else {
                             batch.add(Shape::Line(
                                 Line::new(x, y, x + sw, y + sh),
+                                Rotation::zero(),
                                 Stroke::new(
                                     1.0,
                                     Rgba::new(
@@ -139,18 +137,21 @@ fn main() {
 
                 let mut frame = r.frame();
 
+                let out = textures.next();
+
+                r.update_pipeline(&pip, kit::ortho(out.width, out.height), &mut frame);
+
                 ///////////////////////////////////////////////////////////////////////////
                 // Draw frame
                 ///////////////////////////////////////////////////////////////////////////
 
-                let out = textures.next();
                 {
                     let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &out);
 
                     pass.set_pipeline(&pip);
                     pass.draw_buffer(&buffer);
                 }
-                r.submit(frame);
+                r.present(frame);
             }
             _ => {}
         },

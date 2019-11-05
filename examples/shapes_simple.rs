@@ -24,28 +24,20 @@ fn main() {
     let event_loop = EventLoop::new();
     let window = Window::new(&event_loop).unwrap();
 
-    window.set_inner_size(LogicalSize::new(1920.0, 1080.0));
-
     ///////////////////////////////////////////////////////////////////////////
     // Setup renderer
     ///////////////////////////////////////////////////////////////////////////
 
-    let mut r = Renderer::new(window.raw_window_handle());
+    let mut r = Renderer::new(&window);
     let mut win = window.inner_size();
 
     println!("{:?}", window.inner_size());
 
-    let mut pip: kit::shape2d::Pipeline =
-        r.pipeline(win.width as u32, win.height as u32, Blending::default());
+    let mut pip: kit::shape2d::Pipeline = r.pipeline(Blending::default());
 
     ///////////////////////////////////////////////////////////////////////////
     // Render loop
     ///////////////////////////////////////////////////////////////////////////
-
-    let (sw, sh) = (32., 32.);
-
-    // Cursor position.
-    let (mut mx, mut my) = (0., 0.);
 
     let mut textures = r.swap_chain(win.width as u32, win.height as u32, PresentMode::default());
 
@@ -69,11 +61,6 @@ fn main() {
                 }
                 _ => {}
             },
-            WindowEvent::CursorMoved { position, .. } => {
-                mx = position.x;
-                my = position.y;
-                window.request_redraw();
-            }
             WindowEvent::CloseRequested => {
                 *control_flow = ControlFlow::Exit;
             }
@@ -82,7 +69,6 @@ fn main() {
 
                 let (w, h) = (win.width as u32, win.height as u32);
 
-                pip.resize(w, h);
                 textures = r.swap_chain(w, h, PresentMode::default());
 
                 *control_flow = ControlFlow::Poll;
@@ -91,8 +77,8 @@ fn main() {
                 let color = Rgba::new(0.8, 0.3, 0.3, 1.0);
                 let mut batch = Batch::new();
 
-                let x = (win.width as f32 / 2.);
-                let y = (win.height as f32 / 2.);
+                let x = win.width as f32 / 2.;
+                let y = win.height as f32 / 2.;
 
                 // Draw outter rim.
                 batch.add(Shape::Circle(
@@ -213,18 +199,21 @@ fn main() {
 
                 let mut frame = r.frame();
 
+                let out = textures.next();
+
+                r.update_pipeline(&pip, kit::ortho(out.width, out.height), &mut frame);
+
                 ///////////////////////////////////////////////////////////////////////////
                 // Draw frame
                 ///////////////////////////////////////////////////////////////////////////
 
-                let out = textures.next();
                 {
                     let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &out);
 
                     pass.set_pipeline(&pip);
                     pass.draw_buffer(&buffer);
                 }
-                r.submit(frame);
+                r.present(frame);
 
                 *control_flow = ControlFlow::Poll;
                 window.request_redraw();

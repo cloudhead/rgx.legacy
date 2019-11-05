@@ -8,7 +8,6 @@ use crate::math::*;
 use crate::core;
 use crate::core::{Binding, BindingType, Rect, Rgba, Set, ShaderStage};
 
-use crate::kit;
 use crate::kit::{Model, Rgba8};
 
 ///////////////////////////////////////////////////////////////////////////
@@ -59,9 +58,6 @@ pub struct Pipeline {
     pipeline: core::Pipeline,
     bindings: core::BindingGroup,
     buf: core::UniformBuffer,
-    width: u32,
-    height: u32,
-    ortho: Matrix4<f32>,
     model: Model,
 }
 
@@ -99,9 +95,9 @@ impl<'a> core::AbstractPipeline<'a> for Pipeline {
         }
     }
 
-    fn setup(pipeline: core::Pipeline, dev: &core::Device, width: u32, height: u32) -> Self {
-        let ortho = kit::ortho(width, height);
+    fn setup(pipeline: core::Pipeline, dev: &core::Device) -> Self {
         let transform = Matrix4::identity();
+        let ortho = Matrix4::identity();
         let model = Model::new(&pipeline.layout.sets[1], &[Matrix4::identity()], dev);
         let buf = dev.create_uniform_buffer(&[self::Uniforms { ortho, transform }]);
         let bindings = dev.create_binding_group(&pipeline.layout.sets[0], &[&buf]);
@@ -111,24 +107,7 @@ impl<'a> core::AbstractPipeline<'a> for Pipeline {
             buf,
             bindings,
             model,
-            ortho,
-            width,
-            height,
         }
-    }
-
-    fn resize(&mut self, w: u32, h: u32) {
-        self.width = w;
-        self.height = h;
-        self.ortho = kit::ortho(w, h);
-    }
-
-    fn width(&self) -> u32 {
-        self.width
-    }
-
-    fn height(&self) -> u32 {
-        self.height
     }
 
     fn apply(&self, pass: &mut core::Pass) {
@@ -139,15 +118,10 @@ impl<'a> core::AbstractPipeline<'a> for Pipeline {
 
     fn prepare(
         &'a self,
-        transform: Matrix4<f32>,
+        ortho: Matrix4<f32>,
     ) -> Option<(&'a core::UniformBuffer, Vec<self::Uniforms>)> {
-        Some((
-            &self.buf,
-            vec![self::Uniforms {
-                transform,
-                ortho: self.ortho,
-            }],
-        ))
+        let transform = Matrix4::identity();
+        Some((&self.buf, vec![self::Uniforms { transform, ortho }]))
     }
 }
 

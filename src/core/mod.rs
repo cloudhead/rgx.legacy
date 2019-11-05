@@ -5,7 +5,7 @@ use std::fmt;
 use std::ops::Range;
 use std::str::FromStr;
 
-use raw_window_handle::RawWindowHandle;
+use raw_window_handle::HasRawWindowHandle;
 
 use crate::math;
 use crate::math::{Point2, Vector2};
@@ -64,6 +64,28 @@ impl Rgba8 {
     pub const fn new(r: u8, g: u8, b: u8, a: u8) -> Self {
         Self { r, g, b, a }
     }
+
+    /// Return the color with a changed alpha.
+    ///
+    /// ```
+    /// use rgx::core::Rgba8;
+    ///
+    /// let c = Rgba8::WHITE;
+    /// assert_eq!(c.alpha(0x88), Rgba8::new(c.r, c.g, c.b, 0x88))
+    /// ```
+    pub fn alpha(self, a: u8) -> Self {
+        Self::new(self.r, self.g, self.b, a)
+    }
+
+    pub fn align<T: AsRef<[u8]>>(bytes: &T) -> &[Rgba8] {
+        let bytes = bytes.as_ref();
+        let (head, body, tail) = unsafe { bytes.align_to::<Rgba8>() };
+
+        if !(head.is_empty() && tail.is_empty()) {
+            panic!("Rgba8::align: input is not a valid Rgba8 buffer");
+        }
+        body
+    }
 }
 
 impl fmt::Display for Rgba8 {
@@ -119,8 +141,20 @@ pub struct Bgra8 {
 }
 
 impl Bgra8 {
+    pub const TRANSPARENT: Self = Bgra8::new(0, 0, 0, 0);
+
     pub const fn new(b: u8, g: u8, r: u8, a: u8) -> Self {
         Bgra8 { b, g, r, a }
+    }
+
+    pub fn align<T: AsRef<[u8]>>(bytes: &T) -> &[Self] {
+        let bytes = bytes.as_ref();
+        let (head, body, tail) = unsafe { bytes.align_to::<Self>() };
+
+        if !(head.is_empty() && tail.is_empty()) {
+            panic!("Bgra8::align: input is not a valid Rgba8 buffer");
+        }
+        body
     }
 }
 
@@ -163,7 +197,14 @@ impl<T> Rect<T> {
         Self { x1, y1, x2, y2 }
     }
 
-    pub fn empty() -> Self
+    pub fn sized(x1: T, y1: T, w: T, h: T) -> Self
+    where
+        T: std::ops::Add<Output = T> + Copy,
+    {
+        Self::new(x1, y1, x1 + w, y1 + h)
+    }
+
+    pub fn zero() -> Self
     where
         T: math::Zero,
     {
@@ -206,7 +247,17 @@ impl<T> Rect<T> {
         }
     }
 
-    pub fn translate(&self, x: T, y: T) -> Self
+    /// Return the rectangle with a different origin.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rgx::core::Rect;
+    ///
+    /// let r = Rect::new(1, 1, 4, 4);
+    /// assert_eq!(r.with_origin(0, 0), Rect::new(0, 0, 3, 3));
+    /// ```
+    pub fn with_origin(&self, x: T, y: T) -> Self
     where
         T: std::ops::Add<Output = T> + std::ops::Sub<Output = T> + Copy,
     {
@@ -216,6 +267,74 @@ impl<T> Rect<T> {
             x2: x + (self.x2 - self.x1),
             y2: y + (self.y2 - self.y1),
         }
+    }
+
+    /// Return the rectangle with a different size.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rgx::core::Rect;
+    ///
+    /// let r = Rect::new(1, 1, 4, 4);
+    /// assert_eq!(r.with_size(9, 9), Rect::new(1, 1, 10, 10));
+    /// ```
+    pub fn with_size(&self, w: T, h: T) -> Self
+    where
+        T: std::ops::Add<Output = T> + std::ops::Sub<Output = T> + Copy,
+    {
+        Self {
+            x1: self.x1,
+            y1: self.y1,
+            x2: self.x1 + w,
+            y2: self.y1 + h,
+        }
+    }
+
+    /// Return an expanded rectangle by a constant amount.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rgx::core::Rect;
+    ///
+    /// let r = Rect::new(0, 0, 3, 3);
+    /// assert_eq!(r.expand(-1, -1, 1, 1), Rect::new(-1, -1, 4, 4));
+    /// ```
+    pub fn expand(&self, x1: T, y1: T, x2: T, y2: T) -> Self
+    where
+        T: std::ops::Add<Output = T> + Copy,
+    {
+        Self {
+            x1: self.x1 + x1,
+            y1: self.y1 + y1,
+            x2: self.x2 + x2,
+            y2: self.y2 + y2,
+        }
+    }
+
+    /// Return the rectangle flipped in the Y axis.
+    pub fn flip_y(&self) -> Self
+    where
+        T: Copy,
+    {
+        Rect::new(self.x1, self.y2, self.x2, self.y1)
+    }
+
+    /// Return the rectangle flipped in the X axis.
+    pub fn flip_x(&self) -> Self
+    where
+        T: Copy,
+    {
+        Rect::new(self.x2, self.y1, self.x1, self.y2)
+    }
+
+    /// Return the area of a rectangle.
+    pub fn area(&self) -> T
+    where
+        T: Copy + std::ops::Sub<Output = T> + std::cmp::PartialOrd + std::ops::Mul<Output = T>,
+    {
+        self.width() * self.height()
     }
 
     pub fn is_empty(&self) -> bool
@@ -232,45 +351,117 @@ impl<T> Rect<T> {
         self.x1.is_zero() && self.x2.is_zero() && self.y1.is_zero() && self.y2.is_zero()
     }
 
+    /// Return the width of the rectangle.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rgx::core::Rect;
+    ///
+    /// let r = Rect::new(0, 0, 3, 3);
+    /// assert_eq!(r.width(), 3);
+    /// ```
     pub fn width(&self) -> T
     where
-        T: Copy + PartialOrd + std::ops::Sub<Output = T> + std::ops::Neg<Output = T> + math::Zero,
+        T: Copy + PartialOrd + std::ops::Sub<Output = T>,
     {
-        let w = self.x2 - self.x1;
-        if w < T::zero() {
-            -w
+        if self.x1 < self.x2 {
+            self.x2 - self.x1
         } else {
-            w
+            self.x1 - self.x2
         }
     }
 
+    /// Return the height of the rectangle.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rgx::core::Rect;
+    ///
+    /// let r = Rect::origin(-6, -6);
+    /// assert_eq!(r.height(), 6);
+    /// ```
     pub fn height(&self) -> T
     where
-        T: Copy + PartialOrd + std::ops::Sub<Output = T> + std::ops::Neg<Output = T> + math::Zero,
+        T: Copy + PartialOrd + std::ops::Sub<Output = T>,
     {
-        let h = self.y2 - self.y1;
-        if h < T::zero() {
-            -h
+        if self.y1 < self.y2 {
+            self.y2 - self.y1
         } else {
-            h
+            self.y1 - self.y2
         }
     }
 
-    pub fn center(&self) -> Vector2<T>
+    /// Return the minimum point of a rectangle.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rgx::core::Rect;
+    /// use rgx::math::Point2;
+    ///
+    /// let r = Rect::new(0, 0, 1, -1);
+    /// assert_eq!(r.min(), Point2::new(0, -1));
+    /// ```
+    pub fn min(&self) -> Point2<T>
+    where
+        T: PartialOrd + Copy,
+    {
+        let x = if self.x1 < self.x2 { self.x1 } else { self.x2 };
+        let y = if self.y1 < self.y2 { self.y1 } else { self.y2 };
+
+        Point2::new(x, y)
+    }
+
+    /// Return the maximum point of a rectangle.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rgx::core::Rect;
+    /// use rgx::math::Point2;
+    ///
+    /// let r = Rect::origin(-1, 1);
+    /// assert_eq!(r.max(), Point2::new(0, 1));
+    /// ```
+    pub fn max(&self) -> Point2<T>
+    where
+        T: PartialOrd + Copy,
+    {
+        let x = if self.x1 > self.x2 { self.x1 } else { self.x2 };
+        let y = if self.y1 > self.y2 { self.y1 } else { self.y2 };
+
+        Point2::new(x, y)
+    }
+
+    /// Return the center of the rectangle.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rgx::core::Rect;
+    /// use rgx::math::Point2;
+    ///
+    /// let r = Rect::origin(8, 8);
+    /// assert_eq!(r.center(), Point2::new(4, 4));
+    ///
+    /// let r = Rect::new(0, 0, -8, -8);
+    /// assert_eq!(r.center(), Point2::new(-4, -4));
+    /// ```
+    pub fn center(&self) -> Point2<T>
     where
         T: std::ops::Div<Output = T>
             + Copy
+            + Ord
             + From<i16>
             + PartialOrd
             + math::Zero
             + std::ops::Neg<Output = T>
             + std::ops::Sub<Output = T>,
     {
-        // TODO: Should be normalized for inverted rectangles.
-        Vector2::new(
-            self.x1 + self.width() / 2.into(),
-            self.y1 + self.height() / 2.into(),
-        )
+        let r = self.abs();
+        Point2::new(r.x1 + r.width() / 2.into(), r.y1 + r.height() / 2.into())
     }
 
     pub fn radius(&self) -> T
@@ -293,11 +484,27 @@ impl<T> Rect<T> {
         }
     }
 
+    /// Check whether the given point is contained in the rectangle.
+    ///
+    /// ```
+    /// use rgx::core::Rect;
+    /// use rgx::math::Point2;
+    ///
+    /// let r = Rect::origin(6, 6);
+    /// assert!(r.contains(Point2::new(0, 0)));
+    /// assert!(r.contains(Point2::new(3, 3)));
+    /// assert!(!r.contains(Point2::new(6, 6)));
+    ///
+    /// let r = Rect::new(0, 0, -6, -6);
+    /// assert!(r.contains(Point2::new(-3, -3)));
+    /// ```
     pub fn contains(&self, p: Point2<T>) -> bool
     where
-        T: PartialOrd,
+        T: Copy + PartialOrd,
     {
-        p.x >= self.x1 && p.x < self.x2 && p.y >= self.y1 && p.y < self.y2
+        let min = self.min();
+        let max = self.max();
+        p.x >= min.x && p.x < max.x && p.y >= min.y && p.y < max.y
     }
 
     pub fn intersects(&self, other: Rect<T>) -> bool
@@ -305,6 +512,67 @@ impl<T> Rect<T> {
         T: PartialOrd,
     {
         self.y2 > other.y1 && self.y1 < other.y2 && self.x1 < other.x2 && self.x2 > other.x1
+    }
+
+    /// Return the absolute rectangle.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rgx::core::Rect;
+    ///
+    /// let r = Rect::new(3, 3, 1, 1).abs();
+    /// assert_eq!(r, Rect::new(1, 1, 3, 3));
+    ///
+    /// let r = Rect::new(-1, -1, 1, 1).abs();
+    /// assert_eq!(r, Rect::new(-1, -1, 1, 1));
+    /// ```
+    pub fn abs(&self) -> Rect<T>
+    where
+        T: Ord + Copy,
+    {
+        Rect::new(
+            T::min(self.x1, self.x2),
+            T::min(self.y1, self.y2),
+            T::max(self.x1, self.x2),
+            T::max(self.y1, self.y2),
+        )
+    }
+
+    /// Return the intersection between two rectangles.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rgx::core::Rect;
+    ///
+    /// let other = Rect::new(0, 0, 3, 3);
+    ///
+    /// let r = Rect::new(1, 1, 6, 6);
+    /// assert_eq!(r.intersection(other), Rect::new(1, 1, 3, 3));
+    ///
+    /// let r = Rect::new(1, 1, 2, 2);
+    /// assert_eq!(r.intersection(other), Rect::new(1, 1, 2, 2));
+    ///
+    /// let r = Rect::new(-1, -1, 3, 3);
+    /// assert_eq!(r.intersection(other), Rect::new(0, 0, 3, 3));
+    ///
+    /// let r = Rect::new(-1, -1, 4, 4);
+    /// assert_eq!(r.intersection(other), other);
+    ///
+    /// let r = Rect::new(4, 4, 5, 5);
+    /// assert!(r.intersection(other).is_empty());
+    /// ```
+    pub fn intersection(&self, other: Rect<T>) -> Self
+    where
+        T: Ord + Copy,
+    {
+        let x1 = T::max(self.x1, other.x1);
+        let y1 = T::max(self.y1, other.y1);
+        let x2 = T::min(self.x2, other.x2);
+        let y2 = T::min(self.y2, other.y2);
+
+        Rect::new(x1, y1, T::max(x1, x2), T::max(y1, y2))
     }
 }
 
@@ -324,6 +592,18 @@ where
     }
 }
 
+impl<T> std::ops::AddAssign<Vector2<T>> for Rect<T>
+where
+    T: std::ops::AddAssign<T> + Copy,
+{
+    fn add_assign(&mut self, vec: Vector2<T>) {
+        self.x1 += vec.x;
+        self.y1 += vec.y;
+        self.x2 += vec.x;
+        self.y2 += vec.y;
+    }
+}
+
 impl<T> std::ops::Sub<Vector2<T>> for Rect<T>
 where
     T: std::ops::Sub<Output = T> + Copy,
@@ -337,6 +617,18 @@ where
             x2: self.x2 - vec.x,
             y2: self.y2 - vec.y,
         }
+    }
+}
+
+impl<T> std::ops::SubAssign<Vector2<T>> for Rect<T>
+where
+    T: std::ops::SubAssign<T> + Copy,
+{
+    fn sub_assign(&mut self, vec: Vector2<T>) {
+        self.x1 -= vec.x;
+        self.y1 -= vec.y;
+        self.x2 -= vec.x;
+        self.y2 -= vec.y;
     }
 }
 
@@ -452,15 +744,16 @@ impl ShaderStage {
 ///////////////////////////////////////////////////////////////////////////////
 
 pub trait Canvas {
-    fn clear(&self, color: Rgba, device: &mut Device, encoder: &mut wgpu::CommandEncoder);
-    fn fill(&self, buf: &[u8], device: &mut Device, encoder: &mut wgpu::CommandEncoder);
+    type Color;
+
+    fn clear(&self, color: Self::Color, device: &mut Device, encoder: &mut wgpu::CommandEncoder);
+    fn fill(&self, buf: &[Self::Color], device: &mut Device, encoder: &mut wgpu::CommandEncoder);
     fn transfer(
         &self,
-        buf: &[u8],
+        buf: &[Self::Color],
         w: u32,
         h: u32,
-        tw: u32,
-        th: u32,
+        r: Rect<i32>,
         device: &mut Device,
         encoder: &mut wgpu::CommandEncoder,
     );
@@ -561,30 +854,26 @@ impl Bind for Framebuffer {
 }
 
 impl Canvas for Framebuffer {
-    fn clear(&self, color: Rgba, device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
-        Texture::clear(
-            &self.texture,
-            Bgra8::from(Rgba8::from(color)),
-            device,
-            encoder,
-        );
+    type Color = Bgra8;
+
+    fn clear(&self, color: Bgra8, device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
+        Texture::clear(&self.texture, color, device, encoder);
     }
 
-    fn fill(&self, buf: &[u8], device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
+    fn fill(&self, buf: &[Bgra8], device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
         Texture::fill(&self.texture, buf, device, encoder);
     }
 
     fn transfer(
         &self,
-        buf: &[u8],
+        buf: &[Bgra8],
         w: u32,
         h: u32,
-        tw: u32,
-        th: u32,
+        rect: Rect<i32>,
         device: &mut Device,
         encoder: &mut wgpu::CommandEncoder,
     ) {
-        Texture::transfer(&self.texture, buf, w, h, tw, th, device, encoder);
+        Texture::transfer(&self.texture, buf, w, h, rect, device, encoder);
     }
 
     fn blit(&self, from: Rect<f32>, dst: Rect<f32>, encoder: &mut wgpu::CommandEncoder) {
@@ -633,22 +922,24 @@ impl Texture {
         let mut texels: Vec<T> = Vec::with_capacity(texture.w as usize * texture.h as usize);
         texels.resize(texture.w as usize * texture.h as usize, color);
 
-        let (head, body, tail) = unsafe { texels.align_to::<u8>() };
+        let (head, body, tail) = unsafe { texels.align_to::<Rgba8>() };
         assert!(head.is_empty());
         assert!(tail.is_empty());
 
         Self::fill(texture, body, device, encoder);
     }
 
-    fn fill(
+    fn fill<T: 'static>(
         texture: &Texture,
-        texels: &[u8],
+        texels: &[T],
         device: &mut Device,
         encoder: &mut wgpu::CommandEncoder,
-    ) {
+    ) where
+        T: Into<Rgba8> + Clone + Copy,
+    {
         assert_eq!(
             texels.len() as u32,
-            texture.w * texture.h * 4,
+            texture.w * texture.h,
             "fatal: incorrect length for texel buffer"
         );
 
@@ -661,29 +952,43 @@ impl Texture {
             &texture.wgpu,
             texture.w,
             texture.h,
+            0.,
+            0.,
             texture.extent,
             &buf,
             encoder,
         );
     }
 
-    fn transfer(
+    fn transfer<T: 'static>(
         texture: &Texture,
-        texels: &[u8],
+        texels: &[T],
         width: u32,
         height: u32,
-        transfer_w: u32,
-        transfer_h: u32,
+        rect: Rect<i32>,
         device: &mut Device,
         encoder: &mut wgpu::CommandEncoder,
-    ) {
+    ) where
+        T: Into<Rgba8> + Clone + Copy,
+    {
+        // Wgpu's coordinate system has a downwards pointing Y axis.
+        let rect = rect.abs().flip_y();
+
+        // The width and height of the transfer area.
+        let tx_w = rect.width() as u32;
+        let tx_h = rect.height() as u32;
+
+        // The destination coordinate of the transfer, on the texture.
+        // We have to invert the Y coordinate as explained above.
+        let (dst_x, dst_y) = (rect.x1 as f32, texture.h as f32 - rect.y1 as f32);
+
         assert_eq!(
-            (texels.len() as u32 / 4),
+            texels.len() as u32,
             width * height,
             "fatal: incorrect length for texel buffer"
         );
         assert!(
-            transfer_w * transfer_h <= texture.w * texture.h,
+            tx_w * tx_h <= texture.w * texture.h,
             "fatal: transfer size must be <= texture size"
         );
 
@@ -693,11 +998,20 @@ impl Texture {
             .fill_from_slice(&texels);
 
         let extent = wgpu::Extent3d {
-            width: transfer_w,
-            height: transfer_h,
+            width: tx_w,
+            height: tx_h,
             depth: 1,
         };
-        Self::copy(&texture.wgpu, width, height, extent, &buf, encoder);
+        Self::copy(
+            &texture.wgpu,
+            width,
+            height,
+            dst_x,
+            dst_y,
+            extent,
+            &buf,
+            encoder,
+        );
     }
 
     fn blit(&self, src: Rect<f32>, dst: Rect<f32>, encoder: &mut wgpu::CommandEncoder) {
@@ -745,6 +1059,8 @@ impl Texture {
         texture: &wgpu::Texture,
         w: u32,
         h: u32,
+        x: f32,
+        y: f32,
         extent: wgpu::Extent3d,
         buffer: &wgpu::Buffer,
         encoder: &mut wgpu::CommandEncoder,
@@ -760,11 +1076,7 @@ impl Texture {
                 texture,
                 mip_level: 0,
                 array_layer: 0,
-                origin: wgpu::Origin3d {
-                    x: 0.0,
-                    y: 0.0,
-                    z: 0.0,
-                },
+                origin: wgpu::Origin3d { x, y, z: 0.0 },
             },
             extent,
         );
@@ -781,25 +1093,26 @@ impl Bind for Texture {
 }
 
 impl Canvas for Texture {
-    fn fill(&self, buf: &[u8], device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
+    type Color = Rgba8;
+
+    fn fill(&self, buf: &[Rgba8], device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
         Texture::fill(&self, buf, device, encoder);
     }
 
-    fn clear(&self, color: Rgba, device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
+    fn clear(&self, color: Rgba8, device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
         Texture::clear(&self, color, device, encoder);
     }
 
     fn transfer(
         &self,
-        buf: &[u8],
+        buf: &[Rgba8],
         w: u32,
         h: u32,
-        tw: u32,
-        th: u32,
+        rect: Rect<i32>,
         device: &mut Device,
         encoder: &mut wgpu::CommandEncoder,
     ) {
-        Texture::transfer(&self, buf, w, h, tw, th, device, encoder);
+        Texture::transfer(&self, buf, w, h, rect, device, encoder);
     }
 
     fn blit(&self, src: Rect<f32>, dst: Rect<f32>, encoder: &mut wgpu::CommandEncoder) {
@@ -984,23 +1297,13 @@ impl<'a> AbstractPipeline<'a> for Pipeline {
         }
     }
 
-    fn setup(pipeline: Self, _dev: &Device, _w: u32, _h: u32) -> Self {
+    fn setup(pipeline: Self, _dev: &Device) -> Self {
         pipeline
     }
 
     fn apply(&self, pass: &mut Pass) {
         pass.wgpu.set_pipeline(&self.wgpu);
     }
-
-    fn width(&self) -> u32 {
-        unimplemented!()
-    }
-
-    fn height(&self) -> u32 {
-        unimplemented!()
-    }
-
-    fn resize(&mut self, _w: u32, _h: u32) {}
 
     fn prepare(&'a self, _unused: ()) -> Option<(&'a UniformBuffer, Vec<()>)> {
         None
@@ -1093,11 +1396,8 @@ pub trait AbstractPipeline<'a> {
     type Uniforms: Copy + 'static;
 
     fn description() -> PipelineDescription<'a>;
-    fn setup(pip: Pipeline, dev: &Device, w: u32, h: u32) -> Self;
+    fn setup(pip: Pipeline, dev: &Device) -> Self;
     fn apply(&self, pass: &mut Pass);
-    fn resize(&mut self, w: u32, h: u32);
-    fn width(&self) -> u32;
-    fn height(&self) -> u32;
     fn prepare(
         &'a self,
         t: Self::PrepareContext,
@@ -1136,6 +1436,14 @@ impl Frame {
             0,
             (src.size * src.count) as wgpu::BufferAddress,
         );
+    }
+
+    pub fn encoder(&self) -> &wgpu::CommandEncoder {
+        &self.encoder
+    }
+
+    pub fn encoder_mut(&mut self) -> &mut wgpu::CommandEncoder {
+        &mut self.encoder
     }
 }
 
@@ -1222,11 +1530,16 @@ pub trait TextureView {
     fn texture_view(&self) -> &wgpu::TextureView;
 }
 
-pub struct SwapChainTexture<'a>(wgpu::SwapChainOutput<'a>);
+pub struct SwapChainTexture<'a> {
+    pub width: u32,
+    pub height: u32,
+
+    wgpu: wgpu::SwapChainOutput<'a>,
+}
 
 impl TextureView for SwapChainTexture<'_> {
     fn texture_view(&self) -> &wgpu::TextureView {
-        &self.0.view
+        &self.wgpu.view
     }
 }
 
@@ -1252,7 +1565,7 @@ impl Default for PresentMode {
 }
 
 /// A handle to a swap chain.
-/// 
+///
 /// A `SwapChain` represents the image or series of images that will be presented to a [`Renderer`].
 /// A `SwapChain` may be created with [`Renderer::swap_chain`].
 pub struct SwapChain {
@@ -1268,13 +1581,22 @@ impl SwapChain {
     pub fn size(&self) -> (u32, u32) {
         (self.width, self.height)
     }
-    
+
     /// Returns the next texture to be presented by the swapchain for drawing.
-    /// 
+    ///
     /// When the [`SwapChainTexture`] returned by this method is dropped, the
     /// swapchain will present the texture to the associated [`Renderer`].
     pub fn next(&mut self) -> SwapChainTexture {
-        SwapChainTexture(self.wgpu.get_next_texture())
+        SwapChainTexture {
+            wgpu: self.wgpu.get_next_texture(),
+            width: self.width,
+            height: self.height,
+        }
+    }
+
+    /// Get the texture format in use
+    pub fn format(&self) -> wgpu::TextureFormat {
+        wgpu::TextureFormat::Bgra8Unorm
     }
 
     fn descriptor(width: u32, height: u32, mode: PresentMode) -> wgpu::SwapChainDescriptor {
@@ -1297,7 +1619,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(window: RawWindowHandle) -> Self {
+    pub fn new<W: HasRawWindowHandle>(window: &W) -> Self {
         Self {
             device: Device::new(window),
         }
@@ -1341,7 +1663,7 @@ impl Renderer {
         self.device.create_sampler(min_filter, mag_filter)
     }
 
-    pub fn pipeline<T>(&self, w: u32, h: u32, blending: Blending) -> T
+    pub fn pipeline<T>(&self, blending: Blending) -> T
     where
         T: AbstractPipeline<'static>,
     {
@@ -1361,8 +1683,6 @@ impl Renderer {
             self.device
                 .create_pipeline(pip_layout, vertex_layout, blending, &vs, &fs),
             &self.device,
-            w,
-            h,
         )
     }
 
@@ -1434,11 +1754,11 @@ impl Renderer {
         Frame::new(encoder)
     }
 
-    pub fn submit(&mut self, frame: Frame) {
+    pub fn present(&mut self, frame: Frame) {
         self.device.submit(&[frame.encoder.finish()]);
     }
 
-    pub fn prepare(&mut self, commands: &[Op]) {
+    pub fn submit<T: Copy>(&mut self, commands: &[Op<T>]) {
         let mut encoder = self.device.create_command_encoder();
         for c in commands.iter() {
             c.encode(&mut self.device, &mut encoder);
@@ -1447,14 +1767,17 @@ impl Renderer {
     }
 }
 
-pub enum Op<'a> {
-    Clear(&'a dyn Canvas, Rgba),
-    Fill(&'a dyn Canvas, &'a [u8]),
-    Transfer(&'a dyn Canvas, &'a [u8], u32, u32, u32, u32),
-    Blit(&'a dyn Canvas, Rect<f32>, Rect<f32>),
+pub enum Op<'a, T> {
+    Clear(&'a dyn Canvas<Color = T>, T),
+    Fill(&'a dyn Canvas<Color = T>, &'a [T]),
+    Transfer(&'a dyn Canvas<Color = T>, &'a [T], u32, u32, Rect<i32>),
+    Blit(&'a dyn Canvas<Color = T>, Rect<f32>, Rect<f32>),
 }
 
-impl<'a> Op<'a> {
+impl<'a, T> Op<'a, T>
+where
+    T: Copy,
+{
     fn encode(&self, dev: &mut Device, encoder: &mut wgpu::CommandEncoder) {
         match *self {
             Op::Clear(f, color) => {
@@ -1463,8 +1786,8 @@ impl<'a> Op<'a> {
             Op::Fill(f, buf) => {
                 f.fill(buf, dev, encoder);
             }
-            Op::Transfer(f, buf, w, h, tw, th) => {
-                f.transfer(buf, w, h, tw, th, dev, encoder);
+            Op::Transfer(f, buf, w, h, rect) => {
+                f.transfer(buf, w, h, rect, dev, encoder);
             }
             Op::Blit(f, src, dst) => {
                 f.blit(src, dst, encoder);
@@ -1479,26 +1802,39 @@ impl<'a> Op<'a> {
 
 pub struct Device {
     device: wgpu::Device,
+    queue: wgpu::Queue,
     surface: wgpu::Surface,
 }
 
 impl Device {
-    pub fn new(window: RawWindowHandle) -> Self {
-        let instance = wgpu::Instance::new();
-        let adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
+    pub fn new<W: HasRawWindowHandle>(window: &W) -> Self {
+        let adapter = wgpu::Adapter::request(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::LowPower,
+            backends: wgpu::BackendBit::PRIMARY,
+        })
+        .unwrap();
+
+        let surface = wgpu::Surface::create(window);
+        let (device, queue) = adapter.request_device(&wgpu::DeviceDescriptor {
+            extensions: wgpu::Extensions {
+                anisotropic_filtering: false,
+            },
+            limits: wgpu::Limits::default(),
         });
-        let surface = instance.create_surface(window);
 
         Self {
-            device: adapter.request_device(&wgpu::DeviceDescriptor {
-                extensions: wgpu::Extensions {
-                    anisotropic_filtering: false,
-                },
-                limits: wgpu::Limits::default(),
-            }),
+            device,
+            queue,
             surface,
         }
+    }
+
+    pub fn device(&self) -> &wgpu::Device {
+        &self.device
+    }
+
+    pub fn device_mut(&mut self) -> &mut wgpu::Device {
+        &mut self.device
     }
 
     pub fn create_command_encoder(&self) -> wgpu::CommandEncoder {
@@ -1718,7 +2054,7 @@ impl Device {
     // MUTABLE API ////////////////////////////////////////////////////////////
 
     pub fn submit(&mut self, cmds: &[wgpu::CommandBuffer]) {
-        self.device.get_queue().submit(cmds);
+        self.queue.submit(cmds);
     }
 
     // PRIVATE API ////////////////////////////////////////////////////////////
