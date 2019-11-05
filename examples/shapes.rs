@@ -107,14 +107,14 @@ fn main() {
                         if j * i % 2 != 0 {
                             batch.add(Shape::Rectangle(
                                 Rect::new(x, y, x + sw, y + sh),
-                                Rotation::zero(),
+                                Rotation::ZERO,
                                 Stroke::new(3.0, Rgba::new(c1, c2, 0.5, 1.0)),
                                 Fill::Solid(Rgba::new(1.0, dx, dy, 0.1)),
                             ));
                         } else {
                             batch.add(Shape::Line(
                                 Line::new(x, y, x + sw, y + sh),
-                                Rotation::zero(),
+                                Rotation::ZERO,
                                 Stroke::new(
                                     1.0,
                                     Rgba::new(

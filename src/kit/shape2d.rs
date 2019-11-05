@@ -160,15 +160,19 @@ pub struct Rotation {
 }
 
 impl Rotation {
-    pub const fn zero() -> Self {
-        Self {
-            angle: 0.0,
-            center: Point2 { x: 0.0, y: 0.0 },
-        }
-    }
+    const ZERO: Rotation = Rotation {
+        angle: 0.0,
+        center: Point2 { x: 0.0, y: 0.0 },
+    };
 
     pub fn new(angle: f32, center: Point2<f32>) -> Self {
         Self { angle, center }
+    }
+}
+
+impl Default for Rotation {
+    fn default() -> Self {
+        Rotation::ZERO
     }
 }
 
