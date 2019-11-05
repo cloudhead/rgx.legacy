@@ -81,13 +81,13 @@ fn main() {
                 // Draw outter rim.
                 batch.add(Shape::Circle(
                     Point2::new(x, y),
-                    690.0,
+                    510.0,
                     1024,
                     Stroke::new(5.0, color),
                     Fill::Empty(),
                 ));
 
-                // Draw inner circle.
+                // Draw inner circles.
                 batch.add(Shape::Circle(
                     Point2::new(x, y),
                     30.0,
@@ -96,7 +96,7 @@ fn main() {
                     Fill::Solid(color),
                 ));
 
-                for i in 1..(690 / 30) {
+                for i in 1..(510 / 30) {
                     let mut c = color;
                     c.a = 0.2 * i as f32;
 
@@ -114,9 +114,9 @@ fn main() {
                     let a = ((1.0 / 12.0) * i as f32) * std::f32::consts::PI * 2.0;
 
                     batch.add(Shape::Line(
-                        Line::new(x, y + 690.0, x, y + 600.0),
+                        Line::new(x, y + 510.0, x, y + 420.0),
                         Rotation::new(a, Point2::new(x, y)),
-                        Stroke::new(16.0, color),
+                        Stroke::new(12.0, color),
                     ));
                 }
 
@@ -125,9 +125,9 @@ fn main() {
                     let a = ((1.0 / 60.0) * i as f32) * std::f32::consts::PI * 2.0;
 
                     batch.add(Shape::Line(
-                        Line::new(x, y + 690.0, x, y + 630.0),
+                        Line::new(x, y + 510.0, x, y + 450.0),
                         Rotation::new(a, Point2::new(x, y)),
-                        Stroke::new(4.0, color),
+                        Stroke::new(6.0, color),
                     ));
                 }
 
@@ -138,9 +138,9 @@ fn main() {
                     c.a = 0.6;
 
                     batch.add(Shape::Line(
-                        Line::new(x, y + 690.0, x, y + 660.0),
+                        Line::new(x, y + 510.0, x, y + 480.0),
                         Rotation::new(a, Point2::new(x, y)),
-                        Stroke::new(4.0, c),
+                        Stroke::new(2.0, c),
                     ));
                 }
 
@@ -155,9 +155,9 @@ fn main() {
                     let arm_angle = (hour + minute) * std::f32::consts::PI * 2.0;
 
                     batch.add(Shape::Line(
-                        Line::new(x, y, x, y + 420.0),
+                        Line::new(x, y, x, y + 240.0),
                         Rotation::new(arm_angle, Point2::new(x, y)),
-                        Stroke::new(16.0, color),
+                        Stroke::new(12.0, color),
                     ));
                 }
 
@@ -169,9 +169,9 @@ fn main() {
                     let arm_angle = (minute + second) * std::f32::consts::PI * 2.0;
 
                     batch.add(Shape::Line(
-                        Line::new(x, y, x, y + 570.0),
+                        Line::new(x, y, x, y + 390.0),
                         Rotation::new(arm_angle, Point2::new(x, y)),
-                        Stroke::new(8.0, color),
+                        Stroke::new(6.0, color),
                     ));
                 }
 
@@ -183,9 +183,9 @@ fn main() {
                     let arm_angle = (second + nanosecond) * std::f32::consts::PI * 2.0;
 
                     batch.add(Shape::Line(
-                        Line::new(x, y, x, y + 600.0),
+                        Line::new(x, y, x, y + 420.0),
                         Rotation::new(arm_angle, Point2::new(x, y)),
-                        Stroke::new(4.0, color),
+                        Stroke::new(2.0, color),
                     ));
                 }
 
