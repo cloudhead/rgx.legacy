@@ -16,23 +16,14 @@ layout(location = 3) in vec4 color;
 
 layout(location = 0) out vec4 f_color;
 
-mat4 rotationZ(float angle ) {
-	return mat4(
-		cos(angle), -sin(angle),  0, 0,
-		sin(angle),  cos(angle),  0, 0,
-		0,          0,            1, 0,
-		0,          0,            0, 1
-	);
-}
-
-mat2 rotate2d(float angle) {
-	float s = sin(a);
-	float c = cos(a);
+mat2 rotation2d(float angle) {
+	float s = sin(angle);
+	float c = cos(angle);
 	return mat2(c, -s, s, c);
 }
 
 vec2 rotate(vec2 position, vec2 around, float angle) {
-	mat2 m = rotate2d(angle);
+	mat2 m = rotation2d(angle);
 	vec2 rotated = m * (position - around);
 	return rotated + around;
 }
