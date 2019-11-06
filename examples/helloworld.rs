@@ -64,6 +64,11 @@ fn main() {
             WindowEvent::CloseRequested => {
                 *control_flow = ControlFlow::Exit;
             }
+            WindowEvent::Resized(size) => {
+                let (w, h) = (size.width as u32, size.height as u32);
+                textures = renderer.swap_chain(w, h, PresentMode::default());
+                *control_flow = ControlFlow::Poll;
+            }
             WindowEvent::KeyboardInput {
                 input:
                     KeyboardInput {
