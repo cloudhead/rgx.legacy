@@ -1807,7 +1807,7 @@ impl Device {
     pub fn new<W: HasRawWindowHandle>(window: &W) -> Self {
         let adapter = wgpu::Adapter::request(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::LowPower,
-            backends: wgpu::BackendBit::PRIMARY,
+            backends: wgpu::BackendBit::VULKAN | wgpu::BackendBit::METAL,
         })
         .unwrap();
 
