@@ -1,6 +1,3 @@
-#![deny(clippy::all, clippy::use_self)]
-#![allow(clippy::new_without_default)]
-
 use std::f32;
 
 use crate::math::*;

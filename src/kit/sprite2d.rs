@@ -1,6 +1,3 @@
-#![deny(clippy::all, clippy::use_self)]
-#![allow(clippy::new_without_default)]
-
 use nonempty::NonEmpty;
 
 use crate::core;

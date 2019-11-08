@@ -1,6 +1,3 @@
-#![deny(clippy::all, clippy::use_self)]
-#![allow(clippy::cast_lossless)]
-
 use std::fmt;
 use std::ops::Range;
 use std::str::FromStr;
