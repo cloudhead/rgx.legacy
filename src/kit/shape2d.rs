@@ -160,7 +160,7 @@ pub struct Rotation {
 }
 
 impl Rotation {
-    const ZERO: Rotation = Rotation {
+    pub const ZERO: Rotation = Rotation {
         angle: 0.0,
         center: Point2 { x: 0.0, y: 0.0 },
     };
