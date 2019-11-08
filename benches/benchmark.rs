@@ -3,14 +3,14 @@ extern crate criterion;
 
 use criterion::Criterion;
 
-use cgmath::Vector2;
+use rgx::math::Point2;
 
 use rgx::core::{Rect, Rgba};
 use rgx::kit::shape2d::*;
 
 fn bench_triangulate_circle() {
     Shape::Circle(
-        Vector2::new(0., 0.),
+        Point2::new(0., 0.),
         1.,
         64,
         Stroke::new(1., Rgba::WHITE),
@@ -22,6 +22,7 @@ fn bench_triangulate_circle() {
 fn bench_triangulate_rectangle() {
     Shape::Rectangle(
         Rect::new(1., 1., 3., 3.),
+        Rotation::ZERO,
         Stroke::new(1., Rgba::WHITE),
         Fill::Solid(Rgba::WHITE),
     )
