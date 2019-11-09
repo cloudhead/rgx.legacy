@@ -296,18 +296,29 @@ impl<T> Rect<T> {
     /// use rgx::core::Rect;
     ///
     /// let r = Rect::new(0, 0, 3, 3);
-    /// assert_eq!(r.expand(-1, -1, 1, 1), Rect::new(-1, -1, 4, 4));
+    /// assert_eq!(r.expand(1, 1, 1, 1), Rect::new(-1, -1, 4, 4));
+    ///
+    /// let r = Rect::new(3, 3, 0, 0);
+    /// assert_eq!(r.expand(1, 1, 1, 1), Rect::new(4, 4, -1, -1));
+    ///
+    /// let r = Rect::new(-1, 1, 1, -1);
+    /// assert_eq!(r.expand(4, 4, 4, 4), Rect::new(-5, 5, 5, -5));
     /// ```
     pub fn expand(&self, x1: T, y1: T, x2: T, y2: T) -> Self
     where
-        T: std::ops::Add<Output = T> + Copy,
+        T: std::ops::Add<Output = T> + std::ops::Sub<Output = T> + PartialOrd + Copy,
     {
-        Self {
-            x1: self.x1 + x1,
-            y1: self.y1 + y1,
-            x2: self.x2 + x2,
-            y2: self.y2 + y2,
-        }
+        let (x1, x2) = if self.x2 > self.x1 {
+            (self.x1 - x1, self.x2 + x2)
+        } else {
+            (self.x1 + x1, self.x2 - x2)
+        };
+        let (y1, y2) = if self.y2 > self.y1 {
+            (self.y1 - y1, self.y2 + y2)
+        } else {
+            (self.y1 + y1, self.y2 - y2)
+        };
+        Self { x1, x2, y1, y2 }
     }
 
     /// Return the rectangle flipped in the Y axis.
