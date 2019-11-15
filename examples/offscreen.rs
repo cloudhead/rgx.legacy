@@ -7,6 +7,7 @@ use rgx::core::*;
 use rgx::kit;
 use rgx::kit::sprite2d;
 use rgx::kit::*;
+use rgx::rect::*;
 
 use image::ImageDecoder;
 

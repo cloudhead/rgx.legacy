@@ -5,6 +5,7 @@
 use rgx::core::*;
 use rgx::kit;
 use rgx::kit::shape2d::{Batch, Fill, Line, Rotation, Shape, Stroke};
+use rgx::rect::*;
 
 use rgx::math::*;
 

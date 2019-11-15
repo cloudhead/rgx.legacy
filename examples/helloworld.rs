@@ -5,6 +5,7 @@
 use rgx::core::*;
 use rgx::kit;
 use rgx::kit::sprite2d;
+use rgx::rect::*;
 
 use winit::{
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},

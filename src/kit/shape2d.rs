@@ -3,7 +3,8 @@ use std::f32;
 use crate::math::*;
 
 use crate::core;
-use crate::core::{Binding, BindingType, Rect, Rgba, Set, ShaderStage};
+use crate::core::{Binding, BindingType, Rgba, Set, ShaderStage};
+use crate::rect::Rect;
 
 use crate::kit::{Model, Rgba8};
 

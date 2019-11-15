@@ -1,7 +1,8 @@
 use nonempty::NonEmpty;
 
 use crate::core;
-use crate::core::{Binding, BindingType, Rect, Rgba, Set, ShaderStage};
+use crate::core::{Binding, BindingType, Rgba, Set, ShaderStage};
+use crate::rect::Rect;
 
 use crate::math::*;
 
