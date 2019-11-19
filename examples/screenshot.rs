@@ -110,7 +110,7 @@ impl FramebufferPipeline {
     }
 }
 
-fn main() {
+fn main() -> Result<(), std::io::Error> {
     env_logger::init();
 
     let event_loop = EventLoop::new();
@@ -120,7 +120,7 @@ fn main() {
     // Setup renderer
     ///////////////////////////////////////////////////////////////////////////
 
-    let mut r = Renderer::new(&window);
+    let mut r = Renderer::new(&window)?;
     let size = window.inner_size().to_physical(window.hidpi_factor());
 
     let (sw, sh) = (size.width as u32, size.height as u32);
@@ -188,4 +188,6 @@ fn main() {
 
         png.encode(data, w, h, ColorType::RGBA(8)).unwrap();
     });
+
+    Ok(())
 }

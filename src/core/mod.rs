@@ -4,7 +4,8 @@ use std::str::FromStr;
 
 use raw_window_handle::HasRawWindowHandle;
 
-use crate::rect::Rect;
+pub use crate::error::Error;
+pub use crate::rect::Rect;
 
 ///////////////////////////////////////////////////////////////////////////
 // Rgba8
@@ -1147,10 +1148,16 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new<W: HasRawWindowHandle>(window: &W) -> Self {
-        Self {
-            device: Device::new(window),
-        }
+    pub fn new<W: HasRawWindowHandle>(window: &W) -> Result<Self, Error> {
+        let adapter = wgpu::Adapter::request(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::LowPower,
+            backends: wgpu::BackendBit::METAL | wgpu::BackendBit::VULKAN,
+        })
+        .ok_or(Error::NoAdaptersFound)?;
+
+        Ok(Self {
+            device: Device::new(&adapter, window),
+        })
     }
 
     pub fn swap_chain(&self, w: u32, h: u32, mode: PresentMode) -> SwapChain {
@@ -1335,13 +1342,7 @@ pub struct Device {
 }
 
 impl Device {
-    pub fn new<W: HasRawWindowHandle>(window: &W) -> Self {
-        let adapter = wgpu::Adapter::request(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::LowPower,
-            backends: wgpu::BackendBit::VULKAN | wgpu::BackendBit::METAL,
-        })
-        .unwrap();
-
+    pub fn new<W: HasRawWindowHandle>(adapter: &wgpu::Adapter, window: &W) -> Self {
         let surface = wgpu::Surface::create(window);
         let (device, queue) = adapter.request_device(&wgpu::DeviceDescriptor {
             extensions: wgpu::Extensions {

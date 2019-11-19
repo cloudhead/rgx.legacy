@@ -18,7 +18,7 @@ use winit::{
     window::Window,
 };
 
-fn main() {
+fn main() -> Result<(), std::io::Error> {
     env_logger::init();
 
     let event_loop = EventLoop::new();
@@ -26,7 +26,7 @@ fn main() {
     let mut size = window.inner_size().to_physical(window.hidpi_factor());
 
     // Setup renderer
-    let mut renderer = Renderer::new(&window);
+    let mut renderer = Renderer::new(&window)?;
 
     let shared_size = Arc::new(Mutex::new(size));
     let shared_coords = Arc::new(Mutex::new((0., 0.)));

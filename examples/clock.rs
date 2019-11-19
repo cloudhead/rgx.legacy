@@ -16,7 +16,7 @@ use winit::{
     window::Window,
 };
 
-fn main() {
+fn main() -> Result<(), std::io::Error> {
     env_logger::init();
 
     let event_loop = EventLoop::new();
@@ -26,7 +26,7 @@ fn main() {
     // Setup renderer
     ///////////////////////////////////////////////////////////////////////////
 
-    let mut r = Renderer::new(&window);
+    let mut r = Renderer::new(&window)?;
     let mut win = window.inner_size();
 
     let pip: kit::shape2d::Pipeline = r.pipeline(Blending::default());
