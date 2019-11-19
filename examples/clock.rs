@@ -5,8 +5,8 @@
 use chrono::{Local, Timelike};
 
 use rgx::core::*;
-use rgx::kit;
 use rgx::kit::shape2d::{Batch, Fill, Line, Rotation, Shape, Stroke};
+use rgx::kit::{self, ZDepth};
 
 use rgx::math::*;
 
@@ -79,6 +79,7 @@ fn main() -> Result<(), std::io::Error> {
                 // Draw outter rim.
                 batch.add(Shape::Circle(
                     Point2::new(x, y),
+                    ZDepth::default(),
                     510.0,
                     1024,
                     Stroke::new(5.0, color),
@@ -88,6 +89,7 @@ fn main() -> Result<(), std::io::Error> {
                 // Draw inner circles.
                 batch.add(Shape::Circle(
                     Point2::new(x, y),
+                    ZDepth::default(),
                     30.0,
                     1024,
                     Stroke::new(1.0, color),
@@ -100,6 +102,7 @@ fn main() -> Result<(), std::io::Error> {
 
                     batch.add(Shape::Circle(
                         Point2::new(x, y),
+                        ZDepth::default(),
                         30.0 * i as f32,
                         1024,
                         Stroke::new(1.0, c),
@@ -113,6 +116,7 @@ fn main() -> Result<(), std::io::Error> {
 
                     batch.add(Shape::Line(
                         Line::new(x, y + 510.0, x, y + 420.0),
+                        ZDepth::default(),
                         Rotation::new(a, Point2::new(x, y)),
                         Stroke::new(12.0, color),
                     ));
@@ -124,6 +128,7 @@ fn main() -> Result<(), std::io::Error> {
 
                     batch.add(Shape::Line(
                         Line::new(x, y + 510.0, x, y + 450.0),
+                        ZDepth::default(),
                         Rotation::new(a, Point2::new(x, y)),
                         Stroke::new(6.0, color),
                     ));
@@ -137,6 +142,7 @@ fn main() -> Result<(), std::io::Error> {
 
                     batch.add(Shape::Line(
                         Line::new(x, y + 510.0, x, y + 480.0),
+                        ZDepth::default(),
                         Rotation::new(a, Point2::new(x, y)),
                         Stroke::new(2.0, c),
                     ));
@@ -154,6 +160,7 @@ fn main() -> Result<(), std::io::Error> {
 
                     batch.add(Shape::Line(
                         Line::new(x, y, x, y + 240.0),
+                        ZDepth::default(),
                         Rotation::new(arm_angle, Point2::new(x, y)),
                         Stroke::new(12.0, color),
                     ));
@@ -168,6 +175,7 @@ fn main() -> Result<(), std::io::Error> {
 
                     batch.add(Shape::Line(
                         Line::new(x, y, x, y + 390.0),
+                        ZDepth::default(),
                         Rotation::new(arm_angle, Point2::new(x, y)),
                         Stroke::new(6.0, color),
                     ));
@@ -182,6 +190,7 @@ fn main() -> Result<(), std::io::Error> {
 
                     batch.add(Shape::Line(
                         Line::new(x, y, x, y + 420.0),
+                        ZDepth::default(),
                         Rotation::new(arm_angle, Point2::new(x, y)),
                         Stroke::new(2.0, color),
                     ));

@@ -8,7 +8,6 @@ use rgx::core::*;
 use rgx::kit;
 use rgx::kit::sprite2d;
 use rgx::kit::*;
-use rgx::rect::*;
 
 use image::ImageDecoder;
 
@@ -188,6 +187,7 @@ fn main() -> Result<(), std::io::Error> {
                         batch.add(
                             anim.val(),
                             rect,
+                            ZDepth::default(),
                             Rgba::new(i as f32 / rows as f32, j as f32 / cols as f32, 0.5, 0.75),
                             1.0,
                             Repeat::default(),

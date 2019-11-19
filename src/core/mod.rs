@@ -351,12 +351,20 @@ impl Bind for UniformBuffer {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+/// ZBuffer
+///////////////////////////////////////////////////////////////////////////////
+
+pub struct ZBuffer {
+    pub texture: Texture,
+}
+
+///////////////////////////////////////////////////////////////////////////////
 /// Framebuffer
 ///////////////////////////////////////////////////////////////////////////////
 
-#[allow(dead_code)]
 pub struct Framebuffer {
     pub texture: Texture,
+    pub depth: ZBuffer,
 }
 
 impl Framebuffer {
@@ -370,6 +378,16 @@ impl Framebuffer {
 
     pub fn height(&self) -> u32 {
         self.texture.h
+    }
+}
+
+impl TextureView for Framebuffer {
+    fn texture_view(&self) -> &wgpu::TextureView {
+        &self.texture.view
+    }
+
+    fn depth_view(&self) -> &wgpu::TextureView {
+        &self.depth.texture.view
     }
 }
 
@@ -410,17 +428,10 @@ impl Canvas for Framebuffer {
     }
 }
 
-impl TextureView for Framebuffer {
-    fn texture_view(&self) -> &wgpu::TextureView {
-        &self.texture.view
-    }
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 /// Texturing
 ///////////////////////////////////////////////////////////////////////////////
 
-#[allow(dead_code)]
 pub struct Texture {
     wgpu: wgpu::Texture,
     view: wgpu::TextureView,
@@ -954,7 +965,12 @@ impl Frame {
     }
 
     pub fn pass<T: TextureView>(&mut self, op: PassOp, view: &T) -> Pass {
-        Pass::begin(&mut self.encoder, &view.texture_view(), op)
+        Pass::begin(
+            &mut self.encoder,
+            &view.texture_view(),
+            &view.depth_view(),
+            op,
+        )
     }
 
     pub fn copy(&mut self, src: &UniformBuffer, dst: &UniformBuffer) {
@@ -988,6 +1004,7 @@ impl<'a> Pass<'a> {
     pub fn begin(
         encoder: &'a mut wgpu::CommandEncoder,
         view: &wgpu::TextureView,
+        depth: &wgpu::TextureView,
         op: PassOp,
     ) -> Self {
         let pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -1001,7 +1018,15 @@ impl<'a> Pass<'a> {
                 },
                 resolve_target: None,
             }],
-            depth_stencil_attachment: None,
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachmentDescriptor {
+                attachment: depth,
+                depth_load_op: op.to_wgpu(),
+                depth_store_op: wgpu::StoreOp::Store,
+                stencil_load_op: wgpu::LoadOp::Clear,
+                stencil_store_op: wgpu::StoreOp::Store,
+                clear_depth: 1.0,
+                clear_stencil: 0,
+            }),
         });
         Pass { wgpu: pass }
     }
@@ -1057,6 +1082,7 @@ impl PassOp {
 
 pub trait TextureView {
     fn texture_view(&self) -> &wgpu::TextureView;
+    fn depth_view(&self) -> &wgpu::TextureView;
 }
 
 pub struct SwapChainTexture<'a> {
@@ -1064,11 +1090,16 @@ pub struct SwapChainTexture<'a> {
     pub height: u32,
 
     wgpu: wgpu::SwapChainOutput<'a>,
+    depth: &'a ZBuffer,
 }
 
 impl TextureView for SwapChainTexture<'_> {
     fn texture_view(&self) -> &wgpu::TextureView {
         &self.wgpu.view
+    }
+
+    fn depth_view(&self) -> &wgpu::TextureView {
+        &self.depth.texture.view
     }
 }
 
@@ -1101,6 +1132,7 @@ pub struct SwapChain {
     pub width: u32,
     pub height: u32,
 
+    depth: ZBuffer,
     wgpu: wgpu::SwapChain,
 }
 
@@ -1117,6 +1149,7 @@ impl SwapChain {
     /// swapchain will present the texture to the associated [`Renderer`].
     pub fn next(&mut self) -> SwapChainTexture {
         SwapChainTexture {
+            depth: &self.depth,
             wgpu: self.wgpu.get_next_texture(),
             width: self.width,
             height: self.height,
@@ -1162,6 +1195,7 @@ impl Renderer {
 
     pub fn swap_chain(&self, w: u32, h: u32, mode: PresentMode) -> SwapChain {
         SwapChain {
+            depth: self.device.create_zbuffer(w, h),
             wgpu: self.device.create_swap_chain(w, h, mode),
             width: w,
             height: h,
@@ -1174,6 +1208,10 @@ impl Renderer {
 
     pub fn framebuffer(&self, w: u32, h: u32) -> Framebuffer {
         self.device.create_framebuffer(w, h)
+    }
+
+    pub fn zbuffer(&self, w: u32, h: u32) -> ZBuffer {
+        self.device.create_zbuffer(w, h)
     }
 
     pub fn vertex_buffer<T>(&self, verts: &[T]) -> VertexBuffer
@@ -1452,6 +1490,35 @@ impl Device {
                 w,
                 h,
             },
+            depth: self.create_zbuffer(w, h),
+        }
+    }
+
+    pub fn create_zbuffer(&self, w: u32, h: u32) -> ZBuffer {
+        let extent = wgpu::Extent3d {
+            width: w,
+            height: h,
+            depth: 1,
+        };
+        let wgpu = self.device.create_texture(&wgpu::TextureDescriptor {
+            size: extent,
+            array_layer_count: 1,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Depth32Float,
+            usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+        });
+        let view = wgpu.create_default_view();
+
+        ZBuffer {
+            texture: Texture {
+                wgpu,
+                extent,
+                view,
+                w,
+                h,
+            },
         }
     }
 
@@ -1645,7 +1712,15 @@ impl Device {
                     },
                     write_mask: wgpu::ColorWrite::ALL,
                 }],
-                depth_stencil_state: None,
+                depth_stencil_state: Some(wgpu::DepthStencilStateDescriptor {
+                    format: wgpu::TextureFormat::Depth32Float,
+                    depth_write_enabled: true,
+                    depth_compare: wgpu::CompareFunction::LessEqual,
+                    stencil_front: wgpu::StencilStateFaceDescriptor::IGNORE,
+                    stencil_back: wgpu::StencilStateFaceDescriptor::IGNORE,
+                    stencil_read_mask: 0,
+                    stencil_write_mask: 0,
+                }),
                 index_format: wgpu::IndexFormat::Uint16,
                 vertex_buffers: &[vertex_attrs],
                 sample_count: 1,

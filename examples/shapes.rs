@@ -3,9 +3,8 @@
 #![allow(clippy::single_match)]
 
 use rgx::core::*;
-use rgx::kit;
 use rgx::kit::shape2d::{Batch, Fill, Line, Rotation, Shape, Stroke};
-use rgx::rect::*;
+use rgx::kit::{self, ZDepth};
 
 use rgx::math::*;
 
@@ -98,6 +97,7 @@ fn main() -> Result<(), std::io::Error> {
                         if j % 2 == 0 && i % 2 == 0 {
                             batch.add(Shape::Circle(
                                 Point2::new(x + sw / 2., y + sw / 2.),
+                                ZDepth::ZERO,
                                 sw * 2.,
                                 32,
                                 Stroke::new(1.0, Rgba::new(0.5, c2, c1, 0.75)),
@@ -108,6 +108,7 @@ fn main() -> Result<(), std::io::Error> {
                         if j * i % 2 != 0 {
                             batch.add(Shape::Rectangle(
                                 Rect::new(x, y, x + sw, y + sh),
+                                ZDepth::ZERO,
                                 Rotation::ZERO,
                                 Stroke::new(3.0, Rgba::new(c1, c2, 0.5, 1.0)),
                                 Fill::Solid(Rgba::new(1.0, dx, dy, 0.1)),
@@ -115,6 +116,7 @@ fn main() -> Result<(), std::io::Error> {
                         } else {
                             batch.add(Shape::Line(
                                 Line::new(x, y, x + sw, y + sh),
+                                ZDepth::ZERO,
                                 Rotation::ZERO,
                                 Stroke::new(
                                     1.0,

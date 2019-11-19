@@ -5,9 +5,9 @@
 use rgx::core::*;
 use rgx::math::Point2;
 
-use rgx::kit;
 use rgx::kit::shape2d;
 use rgx::kit::shape2d::{Fill, Shape, Stroke};
+use rgx::kit::{self, ZDepth};
 
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -53,6 +53,7 @@ fn main() -> Result<(), std::io::Error> {
 
             let buffer = shape2d::Batch::singleton(Shape::Circle(
                 Point2::new(mx, size.height as f32 - my),
+                ZDepth::ZERO,
                 20.,
                 32,
                 Stroke::NONE,

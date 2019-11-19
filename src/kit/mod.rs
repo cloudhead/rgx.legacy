@@ -34,6 +34,27 @@ impl Default for Repeat {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
+pub struct ZDepth(pub f32);
+
+impl ZDepth {
+    pub const ZERO: Self = ZDepth(0.0);
+}
+
+impl Default for ZDepth {
+    fn default() -> Self {
+        Self::ZERO
+    }
+}
+
+impl std::ops::Deref for ZDepth {
+    type Target = f32;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Animation
 ///////////////////////////////////////////////////////////////////////////

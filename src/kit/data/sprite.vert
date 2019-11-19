@@ -9,7 +9,7 @@ layout(set = 1, binding = 0) uniform Model {
 	mat4 transform;
 } model;
 
-layout(location = 0) in vec2  position;
+layout(location = 0) in vec3  position;
 layout(location = 1) in vec2  uv;
 layout(location = 2) in vec4  color;
 layout(location = 3) in float opacity;
@@ -23,5 +23,5 @@ void main() {
 	f_uv = uv;
 	f_opacity = opacity;
 
-	gl_Position = global.ortho * global.transform * model.transform * vec4(position, 0.0, 1.0);
+	gl_Position = global.ortho * global.transform * model.transform * vec4(position, 1.0);
 }

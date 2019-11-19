@@ -7,7 +7,6 @@ use rgx::core::*;
 use rgx::kit;
 use rgx::kit::sprite2d;
 use rgx::kit::*;
-use rgx::rect::*;
 
 use image::ImageDecoder;
 
@@ -156,6 +155,7 @@ fn main() -> Result<(), std::io::Error> {
         texture.h,
         rect,
         Rect::origin(sw as f32, sh as f32),
+        ZDepth::ZERO,
         Rgba::TRANSPARENT,
         1.0,
         Repeat::default(),

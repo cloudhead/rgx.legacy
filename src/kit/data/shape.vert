@@ -9,7 +9,7 @@ layout(set = 1, binding = 0) uniform Model {
 	mat4 transform;
 } model;
 
-layout(location = 0) in vec2 position;
+layout(location = 0) in vec3 position;
 layout(location = 1) in float angle;
 layout(location = 2) in vec2 center;
 layout(location = 3) in vec4 color;
@@ -31,7 +31,7 @@ vec2 rotate(vec2 position, vec2 around, float angle) {
 void main() {
 	f_color = color;
 
-	vec2 r = rotate(position, center, angle);
+	vec2 r = rotate(position.xy, center, angle);
 
-	gl_Position = global.ortho * global.transform * model.transform * vec4(r, 0.0, 1.0);
+	gl_Position = global.ortho * global.transform * model.transform * vec4(r, position.z, 1.0);
 }

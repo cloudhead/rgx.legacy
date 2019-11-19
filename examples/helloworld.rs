@@ -3,9 +3,8 @@
 #![allow(clippy::single_match)]
 
 use rgx::core::*;
-use rgx::kit;
 use rgx::kit::sprite2d;
-use rgx::rect::*;
+use rgx::kit::{self, ZDepth};
 
 use winit::{
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
@@ -45,6 +44,7 @@ fn main() -> Result<(), std::io::Error> {
         texture.h,
         texture.rect(),
         Rect::new(0., 0., size.width as f32, size.height as f32),
+        ZDepth::ZERO,
         Rgba::new(0.5, 0.6, 0.8, 1.0),
         1.0,
         kit::Repeat::new(24. * (size.width / size.height) as f32, 24.),

@@ -3,8 +3,8 @@
 #![allow(clippy::single_match)]
 
 use rgx::core::*;
-use rgx::kit;
 use rgx::kit::shape2d::{Batch, Fill, Shape, Stroke};
+use rgx::kit::{self, ZDepth};
 
 use rgx::math::*;
 
@@ -99,6 +99,7 @@ fn main() -> Result<(), std::io::Error> {
 
                     batch.add(Shape::Circle(
                         Point2::new(x + rad, y + rad),
+                        ZDepth::ZERO,
                         rad,
                         32,
                         Stroke::new(width, Rgba::new(0.5, c2, c1, 0.75)),

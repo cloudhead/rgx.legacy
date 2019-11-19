@@ -2,6 +2,7 @@ use nonempty::NonEmpty;
 
 use crate::core;
 use crate::core::{Binding, BindingType, Rgba, Set, ShaderStage};
+use crate::kit::ZDepth;
 use crate::rect::Rect;
 
 use crate::math::*;
@@ -26,16 +27,16 @@ pub struct Uniforms {
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 pub struct Vertex {
-    position: Vector2<f32>,
+    position: Vector3<f32>,
     uv: Vector2<f32>,
     color: Rgba8,
     opacity: f32,
 }
 
 impl Vertex {
-    fn new(x: f32, y: f32, u: f32, v: f32, color: Rgba8, opacity: f32) -> Self {
+    fn new(x: f32, y: f32, z: f32, u: f32, v: f32, color: Rgba8, opacity: f32) -> Self {
         Self {
-            position: Vector2::new(x, y),
+            position: Vector3::new(x, y, z),
             uv: Vector2::new(u, v),
             color,
             opacity,
@@ -115,7 +116,7 @@ impl<'a> core::AbstractPipeline<'a> for Pipeline {
     fn description() -> core::PipelineDescription<'a> {
         core::PipelineDescription {
             vertex_layout: &[
-                core::VertexFormat::Float2,
+                core::VertexFormat::Float3,
                 core::VertexFormat::Float2,
                 core::VertexFormat::UByte4,
                 core::VertexFormat::Float,
@@ -186,7 +187,7 @@ pub struct Batch {
     pub h: u32,
     pub size: usize,
 
-    items: Vec<(Rect<f32>, Rect<f32>, Rgba, f32, Repeat)>,
+    items: Vec<(Rect<f32>, Rect<f32>, ZDepth, Rgba, f32, Repeat)>,
 }
 
 impl Batch {
@@ -204,16 +205,25 @@ impl Batch {
         h: u32,
         src: Rect<f32>,
         dst: Rect<f32>,
+        depth: ZDepth,
         rgba: Rgba,
         opa: f32,
         rep: Repeat,
     ) -> Self {
         let mut view = Self::new(w, h);
-        view.add(src, dst, rgba, opa, rep);
+        view.add(src, dst, depth, rgba, opa, rep);
         view
     }
 
-    pub fn add(&mut self, src: Rect<f32>, dst: Rect<f32>, rgba: Rgba, opacity: f32, rep: Repeat) {
+    pub fn add(
+        &mut self,
+        src: Rect<f32>,
+        dst: Rect<f32>,
+        depth: ZDepth,
+        rgba: Rgba,
+        opacity: f32,
+        rep: Repeat,
+    ) {
         if rep != Repeat::default() {
             assert!(
                 src == Rect::origin(self.w as f32, self.h as f32),
@@ -222,14 +232,14 @@ impl Batch {
                 self.h
             );
         }
-        self.items.push((src, dst, rgba, opacity, rep));
+        self.items.push((src, dst, depth, rgba, opacity, rep));
         self.size += 1;
     }
 
     pub fn vertices(&self) -> Vec<Vertex> {
         let mut buf = Vec::with_capacity(6 * self.items.len());
 
-        for (src, dst, rgba, o, rep) in self.items.iter() {
+        for (src, dst, ZDepth(z), rgba, o, rep) in self.items.iter() {
             // Relative texture coordinates
             let rx1: f32 = src.x1 / self.w as f32;
             let ry1: f32 = src.y1 / self.h as f32;
@@ -240,12 +250,12 @@ impl Batch {
 
             // TODO: Use an index buffer
             buf.extend_from_slice(&[
-                Vertex::new(dst.x1, dst.y1, rx1 * rep.x, ry2 * rep.y, c, *o),
-                Vertex::new(dst.x2, dst.y1, rx2 * rep.x, ry2 * rep.y, c, *o),
-                Vertex::new(dst.x2, dst.y2, rx2 * rep.x, ry1 * rep.y, c, *o),
-                Vertex::new(dst.x1, dst.y1, rx1 * rep.x, ry2 * rep.y, c, *o),
-                Vertex::new(dst.x1, dst.y2, rx1 * rep.x, ry1 * rep.y, c, *o),
-                Vertex::new(dst.x2, dst.y2, rx2 * rep.x, ry1 * rep.y, c, *o),
+                Vertex::new(dst.x1, dst.y1, *z, rx1 * rep.x, ry2 * rep.y, c, *o),
+                Vertex::new(dst.x2, dst.y1, *z, rx2 * rep.x, ry2 * rep.y, c, *o),
+                Vertex::new(dst.x2, dst.y2, *z, rx2 * rep.x, ry1 * rep.y, c, *o),
+                Vertex::new(dst.x1, dst.y1, *z, rx1 * rep.x, ry2 * rep.y, c, *o),
+                Vertex::new(dst.x1, dst.y2, *z, rx1 * rep.x, ry1 * rep.y, c, *o),
+                Vertex::new(dst.x2, dst.y2, *z, rx2 * rep.x, ry1 * rep.y, c, *o),
             ]);
         }
         buf
@@ -262,7 +272,7 @@ impl Batch {
     }
 
     pub fn offset(&mut self, x: f32, y: f32) {
-        for (_, dst, _, _, _) in self.items.iter_mut() {
+        for (_, dst, _, _, _, _) in self.items.iter_mut() {
             *dst = *dst + Vector2::new(x, y);
         }
     }
