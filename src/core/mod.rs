@@ -381,12 +381,12 @@ impl Framebuffer {
     }
 }
 
-impl TextureView for Framebuffer {
-    fn texture_view(&self) -> &wgpu::TextureView {
+impl RenderTarget for Framebuffer {
+    fn color_target(&self) -> &wgpu::TextureView {
         &self.texture.view
     }
 
-    fn depth_view(&self) -> &wgpu::TextureView {
+    fn zdepth_target(&self) -> &wgpu::TextureView {
         &self.depth.texture.view
     }
 }
@@ -964,11 +964,11 @@ impl Frame {
         Self { encoder }
     }
 
-    pub fn pass<T: TextureView>(&mut self, op: PassOp, view: &T) -> Pass {
+    pub fn pass<T: RenderTarget>(&mut self, op: PassOp, view: &T) -> Pass {
         Pass::begin(
             &mut self.encoder,
-            &view.texture_view(),
-            &view.depth_view(),
+            &view.color_target(),
+            &view.zdepth_target(),
             op,
         )
     }
@@ -1077,12 +1077,12 @@ impl PassOp {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-/// SwapChain & TextureView
+/// SwapChain & RenderTarget
 ///////////////////////////////////////////////////////////////////////////////
 
-pub trait TextureView {
-    fn texture_view(&self) -> &wgpu::TextureView;
-    fn depth_view(&self) -> &wgpu::TextureView;
+pub trait RenderTarget {
+    fn color_target(&self) -> &wgpu::TextureView;
+    fn zdepth_target(&self) -> &wgpu::TextureView;
 }
 
 pub struct SwapChainTexture<'a> {
@@ -1093,12 +1093,12 @@ pub struct SwapChainTexture<'a> {
     depth: &'a ZBuffer,
 }
 
-impl TextureView for SwapChainTexture<'_> {
-    fn texture_view(&self) -> &wgpu::TextureView {
+impl RenderTarget for SwapChainTexture<'_> {
+    fn color_target(&self) -> &wgpu::TextureView {
         &self.wgpu.view
     }
 
-    fn depth_view(&self) -> &wgpu::TextureView {
+    fn zdepth_target(&self) -> &wgpu::TextureView {
         &self.depth.texture.view
     }
 }
