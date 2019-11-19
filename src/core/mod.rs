@@ -358,6 +358,10 @@ pub struct ZBuffer {
     pub texture: Texture,
 }
 
+impl ZBuffer {
+    pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 /// Framebuffer
 ///////////////////////////////////////////////////////////////////////////////
@@ -442,6 +446,8 @@ pub struct Texture {
 }
 
 impl Texture {
+    pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
+
     pub fn rect(&self) -> Rect<f32> {
         Rect {
             x1: 0.0,
@@ -1137,6 +1143,8 @@ pub struct SwapChain {
 }
 
 impl SwapChain {
+    pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8UnormSrgb;
+
     /// Convenience method to retrieve `(width, height)`
     #[inline]
     pub fn size(&self) -> (u32, u32) {
@@ -1158,13 +1166,13 @@ impl SwapChain {
 
     /// Get the texture format in use
     pub fn format(&self) -> wgpu::TextureFormat {
-        wgpu::TextureFormat::Bgra8Unorm
+        Self::FORMAT
     }
 
     fn descriptor(width: u32, height: u32, mode: PresentMode) -> wgpu::SwapChainDescriptor {
         wgpu::SwapChainDescriptor {
             usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
-            format: wgpu::TextureFormat::Bgra8Unorm,
+            format: Self::FORMAT,
             present_mode: mode.to_wgpu(),
             width,
             height,
@@ -1448,7 +1456,7 @@ impl Device {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
+            format: Texture::FORMAT,
             usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::COPY_DST,
         });
         let texture_view = texture.create_default_view();
@@ -1474,7 +1482,7 @@ impl Device {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Bgra8Unorm,
+            format: SwapChain::FORMAT,
             usage: wgpu::TextureUsage::SAMPLED
                 | wgpu::TextureUsage::COPY_DST
                 | wgpu::TextureUsage::COPY_SRC
@@ -1698,8 +1706,7 @@ impl Device {
                 }),
                 primitive_topology: wgpu::PrimitiveTopology::TriangleList,
                 color_states: &[wgpu::ColorStateDescriptor {
-                    // TODO: Try Bgra8UnormSrgb
-                    format: wgpu::TextureFormat::Bgra8Unorm,
+                    format: SwapChain::FORMAT,
                     color_blend: wgpu::BlendDescriptor {
                         src_factor,
                         dst_factor,
@@ -1713,7 +1720,7 @@ impl Device {
                     write_mask: wgpu::ColorWrite::ALL,
                 }],
                 depth_stencil_state: Some(wgpu::DepthStencilStateDescriptor {
-                    format: wgpu::TextureFormat::Depth32Float,
+                    format: ZBuffer::FORMAT,
                     depth_write_enabled: true,
                     depth_compare: wgpu::CompareFunction::LessEqual,
                     stencil_front: wgpu::StencilStateFaceDescriptor::IGNORE,
