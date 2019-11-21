@@ -409,6 +409,7 @@ impl Canvas for Framebuffer {
 
     fn clear(&self, color: Bgra8, device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
         Texture::clear(&self.texture, color, device, encoder);
+        Texture::clear(&self.depth.texture, 0f32, device, encoder);
     }
 
     fn fill(&self, buf: &[Bgra8], device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
@@ -440,13 +441,14 @@ pub struct Texture {
     wgpu: wgpu::Texture,
     view: wgpu::TextureView,
     extent: wgpu::Extent3d,
+    format: wgpu::TextureFormat,
 
     pub w: u32,
     pub h: u32,
 }
 
 impl Texture {
-    pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
+    pub const COLOR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
     pub fn rect(&self) -> Rect<f32> {
         Rect {
@@ -459,14 +461,14 @@ impl Texture {
 
     fn clear<T>(
         texture: &Texture,
-        color: T,
+        value: T,
         device: &mut Device,
         encoder: &mut wgpu::CommandEncoder,
     ) where
-        T: Into<Rgba8> + Clone,
+        T: Clone,
     {
         let mut texels: Vec<T> = Vec::with_capacity(texture.w as usize * texture.h as usize);
-        texels.resize(texture.w as usize * texture.h as usize, color);
+        texels.resize(texture.w as usize * texture.h as usize, value);
 
         let (head, body, tail) = unsafe { texels.align_to::<Rgba8>() };
         assert!(head.is_empty());
@@ -481,7 +483,7 @@ impl Texture {
         device: &mut Device,
         encoder: &mut wgpu::CommandEncoder,
     ) where
-        T: Into<Rgba8> + Clone + Copy,
+        T: Clone + Copy,
     {
         assert_eq!(
             texels.len() as u32,
@@ -1445,6 +1447,7 @@ impl Device {
     }
 
     pub fn create_texture(&self, w: u32, h: u32) -> Texture {
+        let format = Texture::COLOR_FORMAT;
         let texture_extent = wgpu::Extent3d {
             width: w,
             height: h,
@@ -1456,7 +1459,7 @@ impl Device {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: Texture::FORMAT,
+            format,
             usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::COPY_DST,
         });
         let texture_view = texture.create_default_view();
@@ -1465,12 +1468,14 @@ impl Device {
             wgpu: texture,
             view: texture_view,
             extent: texture_extent,
+            format,
             w,
             h,
         }
     }
 
     pub fn create_framebuffer(&self, w: u32, h: u32) -> Framebuffer {
+        let format = SwapChain::FORMAT;
         let extent = wgpu::Extent3d {
             width: w,
             height: h,
@@ -1482,7 +1487,7 @@ impl Device {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: SwapChain::FORMAT,
+            format,
             usage: wgpu::TextureUsage::SAMPLED
                 | wgpu::TextureUsage::COPY_DST
                 | wgpu::TextureUsage::COPY_SRC
@@ -1495,6 +1500,7 @@ impl Device {
                 wgpu: texture,
                 view,
                 extent,
+                format,
                 w,
                 h,
             },
@@ -1503,6 +1509,7 @@ impl Device {
     }
 
     pub fn create_zbuffer(&self, w: u32, h: u32) -> ZBuffer {
+        let format = ZBuffer::FORMAT;
         let extent = wgpu::Extent3d {
             width: w,
             height: h,
@@ -1514,8 +1521,8 @@ impl Device {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Depth32Float,
-            usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+            format,
+            usage: wgpu::TextureUsage::COPY_DST | wgpu::TextureUsage::OUTPUT_ATTACHMENT,
         });
         let view = wgpu.create_default_view();
 
@@ -1524,6 +1531,7 @@ impl Device {
                 wgpu,
                 extent,
                 view,
+                format,
                 w,
                 h,
             },
