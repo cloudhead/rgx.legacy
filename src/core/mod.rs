@@ -247,6 +247,7 @@ impl From<Rgba8> for Rgba {
 /// Shaders
 ///////////////////////////////////////////////////////////////////////////////
 
+#[derive(Debug)]
 pub struct Shader {
     module: wgpu::ShaderModule,
 }
@@ -294,6 +295,7 @@ pub trait Canvas {
 ///////////////////////////////////////////////////////////////////////////////
 
 /// A group of bindings.
+#[derive(Debug)]
 pub struct BindingGroup {
     wgpu: wgpu::BindGroup,
     set_index: u32,
@@ -306,6 +308,7 @@ impl BindingGroup {
 }
 
 /// The layout of a 'BindingGroup'.
+#[derive(Debug)]
 pub struct BindingGroupLayout {
     wgpu: wgpu::BindGroupLayout,
     size: usize,
@@ -332,6 +335,7 @@ pub trait Bind {
 ///////////////////////////////////////////////////////////////////////////////
 
 /// A uniform buffer that can be bound in a 'BindingGroup'.
+#[derive(Debug)]
 pub struct UniformBuffer {
     wgpu: wgpu::Buffer,
     size: usize,
@@ -354,6 +358,7 @@ impl Bind for UniformBuffer {
 /// ZBuffer
 ///////////////////////////////////////////////////////////////////////////////
 
+#[derive(Debug)]
 pub struct ZBuffer {
     pub texture: Texture,
 }
@@ -366,6 +371,7 @@ impl ZBuffer {
 /// Framebuffer
 ///////////////////////////////////////////////////////////////////////////////
 
+#[derive(Debug)]
 pub struct Framebuffer {
     pub texture: Texture,
     pub depth: ZBuffer,
@@ -437,6 +443,7 @@ impl Canvas for Framebuffer {
 /// Texturing
 ///////////////////////////////////////////////////////////////////////////////
 
+#[derive(Debug)]
 pub struct Texture {
     wgpu: wgpu::Texture,
     view: wgpu::TextureView,
@@ -674,6 +681,7 @@ impl From<Framebuffer> for Texture {
     }
 }
 
+#[derive(Debug)]
 pub struct Sampler {
     wgpu: wgpu::Sampler,
 }
@@ -706,6 +714,7 @@ impl Filter {
 /// Vertex/Index Buffers
 ///////////////////////////////////////////////////////////////////////////////
 
+#[derive(Debug)]
 pub struct VertexBuffer {
     pub size: u32,
     wgpu: wgpu::Buffer,
@@ -724,11 +733,12 @@ impl Draw for VertexBuffer {
     }
 }
 
+#[derive(Debug)]
 pub struct IndexBuffer {
     wgpu: wgpu::Buffer,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum VertexFormat {
     Float,
     Float2,
@@ -761,7 +771,7 @@ impl VertexFormat {
 }
 
 /// Describes a 'VertexBuffer' layout.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct VertexLayout {
     wgpu_attrs: Vec<wgpu::VertexAttributeDescriptor>,
     size: usize,
@@ -795,6 +805,7 @@ impl VertexLayout {
 ///////////////////////////////////////////////////////////////////////////////
 
 /// A binding type.
+#[derive(Debug)]
 pub enum BindingType {
     UniformBuffer,
     UniformBufferDynamic,
@@ -816,6 +827,7 @@ impl BindingType {
     }
 }
 
+#[derive(Debug)]
 pub struct Binding {
     pub binding: BindingType,
     pub stage: ShaderStage,
@@ -825,6 +837,7 @@ pub struct Binding {
 /// Pipeline
 ///////////////////////////////////////////////////////////////////////////////
 
+#[derive(Debug)]
 pub struct Pipeline {
     wgpu: wgpu::RenderPipeline,
 
@@ -933,8 +946,10 @@ impl BlendOp {
     }
 }
 
+#[derive(Debug)]
 pub struct Set<'a>(pub &'a [Binding]);
 
+#[derive(Debug)]
 pub struct PipelineLayout {
     pub sets: Vec<BindingGroupLayout>,
 }
@@ -952,6 +967,7 @@ pub trait AbstractPipeline<'a> {
     ) -> Option<(&'a UniformBuffer, Vec<Self::Uniforms>)>;
 }
 
+#[derive(Debug)]
 pub struct PipelineDescription<'a> {
     pub vertex_layout: &'a [VertexFormat],
     pub pipeline_layout: &'a [Set<'a>],
@@ -963,6 +979,7 @@ pub struct PipelineDescription<'a> {
 /// Frame
 ///////////////////////////////////////////////////////////////////////////////
 
+#[derive(Debug)]
 pub struct Frame {
     encoder: wgpu::CommandEncoder,
 }
@@ -1004,6 +1021,7 @@ impl Frame {
 /// Pass
 ///////////////////////////////////////////////////////////////////////////////
 
+#[derive(Debug)]
 pub struct Pass<'a> {
     wgpu: wgpu::RenderPass<'a>,
 }
@@ -1070,6 +1088,7 @@ impl<'a> Pass<'a> {
     }
 }
 
+#[derive(Debug)]
 pub enum PassOp {
     Clear(Rgba),
     Load(),
@@ -1093,6 +1112,7 @@ pub trait RenderTarget {
     fn zdepth_target(&self) -> &wgpu::TextureView;
 }
 
+#[derive(Debug)]
 pub struct SwapChainTexture<'a> {
     pub width: u32,
     pub height: u32,
@@ -1136,6 +1156,7 @@ impl Default for PresentMode {
 ///
 /// A `SwapChain` represents the image or series of images that will be presented to a [`Renderer`].
 /// A `SwapChain` may be created with [`Renderer::swap_chain`].
+#[derive(Debug)]
 pub struct SwapChain {
     pub width: u32,
     pub height: u32,
@@ -1186,6 +1207,7 @@ impl SwapChain {
 /// Renderer
 ///////////////////////////////////////////////////////////////////////////////
 
+#[derive(Debug)]
 pub struct Renderer {
     pub device: Device,
 }
@@ -1383,6 +1405,7 @@ where
 /// Device
 ///////////////////////////////////////////////////////////////////////////////
 
+#[derive(Debug)]
 pub struct Device {
     device: wgpu::Device,
     queue: wgpu::Queue,
