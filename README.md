@@ -5,20 +5,25 @@ rgx
 
 Introduction
 ------------
-**rgx** is a 2D graphics library built on top of [wgpu] and [Vulkan]. This
+**rgx** is a 2D graphics library built on top of [wgpu] and [Vulkan]/[Metal]. This
 library aims to be "mid-level" in that it provides an API that is higher level
-than Vulkan, but lower level than most 2D graphics libraries in the wild, by
+than Vulkan/Metal, but lower level than most 2D graphics libraries in the wild, by
 exposing the user to concepts such as *pipelines*, *buffers* and *swap chains*.
 The goal of **rgx** is to provide as simple an API as possible without
 sacrificing performance or control over the rendering pipeline.  See the
 `examples` directory to get a feel.
 
-At this stage, the focus is on 2D *bitmap* graphics and *sprite rendering*. In the
-future, support for 3D pipelines may be added.
+At this stage, the focus is on 2D *bitmap* graphics and *sprite rendering*. Basic
+shape rendering is also supported, but not the core strength of this library.
+In the future, text rendering and more complex vector rasterization may be
+supported - however, these are incredibly difficult to do correctly, and I would
+recommend looking at Mozilla's *pathfinder* project for these needs. **rgx**
+aims to do one thing really well, and that is bitmap rendering.
 
 [wgpu]: https://crates.io/crates/wgpu
 [WebGPU]: https://www.w3.org/community/gpu/
 [Vulkan]: https://www.khronos.org/vulkan/
+[Metal]: https://developer.apple.com/metal/
 
 Overview
 --------
@@ -41,6 +46,7 @@ their own pipelines and use them with **rgx**.
 * Off-screen rendering support
 * Custom shader support
 * Custom pipeline support
+* Built-in depth testing
 
 Usage
 -----
