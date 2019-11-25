@@ -1,3 +1,9 @@
+# v0.4.1
+
+commit d3021ba684d4fc7f131c82645cc8416212dbbc1c
+
+    Use `Bgra8` for pixel data in `Renderer::read`
+
 # v0.4.0
 
 commit 14947b71417973e620d9ba027b96c174b91e19ec
