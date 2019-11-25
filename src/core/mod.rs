@@ -12,7 +12,7 @@ pub use crate::rect::Rect;
 ///////////////////////////////////////////////////////////////////////////
 
 #[repr(C)]
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Debug)]
 pub struct Rgba8 {
     pub r: u8,
     pub g: u8,
