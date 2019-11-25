@@ -187,8 +187,11 @@ fn main() -> Result<(), std::io::Error> {
     r.read(&framebuffer.target, move |data| {
         let file = File::create("screenshot.png").unwrap();
         let png = PNGEncoder::new(file);
+        let (_, bytes, _) = unsafe { data.align_to::<u8>() };
 
-        png.encode(data, w, h, ColorType::RGBA(8)).unwrap();
+        // Nb. The blue and red channel are swapped, since our
+        // framebuffer data is in BGRA format.
+        png.encode(bytes, w, h, ColorType::BGRA(8)).unwrap();
     });
 
     Ok(())

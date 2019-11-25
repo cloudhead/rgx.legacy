@@ -1293,7 +1293,7 @@ impl Renderer {
 
     pub fn read<F>(&mut self, fb: &Framebuffer, f: F)
     where
-        F: 'static + FnOnce(&[u8]),
+        F: 'static + FnOnce(&[Bgra8]),
     {
         let mut encoder = self.device.create_command_encoder();
 
@@ -1334,7 +1334,11 @@ impl Renderer {
                 Ok(ref mapping) => {
                     buffer.extend_from_slice(mapping.data);
                     if buffer.len() == bytesize {
-                        f(unsafe { std::mem::transmute(buffer.as_slice()) });
+                        let (head, body, tail) = unsafe { buffer.align_to::<Bgra8>() };
+                        if !(head.is_empty() && tail.is_empty()) {
+                            panic!("Renderer::read: framebuffer is not a valid Bgra8 buffer");
+                        }
+                        f(body);
                     }
                 }
                 Err(ref err) => panic!("{:?}", err),
