@@ -620,6 +620,7 @@ impl Texture {
         buffer: &wgpu::Buffer,
         encoder: &mut wgpu::CommandEncoder,
     ) {
+        // XXX: THIS CAUSES THE VALIDATION ERROR
         encoder.copy_buffer_to_texture(
             wgpu::BufferCopyView {
                 buffer,
