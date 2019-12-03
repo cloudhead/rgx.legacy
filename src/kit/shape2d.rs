@@ -6,7 +6,7 @@ use crate::core;
 use crate::core::{Binding, BindingType, Rgba, Set, ShaderStage};
 use crate::rect::Rect;
 
-use crate::kit::{Geometry, Model, Rgba8, ZDepth};
+use crate::kit::{Geometry, Rgba8, ZDepth};
 
 ///////////////////////////////////////////////////////////////////////////
 // Uniforms
@@ -63,7 +63,6 @@ pub struct Pipeline {
     pipeline: core::Pipeline,
     bindings: core::BindingGroup,
     buf: core::UniformBuffer,
-    model: Model,
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -84,16 +83,10 @@ impl<'a> core::AbstractPipeline<'a> for Pipeline {
                 // Color
                 core::VertexFormat::UByte4,
             ],
-            pipeline_layout: &[
-                Set(&[Binding {
-                    binding: BindingType::UniformBuffer,
-                    stage: ShaderStage::Vertex,
-                }]),
-                Set(&[Binding {
-                    binding: BindingType::UniformBuffer,
-                    stage: ShaderStage::Vertex,
-                }]),
-            ],
+            pipeline_layout: &[Set(&[Binding {
+                binding: BindingType::UniformBuffer,
+                stage: ShaderStage::Vertex,
+            }])],
             // TODO: Use `env("CARGO_MANIFEST_DIR")`
             vertex_shader: include_bytes!("data/shape.vert.spv"),
             fragment_shader: include_bytes!("data/shape.frag.spv"),
@@ -103,7 +96,6 @@ impl<'a> core::AbstractPipeline<'a> for Pipeline {
     fn setup(pipeline: core::Pipeline, dev: &core::Device) -> Self {
         let transform = Matrix4::identity();
         let ortho = Matrix4::identity();
-        let model = Model::new(&pipeline.layout.sets[1], &[Matrix4::identity()], dev);
         let buf = dev.create_uniform_buffer(&[self::Uniforms { ortho, transform }]);
         let bindings = dev.create_binding_group(&pipeline.layout.sets[0], &[&buf]);
 
@@ -111,14 +103,12 @@ impl<'a> core::AbstractPipeline<'a> for Pipeline {
             pipeline,
             buf,
             bindings,
-            model,
         }
     }
 
     fn apply(&self, pass: &mut core::Pass) {
         pass.set_pipeline(&self.pipeline);
         pass.set_binding(&self.bindings, &[]);
-        pass.set_binding(&self.model.binding, &[]);
     }
 
     fn prepare(

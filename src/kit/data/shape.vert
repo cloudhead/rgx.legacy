@@ -5,10 +5,6 @@ layout(set = 0, binding = 0) uniform Globals {
 	mat4 transform;
 } global;
 
-layout(set = 1, binding = 0) uniform Model {
-	mat4 transform;
-} model;
-
 layout(location = 0) in vec3 position;
 layout(location = 1) in float angle;
 layout(location = 2) in vec2 center;
@@ -41,5 +37,5 @@ void main() {
 	vec2 r = rotate(position.xy, center, angle);
 
 	f_color = vec4(linearize(color.rgb), color.a);
-	gl_Position = global.ortho * global.transform * model.transform * vec4(r, position.z, 1.0);
+	gl_Position = global.ortho * global.transform * vec4(r, position.z, 1.0);
 }
