@@ -7,10 +7,12 @@ use rgx::math::Point2;
 
 use rgx::core::{Rect, Rgba};
 use rgx::kit::shape2d::*;
+use rgx::kit::ZDepth;
 
 fn bench_triangulate_circle() {
     Shape::Circle(
         Point2::new(0., 0.),
+        ZDepth::default(),
         1.,
         64,
         Stroke::new(1., Rgba::WHITE),
@@ -22,6 +24,7 @@ fn bench_triangulate_circle() {
 fn bench_triangulate_rectangle() {
     Shape::Rectangle(
         Rect::new(1., 1., 3., 3.),
+        ZDepth::default(),
         Rotation::ZERO,
         Stroke::new(1., Rgba::WHITE),
         Fill::Solid(Rgba::WHITE),
