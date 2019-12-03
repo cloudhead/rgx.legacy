@@ -6,7 +6,7 @@ use crate::core;
 use crate::core::{Binding, BindingType, Rgba, Set, ShaderStage};
 use crate::rect::Rect;
 
-use crate::kit::{Model, Rgba8, ZDepth};
+use crate::kit::{Geometry, Model, Rgba8, ZDepth};
 
 ///////////////////////////////////////////////////////////////////////////
 // Uniforms
@@ -348,15 +348,46 @@ impl Shape {
 
 #[derive(Copy, Clone, Debug)]
 pub struct Line {
-    pub p1: Vector2<f32>,
-    pub p2: Vector2<f32>,
+    pub p1: Point2<f32>,
+    pub p2: Point2<f32>,
 }
 
 impl Line {
     pub fn new(x1: f32, y1: f32, x2: f32, y2: f32) -> Self {
         Self {
-            p1: Vector2::new(x1, y1),
-            p2: Vector2::new(x2, y2),
+            p1: Point2::new(x1, y1),
+            p2: Point2::new(x2, y2),
+        }
+    }
+}
+
+impl Geometry for Line {
+    fn transform(self, m: Matrix4<f32>) -> Self {
+        Self {
+            p1: m * self.p1,
+            p2: m * self.p2,
+        }
+    }
+}
+
+impl std::ops::Mul<f32> for Line {
+    type Output = Self;
+
+    fn mul(self, n: f32) -> Self {
+        Self {
+            p1: self.p1 * n,
+            p2: self.p2 * n,
+        }
+    }
+}
+
+impl std::ops::Add<Vector2<f32>> for Line {
+    type Output = Self;
+
+    fn add(self, vec: Vector2<f32>) -> Self {
+        Self {
+            p1: self.p1 + vec,
+            p2: self.p2 + vec,
         }
     }
 }

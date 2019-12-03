@@ -5,9 +5,22 @@ pub use crate::core::{Bgra8, Rgba, Rgba8};
 pub mod shape2d;
 pub mod sprite2d;
 
-use crate::math::{Matrix4, Ortho};
+use crate::math::{Matrix4, Ortho, Point2};
 
 use std::time;
+
+pub trait Geometry {
+    fn transform(self, m: Matrix4<f32>) -> Self;
+}
+
+impl Geometry for crate::rect::Rect<f32> {
+    fn transform(self, m: Matrix4<f32>) -> Self {
+        let p1 = m * Point2::new(self.x1, self.y1);
+        let p2 = m * Point2::new(self.x2, self.y2);
+
+        Self::new(p1.x, p1.y, p2.x, p2.y)
+    }
+}
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum Origin {

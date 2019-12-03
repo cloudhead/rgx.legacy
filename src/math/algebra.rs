@@ -49,6 +49,15 @@ impl<S: Sized> Vector2<S> {
     }
 
     /// Dot product of two vectors.
+    ///
+    /// ```
+    /// use rgx::math::*;
+    ///
+    /// let v1 = Vector4::new(1, 3, -5, 4);
+    /// let v2 = Vector4::new(4, -2, -1, 3);
+    ///
+    /// assert_eq!(v1 * v2, 15);
+    /// ```
     #[inline]
     pub fn dot(a: Self, b: Self) -> <S as std::ops::Add>::Output
     where
@@ -152,6 +161,11 @@ impl<S> Vector3<S> {
     pub const fn new(x: S, y: S, z: S) -> Self {
         Vector3 { x, y, z }
     }
+
+    /// Extend vector to four dimensions.
+    pub fn extend(self, w: S) -> Vector4<S> {
+        Vector4::new(self.x, self.y, self.z, w)
+    }
 }
 
 /// 4D vector.
@@ -183,6 +197,17 @@ where
             z: self.z * s,
             w: self.w * s,
         }
+    }
+}
+
+impl<S> std::ops::Mul<Vector4<S>> for Vector4<S>
+where
+    S: std::ops::Mul<Output = S> + std::ops::Add<Output = S> + Copy,
+{
+    type Output = S;
+
+    fn mul(self, other: Vector4<S>) -> S {
+        other.x * self.x + other.y * self.y + other.z * self.z + other.w * self.w
     }
 }
 
@@ -242,6 +267,20 @@ where
     }
 }
 
+impl<S> std::ops::Mul<S> for Point2<S>
+where
+    S: std::ops::Mul<Output = S> + Copy,
+{
+    type Output = Self;
+
+    fn mul(self, s: S) -> Self {
+        Self {
+            x: self.x * s,
+            y: self.y * s,
+        }
+    }
+}
+
 impl<S> std::ops::Add<Vector2<S>> for Point2<S>
 where
     S: std::ops::Add<Output = S> + Copy,
@@ -264,6 +303,20 @@ where
 
     fn sub(self, other: Vector2<S>) -> Self {
         Self {
+            x: self.x - other.x,
+            y: self.y - other.y,
+        }
+    }
+}
+
+impl<S> std::ops::Sub<Point2<S>> for Point2<S>
+where
+    S: std::ops::Sub<Output = S> + Copy,
+{
+    type Output = Vector2<S>;
+
+    fn sub(self, other: Point2<S>) -> Vector2<S> {
+        Vector2 {
             x: self.x - other.x,
             y: self.y - other.y,
         }
@@ -327,6 +380,17 @@ impl<S: Copy + Zero + One> Matrix4<S> {
         )
     }
 
+    #[inline]
+    pub fn row(&self, n: usize) -> Vector4<S> {
+        match n {
+            0 => Vector4::new(self.x.x, self.y.x, self.z.x, self.w.x),
+            1 => Vector4::new(self.x.y, self.y.y, self.z.y, self.w.y),
+            2 => Vector4::new(self.x.z, self.y.z, self.z.z, self.w.z),
+            3 => Vector4::new(self.x.w, self.y.w, self.z.w, self.w.w),
+            _ => panic!("Matrix4::row: invalid row number: {}", n),
+        }
+    }
+
     /// Create a homogeneous transformation matrix from a scale value.
     #[inline]
     pub fn from_scale(value: S) -> Matrix4<S> {
@@ -366,6 +430,42 @@ where
             z: a * rhs.z.x + b * rhs.z.y + c * rhs.z.z + d * rhs.z.w,
             w: a * rhs.w.x + b * rhs.w.y + c * rhs.w.z + d * rhs.w.w,
         }
+    }
+}
+
+/// Transform a [`Vector3`] with a [`Matrix4`].
+///
+/// ```
+/// use rgx::math::*;
+/// let m = Matrix4::from_translation(Vector3::new(8., 8., 0.));
+/// let v = Vector3::new(1., 1., 0.);
+///
+/// assert_eq!(m * v, Vector3::new(9., 9., 0.));
+/// ```
+impl std::ops::Mul<Vector3<f32>> for Matrix4<f32> {
+    type Output = Vector3<f32>;
+
+    fn mul(self, vec: Vector3<f32>) -> Vector3<f32> {
+        let vec = vec.extend(1.);
+        Vector3::new(self.row(0) * vec, self.row(1) * vec, self.row(2) * vec)
+    }
+}
+
+/// Transform a [`Point2`] with a [`Matrix4`].
+///
+/// ```
+/// use rgx::math::*;
+/// let m = Matrix4::from_translation(Vector3::new(8., 8., 0.));
+/// let p = Point2::new(1., 1.);
+///
+/// assert_eq!(m * p, Point2::new(9., 9.));
+/// ```
+impl std::ops::Mul<Point2<f32>> for Matrix4<f32> {
+    type Output = Point2<f32>;
+
+    fn mul(self, p: Point2<f32>) -> Point2<f32> {
+        let vec = Vector4::new(p.x, p.y, 0., 1.);
+        Point2::new(self.row(0) * vec, self.row(1) * vec)
     }
 }
 
