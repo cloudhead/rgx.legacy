@@ -70,45 +70,6 @@ impl Pipeline {
 
 //////////////////////////////////////////////////////////////////////////
 
-pub struct Command<'a>(&'a core::VertexBuffer, &'a core::BindingGroup, Matrix4<f32>);
-
-pub struct Frame<'a> {
-    commands: Vec<Command<'a>>,
-    transforms: NonEmpty<Matrix4<f32>>,
-}
-
-impl<'a> Frame<'a> {
-    pub fn draw(&mut self, buffer: &'a core::VertexBuffer, binding: &'a core::BindingGroup) {
-        self.commands
-            .push(Command(buffer, binding, *self.transforms.last()));
-    }
-
-    pub fn transform<F>(&mut self, t: Matrix4<f32>, inner: F)
-    where
-        F: FnOnce(&mut Self),
-    {
-        self.transforms.push(*self.transforms.last() * t);
-        inner(self);
-        self.transforms.pop();
-    }
-
-    pub fn translate<F>(&mut self, x: f32, y: f32, inner: F)
-    where
-        F: FnOnce(&mut Self),
-    {
-        self.transform(Matrix4::from_translation(Vector3::new(x, y, 0.)), inner);
-    }
-
-    pub fn scale<F>(&mut self, s: f32, inner: F)
-    where
-        F: FnOnce(&mut Self),
-    {
-        self.transform(Matrix4::from_scale(s), inner);
-    }
-}
-
-//////////////////////////////////////////////////////////////////////////
-
 impl<'a> core::AbstractPipeline<'a> for Pipeline {
     type PrepareContext = Matrix4<f32>;
     type Uniforms = self::Uniforms;
