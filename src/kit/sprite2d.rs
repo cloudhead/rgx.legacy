@@ -1,13 +1,9 @@
-use nonempty::NonEmpty;
-
 use crate::core;
 use crate::core::{Binding, BindingType, Rgba, Set, ShaderStage};
 use crate::kit::ZDepth;
-use crate::rect::Rect;
-
+use crate::kit::{Repeat, Rgba8};
 use crate::math::*;
-
-use crate::kit::{Model, Repeat, Rgba8};
+use crate::rect::Rect;
 
 ///////////////////////////////////////////////////////////////////////////
 // Uniforms
@@ -16,8 +12,8 @@ use crate::kit::{Model, Repeat, Rgba8};
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct Uniforms {
-    pub ortho: Matrix4<f32>,
-    pub transform: Matrix4<f32>,
+    ortho: Matrix4<f32>,
+    transform: Matrix4<f32>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -26,7 +22,7 @@ pub struct Uniforms {
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
-pub struct Vertex {
+pub(crate) struct Vertex {
     position: Vector3<f32>,
     uv: Vector2<f32>,
     color: Rgba8,
@@ -52,7 +48,6 @@ pub struct Pipeline {
     pipeline: core::Pipeline,
     bindings: core::BindingGroup,
     buf: core::UniformBuffer,
-    model: Model,
 }
 
 impl Pipeline {
@@ -64,7 +59,7 @@ impl Pipeline {
     ) -> core::BindingGroup {
         renderer
             .device
-            .create_binding_group(&self.pipeline.layout.sets[2], &[texture, sampler])
+            .create_binding_group(&self.pipeline.layout.sets[1], &[texture, sampler])
     }
 }
 
@@ -83,10 +78,6 @@ impl<'a> core::AbstractPipeline<'a> for Pipeline {
                 core::VertexFormat::Float,
             ],
             pipeline_layout: &[
-                Set(&[Binding {
-                    binding: BindingType::UniformBuffer,
-                    stage: ShaderStage::Vertex,
-                }]),
                 Set(&[Binding {
                     binding: BindingType::UniformBuffer,
                     stage: ShaderStage::Vertex,
@@ -111,7 +102,6 @@ impl<'a> core::AbstractPipeline<'a> for Pipeline {
     fn setup(pipeline: core::Pipeline, dev: &core::Device) -> Self {
         let transform = Matrix4::identity();
         let ortho = Matrix4::identity();
-        let model = Model::new(&pipeline.layout.sets[1], &[Matrix4::identity()], dev);
         let buf = dev.create_uniform_buffer(&[self::Uniforms { ortho, transform }]);
         let bindings = dev.create_binding_group(&pipeline.layout.sets[0], &[&buf]);
 
@@ -119,14 +109,12 @@ impl<'a> core::AbstractPipeline<'a> for Pipeline {
             pipeline,
             buf,
             bindings,
-            model,
         }
     }
 
     fn apply(&self, pass: &mut core::Pass) {
         pass.set_pipeline(&self.pipeline);
         pass.set_binding(&self.bindings, &[]);
-        pass.set_binding(&self.model.binding, &[]);
     }
 
     fn prepare(
@@ -197,7 +185,7 @@ impl Batch {
         self.size += 1;
     }
 
-    pub fn vertices(&self) -> Vec<Vertex> {
+    pub(crate) fn vertices(&self) -> Vec<Vertex> {
         let mut buf = Vec::with_capacity(6 * self.items.len());
 
         for (src, dst, ZDepth(z), rgba, o, rep) in self.items.iter() {
