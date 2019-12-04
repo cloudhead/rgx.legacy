@@ -1,3 +1,22 @@
+# v0.5.0
+
+commit c3de863cb8e6e8d925be5418f85adb3d1009ae6b
+
+    Implement `TransformBuffer`
+
+    This replaces the old `Model`, and implements a transform
+    buffer for use with dynamic uniform buffers.
+
+commit 4a585ec89cd5a2a12f7f13d0f762ce3ef5b883e3
+
+    Implement `Geometry` trait
+
+    * `Geometry` trait for things that can be transformed
+    * Change `Line` to use `Point2`
+    * Implement a few extra methods in `math` module
+
+    This enables transforming `Line` and `Rect` with a `Matrix4`.
+
 # v0.4.1
 
 commit d3021ba684d4fc7f131c82645cc8416212dbbc1c
