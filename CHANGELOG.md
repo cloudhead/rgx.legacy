@@ -1,3 +1,9 @@
+# v0.6.0
+
+commit 1f5e52bf2751be680fef6949604dfa5563cbb84c
+
+    Add `Origin` parameter to `kit::ortho`
+
 # v0.5.0
 
 commit c3de863cb8e6e8d925be5418f85adb3d1009ae6b
