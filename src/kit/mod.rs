@@ -23,14 +23,13 @@ impl Geometry for crate::rect::Rect<f32> {
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum Origin {
-    Center,
     BottomLeft,
     TopLeft,
 }
 
 impl Default for Origin {
     fn default() -> Self {
-        Self::BottomLeft
+        Self::TopLeft
     }
 }
 
@@ -181,12 +180,16 @@ impl<T> Animation<T> {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-pub fn ortho(w: u32, h: u32) -> Matrix4<f32> {
+pub fn ortho(w: u32, h: u32, origin: Origin) -> Matrix4<f32> {
+    let (top, bottom) = match origin {
+        Origin::BottomLeft => (h as f32, 0.),
+        Origin::TopLeft => (0., h as f32),
+    };
     Ortho::<f32> {
         left: 0.0,
         right: w as f32,
-        bottom: h as f32,
-        top: 0.0,
+        bottom,
+        top,
         near: -1.0,
         far: 1.0,
     }

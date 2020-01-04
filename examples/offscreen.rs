@@ -213,7 +213,11 @@ fn main() -> Result<(), std::io::Error> {
 
             let out = textures.next();
 
-            r.update_pipeline(&offscreen, kit::ortho(out.width, out.height), &mut frame);
+            r.update_pipeline(
+                &offscreen,
+                kit::ortho(out.width, out.height, Default::default()),
+                &mut frame,
+            );
             r.update_pipeline(&onscreen, Rgba::new(0.2, 0.2, 0.0, 1.0), &mut frame);
 
             ///////////////////////////////////////////////////////////////////////////

@@ -121,7 +121,11 @@ fn main() -> Result<(), std::io::Error> {
             // Draw frame
             ///////////////////////////////////////////////////////////////////////////
 
-            r.update_pipeline(&pip, kit::ortho(out.width, out.height), &mut frame);
+            r.update_pipeline(
+                &pip,
+                kit::ortho(out.width, out.height, Default::default()),
+                &mut frame,
+            );
 
             {
                 let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &out);

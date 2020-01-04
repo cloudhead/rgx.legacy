@@ -155,7 +155,11 @@ fn main() -> Result<(), std::io::Error> {
     // Update pipeline
     ///////////////////////////////////////////////////////////////////////////
 
-    r.update_pipeline(&offscreen, kit::ortho(out.width, out.height), &mut frame);
+    r.update_pipeline(
+        &offscreen,
+        kit::ortho(out.width, out.height, Default::default()),
+        &mut frame,
+    );
     r.update_pipeline(&onscreen, Rgba::TRANSPARENT, &mut frame);
 
     ///////////////////////////////////////////////////////////////////////////

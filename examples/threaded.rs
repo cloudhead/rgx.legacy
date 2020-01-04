@@ -66,7 +66,7 @@ fn main() -> Result<(), std::io::Error> {
 
             renderer.update_pipeline(
                 &pipeline,
-                kit::ortho(output.width, output.height),
+                kit::ortho(output.width, output.height, Default::default()),
                 &mut frame,
             );
 

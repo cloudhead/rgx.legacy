@@ -142,7 +142,11 @@ fn main() -> Result<(), std::io::Error> {
 
                 let out = textures.next();
 
-                r.update_pipeline(&pip, kit::ortho(out.width, out.height), &mut frame);
+                r.update_pipeline(
+                    &pip,
+                    kit::ortho(out.width, out.height, Default::default()),
+                    &mut frame,
+                );
 
                 ///////////////////////////////////////////////////////////////////////////
                 // Draw frame
