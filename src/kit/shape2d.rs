@@ -26,10 +26,10 @@ pub struct Uniforms {
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 pub struct Vertex {
-    position: Vector3<f32>,
-    angle: f32,
-    center: Vector2<f32>,
-    color: Rgba8,
+    pub position: Vector3<f32>,
+    pub angle: f32,
+    pub center: Vector2<f32>,
+    pub color: Rgba8,
 }
 
 impl Vertex {

@@ -12,8 +12,8 @@ use crate::rect::Rect;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct Uniforms {
-    ortho: Matrix4<f32>,
-    transform: Matrix4<f32>,
+    pub ortho: Matrix4<f32>,
+    pub transform: Matrix4<f32>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -22,11 +22,11 @@ pub struct Uniforms {
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
-pub(crate) struct Vertex {
-    position: Vector3<f32>,
-    uv: Vector2<f32>,
-    color: Rgba8,
-    opacity: f32,
+pub struct Vertex {
+    pub position: Vector3<f32>,
+    pub uv: Vector2<f32>,
+    pub color: Rgba8,
+    pub opacity: f32,
 }
 
 impl Vertex {
@@ -185,7 +185,7 @@ impl Batch {
         self.size += 1;
     }
 
-    pub(crate) fn vertices(&self) -> Vec<Vertex> {
+    pub fn vertices(&self) -> Vec<Vertex> {
         let mut buf = Vec::with_capacity(6 * self.items.len());
 
         for (src, dst, ZDepth(z), rgba, o, rep) in self.items.iter() {

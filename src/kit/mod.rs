@@ -28,6 +28,12 @@ pub enum Origin {
     TopLeft,
 }
 
+impl Default for Origin {
+    fn default() -> Self {
+        Self::BottomLeft
+    }
+}
+
 #[derive(PartialEq, Clone, Debug)]
 pub struct Repeat {
     pub x: f32,

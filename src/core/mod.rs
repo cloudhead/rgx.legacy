@@ -11,6 +11,7 @@ pub use crate::rect::Rect;
 // Rgba8
 ///////////////////////////////////////////////////////////////////////////
 
+/// RGBA color with 8-bit channels.
 #[repr(C)]
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Debug)]
 pub struct Rgba8 {
@@ -58,8 +59,14 @@ impl Rgba8 {
         a: 0xff,
     };
 
+    /// Create a new [`Rgba8`] color from individual channels.
     pub const fn new(r: u8, g: u8, b: u8, a: u8) -> Self {
         Self { r, g, b, a }
+    }
+
+    /// Invert the color.
+    pub fn invert(self) -> Self {
+        Self::new(0xff - self.r, 0xff - self.g, 0xff - self.b, self.a)
     }
 
     /// Return the color with a changed alpha.
@@ -74,6 +81,7 @@ impl Rgba8 {
         Self::new(self.r, self.g, self.b, a)
     }
 
+    /// Given a byte slice, returns a slice of [`Rgba8`] values.
     pub fn align<T: AsRef<[u8]>>(bytes: &T) -> &[Rgba8] {
         let bytes = bytes.as_ref();
         let (head, body, tail) = unsafe { bytes.align_to::<Rgba8>() };
@@ -85,16 +93,26 @@ impl Rgba8 {
     }
 }
 
+/// ```
+/// use rgx::core::Rgba8;
+///
+/// assert_eq!(format!("{}", Rgba8::new(0xff, 0x0, 0xa, 0xff)), "#ff000a");
+/// ```
 impl fmt::Display for Rgba8 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "#{:02x}{:02x}{:02x}{:02x}",
-            self.r, self.g, self.b, self.a
-        )
+        write!(f, "#{:02x}{:02x}{:02x}", self.r, self.g, self.b)?;
+        if self.a != 0xff {
+            write!(f, "{:02x}", self.a)?;
+        }
+        Ok(())
     }
 }
 
+/// ```
+/// use rgx::core::{Rgba8, Rgba};
+///
+/// assert_eq!(Rgba8::from(Rgba::RED), Rgba8::RED);
+/// ```
 impl From<Rgba> for Rgba8 {
     fn from(rgba: Rgba) -> Self {
         Self {
@@ -115,8 +133,8 @@ impl From<u32> for Rgba8 {
 impl FromStr for Rgba8 {
     type Err = std::num::ParseIntError;
 
-    /// Parse a color code of the form '#ffffff' into an
-    /// instance of 'Rgba8'. The alpha is always 0xff.
+    /// Parse a color code of the form `#ffffff` into an
+    /// instance of `Rgba8`. The alpha is always `0xff`.
     fn from_str(hex_code: &str) -> Result<Self, Self::Err> {
         let r: u8 = u8::from_str_radix(&hex_code[1..3], 16)?;
         let g: u8 = u8::from_str_radix(&hex_code[3..5], 16)?;
@@ -127,7 +145,7 @@ impl FromStr for Rgba8 {
     }
 }
 
-/// A BGRA color, used when dealing with framebuffers.
+/// A BGRA color with 8-bit channels, used when dealing with framebuffers.
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Bgra8 {
@@ -144,6 +162,7 @@ impl Bgra8 {
         Bgra8 { b, g, r, a }
     }
 
+    /// Given a byte slice, returns a slice of `Bgra8` values.
     pub fn align<T: AsRef<[u8]>>(bytes: &T) -> &[Self] {
         let bytes = bytes.as_ref();
         let (head, body, tail) = unsafe { bytes.align_to::<Self>() };
@@ -185,10 +204,11 @@ pub trait Draw {
     fn draw(&self, binding: &BindingGroup, pass: &mut Pass);
 }
 
-///////////////////////////////////////////////////////////////////////////////
-/// Rgba
-///////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+// Rgba
+//////////////////////////////////////////////////////////////////////////////
 
+/// A normalized RGBA color.
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Rgba {
@@ -199,27 +219,21 @@ pub struct Rgba {
 }
 
 impl Rgba {
-    pub const WHITE: Self = Self {
-        r: 1.0,
-        g: 1.0,
-        b: 1.0,
-        a: 1.0,
-    };
-    pub const BLACK: Self = Self {
-        r: 0.0,
-        g: 0.0,
-        b: 0.0,
-        a: 1.0,
-    };
-    pub const TRANSPARENT: Self = Self {
-        r: 0.0,
-        g: 0.0,
-        b: 0.0,
-        a: 0.0,
-    };
+    pub const RED: Self = Rgba::new(1.0, 0.0, 0.0, 1.0);
+    pub const GREEN: Self = Rgba::new(0.0, 1.0, 0.0, 1.0);
+    pub const BLUE: Self = Rgba::new(0.0, 0.0, 1.0, 1.0);
+    pub const WHITE: Self = Rgba::new(1.0, 1.0, 1.0, 1.0);
+    pub const BLACK: Self = Rgba::new(0.0, 0.0, 0.0, 1.0);
+    pub const TRANSPARENT: Self = Rgba::new(0.0, 0.0, 0.0, 0.0);
 
+    /// Create a new `Rgba` color.
     pub const fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
         Self { r, g, b, a }
+    }
+
+    /// Invert the color.
+    pub fn invert(self) -> Self {
+        Self::new(1.0 - self.r, 1.0 - self.g, 1.0 - self.b, self.a)
     }
 
     fn to_wgpu(&self) -> wgpu::Color {
@@ -247,16 +261,17 @@ impl From<Rgba8> for Rgba {
 /// Shaders
 ///////////////////////////////////////////////////////////////////////////////
 
+/// A GPU Shader.
 #[derive(Debug)]
 pub struct Shader {
     module: wgpu::ShaderModule,
 }
 
+/// Shader stage.
 #[derive(Debug, PartialEq, Eq)]
 pub enum ShaderStage {
     Vertex,
     Fragment,
-    Compute,
 }
 
 impl ShaderStage {
@@ -264,7 +279,6 @@ impl ShaderStage {
         match self {
             ShaderStage::Vertex => wgpu::ShaderStage::VERTEX,
             ShaderStage::Fragment => wgpu::ShaderStage::FRAGMENT,
-            ShaderStage::Compute => wgpu::ShaderStage::COMPUTE,
         }
     }
 }
@@ -307,7 +321,7 @@ impl BindingGroup {
     }
 }
 
-/// The layout of a 'BindingGroup'.
+/// The layout of a `BindingGroup`.
 #[derive(Debug)]
 pub struct BindingGroupLayout {
     wgpu: wgpu::BindGroupLayout,
@@ -358,6 +372,7 @@ impl Bind for UniformBuffer {
 /// ZBuffer
 ///////////////////////////////////////////////////////////////////////////////
 
+/// Z-Depth buffer.
 #[derive(Debug)]
 pub struct ZBuffer {
     pub texture: Texture,
@@ -371,6 +386,7 @@ impl ZBuffer {
 /// Framebuffer
 ///////////////////////////////////////////////////////////////////////////////
 
+/// Off-screen framebuffer. Can be used as a render target in render passes.
 #[derive(Debug)]
 pub struct Framebuffer {
     pub texture: Texture,
@@ -378,14 +394,17 @@ pub struct Framebuffer {
 }
 
 impl Framebuffer {
+    /// Size in pixels of the framebuffer.
     pub fn size(&self) -> usize {
         (self.texture.w * self.texture.h) as usize
     }
 
+    /// Framebuffer width, in pixels.
     pub fn width(&self) -> u32 {
         self.texture.w
     }
 
+    /// Framebuffer height, in pixels.
     pub fn height(&self) -> u32 {
         self.texture.h
     }
@@ -1107,8 +1126,11 @@ impl PassOp {
 /// SwapChain & RenderTarget
 ///////////////////////////////////////////////////////////////////////////////
 
+/// Can be rendered to in a pass.
 pub trait RenderTarget {
+    /// Color component.
     fn color_target(&self) -> &wgpu::TextureView;
+    /// Depth component.
     fn zdepth_target(&self) -> &wgpu::TextureView;
 }
 
