@@ -178,6 +178,12 @@ pub struct Vector4<S> {
     pub w: S,
 }
 
+impl From<Vector4<f32>> for [f32; 4] {
+    fn from(mat: Vector4<f32>) -> Self {
+        unsafe { std::mem::transmute(mat) }
+    }
+}
+
 impl<S> Vector4<S> {
     pub const fn new(x: S, y: S, z: S, w: S) -> Self {
         Vector4 { x, y, z, w }
@@ -337,6 +343,12 @@ pub struct Matrix4<S> {
     pub z: Vector4<S>,
     /// The fourth column of the matrix.
     pub w: Vector4<S>,
+}
+
+impl From<Matrix4<f32>> for [[f32; 4]; 4] {
+    fn from(mat: Matrix4<f32>) -> Self {
+        unsafe { std::mem::transmute(mat) }
+    }
 }
 
 impl<S: Copy + Zero + One> Matrix4<S> {
