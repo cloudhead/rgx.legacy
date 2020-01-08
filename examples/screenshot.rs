@@ -112,8 +112,6 @@ impl FramebufferPipeline {
 }
 
 fn main() -> Result<(), std::io::Error> {
-    env_logger::init();
-
     let event_loop = EventLoop::new();
     let window = Window::new(&event_loop).unwrap();
 
@@ -122,7 +120,7 @@ fn main() -> Result<(), std::io::Error> {
     ///////////////////////////////////////////////////////////////////////////
 
     let mut r = Renderer::new(&window)?;
-    let size = window.inner_size().to_physical(window.hidpi_factor());
+    let size = window.inner_size();
 
     let (sw, sh) = (size.width as u32, size.height as u32);
     let framebuffer = Framebuffer::new(sw, sh, &r);

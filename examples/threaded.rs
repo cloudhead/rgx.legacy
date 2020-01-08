@@ -19,11 +19,9 @@ use winit::{
 };
 
 fn main() -> Result<(), std::io::Error> {
-    env_logger::init();
-
     let event_loop = EventLoop::new();
     let window = Window::new(&event_loop).unwrap();
-    let mut size = window.inner_size().to_physical(window.hidpi_factor());
+    let mut size = window.inner_size();
 
     // Setup renderer
     let mut renderer = Renderer::new(&window)?;
@@ -88,7 +86,7 @@ fn main() -> Result<(), std::io::Error> {
                 m.1 = position.y as f32;
             }
             WindowEvent::Resized(s) => {
-                size = s.to_physical(window.hidpi_factor());
+                size = s;
 
                 let mut shared = shared_size.lock().unwrap();
                 *shared = size;
@@ -111,7 +109,7 @@ fn main() -> Result<(), std::io::Error> {
             }
             _ => {}
         },
-        Event::EventsCleared => {
+        Event::MainEventsCleared => {
             *control_flow = ControlFlow::Poll;
         }
         _ => {}

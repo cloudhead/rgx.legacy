@@ -13,11 +13,9 @@ use winit::{
 };
 
 fn main() -> Result<(), std::io::Error> {
-    env_logger::init();
-
     let event_loop = EventLoop::new();
     let window = Window::new(&event_loop).unwrap();
-    let size = window.inner_size().to_physical(window.hidpi_factor());
+    let size = window.inner_size();
 
     // Setup renderer
     let mut renderer = Renderer::new(&window)?;
@@ -85,7 +83,7 @@ fn main() -> Result<(), std::io::Error> {
             }
             _ => {}
         },
-        Event::EventsCleared => {
+        Event::MainEventsCleared => {
             let output = textures.next();
             let mut frame = renderer.frame();
 

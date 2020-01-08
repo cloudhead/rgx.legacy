@@ -20,8 +20,6 @@ use winit::{
 use std::time::{Duration, Instant};
 
 fn main() -> Result<(), std::io::Error> {
-    env_logger::init();
-
     let event_loop = EventLoop::new();
     let window = Window::new(&event_loop).unwrap();
 
@@ -30,7 +28,7 @@ fn main() -> Result<(), std::io::Error> {
     ///////////////////////////////////////////////////////////////////////////
 
     let mut r = Renderer::new(&window)?;
-    let mut win = window.inner_size().to_physical(window.hidpi_factor());
+    let mut win = window.inner_size();
     let pip: kit::sprite2d::Pipeline = r.pipeline(Blending::default());
 
     ///////////////////////////////////////////////////////////////////////////
@@ -127,14 +125,14 @@ fn main() -> Result<(), std::io::Error> {
                     *control_flow = ControlFlow::Exit;
                 }
                 WindowEvent::Resized(size) => {
-                    win = size.to_physical(window.hidpi_factor());
+                    win = size;
 
                     let (w, h) = (win.width as u32, win.height as u32);
                     textures = r.swap_chain(w, h, PresentMode::default());
                 }
                 _ => (),
             },
-            Event::EventsCleared => {
+            Event::MainEventsCleared => {
                 *control_flow = ControlFlow::Poll;
 
                 let sw = sprite_w as f32 * scale;
@@ -161,7 +159,7 @@ fn main() -> Result<(), std::io::Error> {
                 // Prepare sprite batch
                 ///////////////////////////////////////////////////////////////////////////
 
-                let win = window.inner_size().to_physical(window.hidpi_factor());
+                let win = window.inner_size();
 
                 let mut batch = sprite2d::Batch::new(sprite.w, sprite.h);
 

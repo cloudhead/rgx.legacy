@@ -111,8 +111,6 @@ impl FramebufferPipeline {
 }
 
 fn main() -> Result<(), std::io::Error> {
-    env_logger::init();
-
     let event_loop = EventLoop::new();
     let window = Window::new(&event_loop).unwrap();
 
@@ -121,7 +119,7 @@ fn main() -> Result<(), std::io::Error> {
     ///////////////////////////////////////////////////////////////////////////
 
     let mut r = Renderer::new(&window)?;
-    let size = window.inner_size().to_physical(window.hidpi_factor());
+    let size = window.inner_size();
 
     let (sw, sh) = (size.width as u32, size.height as u32);
     let offscreen: kit::sprite2d::Pipeline = r.pipeline(Blending::default());
@@ -191,14 +189,14 @@ fn main() -> Result<(), std::io::Error> {
                 *control_flow = ControlFlow::Exit;
             }
             WindowEvent::Resized(size) => {
-                let physical = size.to_physical(window.hidpi_factor());
+                let physical = size;
                 let (w, h) = (physical.width as u32, physical.height as u32);
 
                 textures = r.swap_chain(w, h, PresentMode::default());
             }
             _ => {}
         },
-        Event::EventsCleared => {
+        Event::MainEventsCleared => {
             *control_flow = ControlFlow::Wait;
 
             ///////////////////////////////////////////////////////////////////////////

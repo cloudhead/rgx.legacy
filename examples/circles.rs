@@ -15,8 +15,6 @@ use winit::{
 };
 
 fn main() -> Result<(), std::io::Error> {
-    env_logger::init();
-
     let event_loop = EventLoop::new();
     let window = Window::new(&event_loop).unwrap();
 
@@ -25,7 +23,7 @@ fn main() -> Result<(), std::io::Error> {
     ///////////////////////////////////////////////////////////////////////////
 
     let mut r = Renderer::new(&window)?;
-    let mut win = window.inner_size().to_physical(window.hidpi_factor());
+    let mut win = window.inner_size();
 
     let pip: kit::shape2d::Pipeline = r.pipeline(Blending::default());
     let mut chain = r.swap_chain(win.width as u32, win.height as u32, PresentMode::default());
@@ -56,21 +54,21 @@ fn main() -> Result<(), std::io::Error> {
                 _ => {}
             },
             WindowEvent::CursorMoved { position, .. } => {
-                mx = position.x;
-                my = position.y;
+                mx = position.x as f32;
+                my = position.y as f32;
             }
             WindowEvent::CloseRequested => {
                 *control_flow = ControlFlow::Exit;
             }
             WindowEvent::Resized(size) => {
-                win = size.to_physical(window.hidpi_factor());
+                win = size;
 
                 let (w, h) = (win.width as u32, win.height as u32);
                 chain = r.swap_chain(w, h, PresentMode::default());
             }
             _ => {}
         },
-        Event::EventsCleared => {
+        Event::MainEventsCleared => {
             *control_flow = ControlFlow::Wait;
 
             let rows = (win.height as f32 / (rad * 2.)) as u32;
@@ -81,7 +79,10 @@ fn main() -> Result<(), std::io::Error> {
             ///////////////////////////////////////////////////////////////////////////
 
             let mut batch = Batch::new();
-            let cursor = Vector2::new((mx / win.width) as f32, 1. - (my / win.height) as f32);
+            let cursor = Vector2::new(
+                (mx / win.width as f32) as f32,
+                1. - (my / win.height as f32) as f32,
+            );
 
             for i in 0..rows {
                 let y = i as f32 * rad * 2.;
