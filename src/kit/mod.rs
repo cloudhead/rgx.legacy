@@ -107,10 +107,11 @@ impl<T> Animation<T> {
     }
 
     pub fn step(&mut self, delta: time::Duration) {
-        if let AnimationState::Playing(_, elapsed) = self.state {
+        if let AnimationState::Playing(current, elapsed) = self.state {
             let elapsed = elapsed + delta;
             let fraction = elapsed.as_micros() / self.delay.as_micros();
-            self.state = AnimationState::Playing(fraction as u64, elapsed);
+            let next = u64::min(current + 1, fraction as u64); // Don't skip frames.
+            self.state = AnimationState::Playing(next, elapsed);
         }
     }
 
