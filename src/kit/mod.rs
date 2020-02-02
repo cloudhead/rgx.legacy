@@ -56,6 +56,12 @@ impl ZDepth {
     pub const ZERO: Self = ZDepth(0.0);
 }
 
+impl From<f32> for ZDepth {
+    fn from(other: f32) -> Self {
+        ZDepth(other)
+    }
+}
+
 impl Default for ZDepth {
     fn default() -> Self {
         Self::ZERO
