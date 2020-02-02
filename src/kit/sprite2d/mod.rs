@@ -42,7 +42,7 @@ pub struct Sprite {
     pub src: Rect<f32>,
     pub dst: Rect<f32>,
     pub zdepth: ZDepth,
-    pub tint: Rgba,
+    pub color: Rgba,
     pub alpha: f32,
     pub repeat: Repeat,
 }
@@ -56,8 +56,8 @@ impl Sprite {
         }
     }
 
-    pub fn tint(mut self, color: Rgba) -> Self {
-        self.tint = color;
+    pub fn color(mut self, color: Rgba) -> Self {
+        self.color = color;
         self
     }
 
@@ -118,7 +118,7 @@ impl Batch {
         view.push(
             Sprite::new(src, dst)
                 .zdepth(zdepth)
-                .tint(rgba)
+                .color(rgba)
                 .alpha(alpha)
                 .repeat(repeat.x, repeat.y),
         );
@@ -149,7 +149,7 @@ impl Batch {
         self.items.push(
             Sprite::new(src, dst)
                 .zdepth(depth)
-                .tint(rgba)
+                .color(rgba)
                 .alpha(alpha)
                 .repeat(repeat.x, repeat.y),
         );
@@ -163,7 +163,7 @@ impl Batch {
             src,
             dst,
             zdepth,
-            tint,
+            color,
             alpha,
             repeat,
         } in self.items.iter()
@@ -177,7 +177,7 @@ impl Batch {
             let rx2: f32 = src.x2 / self.w as f32;
             let ry2: f32 = src.y2 / self.h as f32;
 
-            let c: Rgba8 = (*tint).into();
+            let c: Rgba8 = (*color).into();
 
             // TODO: Use an index buffer
             buf.extend_from_slice(&[
@@ -217,7 +217,7 @@ mod test {
         let mut batch = Batch::new(32, 32);
         batch.push(
             Sprite::new(Rect::origin(32., 32.), Rect::new(32., 32., 64., 64.))
-                .tint(Rgba::BLUE)
+                .color(Rgba::BLUE)
                 .alpha(0.5)
                 .zdepth(0.1)
                 .repeat(8., 8.),
