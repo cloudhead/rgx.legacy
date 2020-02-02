@@ -26,6 +26,7 @@ pub struct Vector2<S> {
 }
 
 impl<S: Sized> Vector2<S> {
+    #[inline]
     pub const fn new(x: S, y: S) -> Self {
         Vector2 { x, y }
     }
@@ -100,6 +101,13 @@ impl<S: Zero + Copy + PartialEq> Zero for Vector2<S> {
     }
 }
 
+impl<T: Copy> From<[T; 2]> for Vector2<T> {
+    #[inline]
+    fn from(array: [T; 2]) -> Self {
+        Vector2::new(array[0], array[1])
+    }
+}
+
 impl<S> std::ops::Add<Vector2<S>> for Vector2<S>
 where
     S: std::ops::Add<Output = S> + Copy,
@@ -158,6 +166,7 @@ pub struct Vector3<S> {
 }
 
 impl<S> Vector3<S> {
+    #[inline]
     pub const fn new(x: S, y: S, z: S) -> Self {
         Vector3 { x, y, z }
     }
@@ -165,6 +174,13 @@ impl<S> Vector3<S> {
     /// Extend vector to four dimensions.
     pub fn extend(self, w: S) -> Vector4<S> {
         Vector4::new(self.x, self.y, self.z, w)
+    }
+}
+
+impl<T: Copy> From<[T; 3]> for Vector3<T> {
+    #[inline]
+    fn from(array: [T; 3]) -> Self {
+        Vector3::new(array[0], array[1], array[2])
     }
 }
 
@@ -184,7 +200,15 @@ impl From<Vector4<f32>> for [f32; 4] {
     }
 }
 
+impl<T: Copy> From<[T; 4]> for Vector4<T> {
+    #[inline]
+    fn from(array: [T; 4]) -> Self {
+        Vector4::new(array[0], array[1], array[2], array[3])
+    }
+}
+
 impl<S> Vector4<S> {
+    #[inline]
     pub const fn new(x: S, y: S, z: S, w: S) -> Self {
         Vector4 { x, y, z, w }
     }
@@ -250,6 +274,13 @@ impl<S> Point2<S> {
         F: FnMut(S) -> T,
     {
         Point2::new(f(self.x), f(self.y))
+    }
+}
+
+impl<T: Copy> From<[T; 2]> for Point2<T> {
+    #[inline]
+    fn from(array: [T; 2]) -> Self {
+        Point2::new(array[0], array[1])
     }
 }
 
