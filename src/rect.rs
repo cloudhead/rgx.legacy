@@ -2,7 +2,7 @@ use crate::math;
 use crate::math::{Point2, Vector2};
 
 /// A generic rectangle with bottom left and top right coordinates.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub struct Rect<T> {
     pub x1: T,
     pub y1: T,
