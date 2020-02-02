@@ -7,7 +7,7 @@ use std::str::FromStr;
 
 /// RGBA color with 8-bit channels.
 #[repr(C)]
-#[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Debug, Default)]
 pub struct Rgba8 {
     pub r: u8,
     pub g: u8,
@@ -141,7 +141,7 @@ impl FromStr for Rgba8 {
 
 /// A BGRA color with 8-bit channels, used when dealing with framebuffers.
 #[repr(C)]
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub struct Bgra8 {
     pub b: u8,
     pub g: u8,
@@ -196,7 +196,7 @@ impl Into<Rgba8> for Bgra8 {
 
 /// A normalized RGBA color.
 #[repr(C)]
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug, Default)]
 pub struct Rgba {
     pub r: f32,
     pub g: f32,
