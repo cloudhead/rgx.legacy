@@ -71,8 +71,8 @@ impl Sprite {
         self
     }
 
-    pub fn repeat(mut self, repeat: Repeat) -> Self {
-        self.repeat = repeat;
+    pub fn repeat(mut self, x: f32, y: f32) -> Self {
+        self.repeat = Repeat::new(x, y);
         self
     }
 }
@@ -109,18 +109,18 @@ impl Batch {
         h: u32,
         src: Rect<f32>,
         dst: Rect<f32>,
-        depth: ZDepth,
+        zdepth: ZDepth,
         rgba: Rgba,
-        opa: f32,
-        rep: Repeat,
+        alpha: f32,
+        repeat: Repeat,
     ) -> Self {
         let mut view = Self::new(w, h);
         view.push(
             Sprite::new(src, dst)
-                .zdepth(depth)
+                .zdepth(zdepth)
                 .tint(rgba)
-                .alpha(opa)
-                .repeat(rep),
+                .alpha(alpha)
+                .repeat(repeat.x, repeat.y),
         );
         view
     }
@@ -135,10 +135,10 @@ impl Batch {
         dst: Rect<f32>,
         depth: ZDepth,
         rgba: Rgba,
-        opacity: f32,
-        rep: Repeat,
+        alpha: f32,
+        repeat: Repeat,
     ) {
-        if rep != Repeat::default() {
+        if repeat != Repeat::default() {
             assert!(
                 src == Rect::origin(self.w as f32, self.h as f32),
                 "using texture repeat is only valid when using the entire {}x{} texture",
@@ -150,8 +150,8 @@ impl Batch {
             Sprite::new(src, dst)
                 .zdepth(depth)
                 .tint(rgba)
-                .alpha(opacity)
-                .repeat(rep),
+                .alpha(alpha)
+                .repeat(repeat.x, repeat.y),
         );
         self.size += 1;
     }
@@ -219,7 +219,7 @@ mod test {
                 .tint(Rgba::BLUE)
                 .alpha(0.5)
                 .zdepth(0.1)
-                .repeat(Repeat::new(8., 8.)),
+                .repeat(8., 8.),
         );
     }
 }
