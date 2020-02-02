@@ -142,6 +142,18 @@ impl Shape {
         )
     }
 
+    pub fn rect<P: Into<Point2<f32>>>(p1: P, p2: P) -> Self {
+        let (p1, p2) = (p1.into(), p2.into());
+
+        Self::Rectangle(
+            Rect::new(p1.x, p1.y, p2.x, p2.y),
+            ZDepth::default(),
+            Rotation::default(),
+            Stroke::default(),
+            Fill::default(),
+        )
+    }
+
     pub fn zdepth<T: Into<ZDepth>>(mut self, z: T) -> Self {
         let z: ZDepth = z.into();
 
