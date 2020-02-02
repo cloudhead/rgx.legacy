@@ -3,7 +3,7 @@
 #![allow(clippy::single_match)]
 
 use rgx::core::*;
-use rgx::kit::shape2d::{Batch, Fill, Line, Rotation, Shape, Stroke};
+use rgx::kit::shape2d::{Batch, Fill, Rotation, Shape, Stroke};
 use rgx::kit::{self, ZDepth};
 
 use rgx::math::*;
@@ -113,18 +113,13 @@ fn main() -> Result<(), std::io::Error> {
                             Fill::Solid(Rgba::new(1.0, dx, dy, 0.1)),
                         ));
                     } else {
-                        batch.add(Shape::Line(
-                            Line::new(x, y, x + sw, y + sh),
-                            ZDepth::ZERO,
-                            Rotation::ZERO,
-                            Stroke::new(
-                                1.0,
-                                Rgba::new(
-                                    i as f32 / rows as f32 + dy,
-                                    j as f32 / cols as f32 - dx,
-                                    0.5,
-                                    0.75,
-                                ),
+                        batch.add(Shape::line([x, y], [x + sw, y + sh]).stroke(
+                            1.0,
+                            Rgba::new(
+                                i as f32 / rows as f32 + dy,
+                                j as f32 / cols as f32 - dx,
+                                0.5,
+                                0.75,
                             ),
                         ));
                     };

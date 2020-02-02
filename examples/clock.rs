@@ -5,8 +5,8 @@
 use chrono::{Local, Timelike};
 
 use rgx::core::*;
-use rgx::kit::shape2d::{Batch, Line, Rotation, Shape, Stroke};
-use rgx::kit::{self, ZDepth};
+use rgx::kit;
+use rgx::kit::shape2d::{Batch, Shape};
 
 use rgx::math::*;
 
@@ -93,24 +93,22 @@ fn main() -> Result<(), std::io::Error> {
             for i in 0..12 {
                 let a = ((1.0 / 12.0) * i as f32) * std::f32::consts::PI * 2.0;
 
-                batch.add(Shape::Line(
-                    Line::new(x, y + 510.0, x, y + 420.0),
-                    ZDepth::default(),
-                    Rotation::new(a, Point2::new(x, y)),
-                    Stroke::new(12.0, color),
-                ));
+                batch.add(
+                    Shape::line([x, y + 510.0], [x, y + 420.0])
+                        .rotation(a, Point2::new(x, y))
+                        .stroke(12.0, color),
+                );
             }
 
             // Draw minute ticks.
             for i in 0..60 {
                 let a = ((1.0 / 60.0) * i as f32) * std::f32::consts::PI * 2.0;
 
-                batch.add(Shape::Line(
-                    Line::new(x, y + 510.0, x, y + 450.0),
-                    ZDepth::default(),
-                    Rotation::new(a, Point2::new(x, y)),
-                    Stroke::new(6.0, color),
-                ));
+                batch.add(
+                    Shape::line([x, y + 510.0], [x, y + 450.0])
+                        .rotation(a, Point2::new(x, y))
+                        .stroke(6.0, color),
+                );
             }
 
             // Draw second ticks.
@@ -119,12 +117,11 @@ fn main() -> Result<(), std::io::Error> {
                 let mut c = color;
                 c.a = 0.6;
 
-                batch.add(Shape::Line(
-                    Line::new(x, y + 510.0, x, y + 480.0),
-                    ZDepth::default(),
-                    Rotation::new(a, Point2::new(x, y)),
-                    Stroke::new(2.0, c),
-                ));
+                batch.add(
+                    Shape::line([x, y + 510.0], [x, y + 480.0])
+                        .rotation(a, Point2::new(x, y))
+                        .stroke(2.0, c),
+                );
             }
 
             let now = Local::now();
@@ -137,12 +134,11 @@ fn main() -> Result<(), std::io::Error> {
                 let minute = (divider / 60.0) * now.minute() as f32;
                 let arm_angle = (hour + minute) * std::f32::consts::PI * 2.0;
 
-                batch.add(Shape::Line(
-                    Line::new(x, y, x, y + 240.0),
-                    ZDepth::default(),
-                    Rotation::new(arm_angle, Point2::new(x, y)),
-                    Stroke::new(12.0, color),
-                ));
+                batch.add(
+                    Shape::line([x, y], [x, y + 240.0])
+                        .rotation(arm_angle, Point2::new(x, y))
+                        .stroke(12.0, color),
+                );
             }
 
             // Draw minute hand.
@@ -152,12 +148,11 @@ fn main() -> Result<(), std::io::Error> {
                 let second = (divider / 60.0) * now.second() as f32;
                 let arm_angle = (minute + second) * std::f32::consts::PI * 2.0;
 
-                batch.add(Shape::Line(
-                    Line::new(x, y, x, y + 390.0),
-                    ZDepth::default(),
-                    Rotation::new(arm_angle, Point2::new(x, y)),
-                    Stroke::new(6.0, color),
-                ));
+                batch.add(
+                    Shape::line([x, y], [x, y + 390.0])
+                        .rotation(arm_angle, Point2::new(x, y))
+                        .stroke(6.0, color),
+                );
             }
 
             // Draw second hand.
@@ -167,12 +162,11 @@ fn main() -> Result<(), std::io::Error> {
                 let nanosecond = (divider / 1_000_000_000 as f32) * now.nanosecond() as f32;
                 let arm_angle = (second + nanosecond) * std::f32::consts::PI * 2.0;
 
-                batch.add(Shape::Line(
-                    Line::new(x, y, x, y + 420.0),
-                    ZDepth::default(),
-                    Rotation::new(arm_angle, Point2::new(x, y)),
-                    Stroke::new(2.0, color),
-                ));
+                batch.add(
+                    Shape::line([x, y], [x, y + 420.0])
+                        .rotation(arm_angle, Point2::new(x, y))
+                        .stroke(2.0, color),
+                );
             }
 
             let buffer = batch.finish(&r);

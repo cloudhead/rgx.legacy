@@ -47,7 +47,7 @@ pub const fn vertex(
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-/// Shapes
+// Shapes
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[derive(PartialEq, Copy, Clone, Debug)]
@@ -133,6 +133,15 @@ impl Shape {
         )
     }
 
+    pub fn line<P: Into<Point2<f32>>>(p1: P, p2: P) -> Self {
+        Self::Line(
+            Line::new(p1, p2),
+            ZDepth::default(),
+            Rotation::default(),
+            Stroke::default(),
+        )
+    }
+
     pub fn zdepth<T: Into<ZDepth>>(mut self, z: T) -> Self {
         let z: ZDepth = z.into();
 
@@ -144,7 +153,10 @@ impl Shape {
         self
     }
 
-    pub fn rotation(mut self, r: Rotation) -> Self {
+    pub fn rotation<P: Into<Point2<f32>>>(mut self, angle: f32, center: P) -> Self {
+        let center = center.into();
+        let r = Rotation::new(angle, center);
+
         match self {
             Self::Line(_, _, ref mut rotation, _) => *rotation = r,
             Self::Rectangle(_, _, ref mut rotation, _, _) => *rotation = r,
@@ -342,10 +354,10 @@ pub struct Line {
 }
 
 impl Line {
-    pub fn new(x1: f32, y1: f32, x2: f32, y2: f32) -> Self {
+    pub fn new<P: Into<Point2<f32>>>(p1: P, p2: P) -> Self {
         Self {
-            p1: Point2::new(x1, y1),
-            p2: Point2::new(x2, y2),
+            p1: p1.into(),
+            p2: p2.into(),
         }
     }
 }
@@ -389,7 +401,7 @@ pub struct Circle {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-/// Batch
+// Batch
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug)]
