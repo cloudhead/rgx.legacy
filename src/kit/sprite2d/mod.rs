@@ -169,6 +169,7 @@ impl Batch {
         } in self.items.iter()
         {
             let ZDepth(z) = zdepth;
+            let re = repeat;
 
             // Relative texture coordinates
             let rx1: f32 = src.x1 / self.w as f32;
@@ -180,12 +181,12 @@ impl Batch {
 
             // TODO: Use an index buffer
             buf.extend_from_slice(&[
-                Vertex::new(dst.x1, dst.y1, *z, rx1 * repeat.x, ry2 * repeat.y, c, *alpha),
-                Vertex::new(dst.x2, dst.y1, *z, rx2 * repeat.x, ry2 * repeat.y, c, *alpha),
-                Vertex::new(dst.x2, dst.y2, *z, rx2 * repeat.x, ry1 * repeat.y, c, *alpha),
-                Vertex::new(dst.x1, dst.y1, *z, rx1 * repeat.x, ry2 * repeat.y, c, *alpha),
-                Vertex::new(dst.x1, dst.y2, *z, rx1 * repeat.x, ry1 * repeat.y, c, *alpha),
-                Vertex::new(dst.x2, dst.y2, *z, rx2 * repeat.x, ry1 * repeat.y, c, *alpha),
+                Vertex::new(dst.x1, dst.y1, *z, rx1 * re.x, ry2 * re.y, c, *alpha),
+                Vertex::new(dst.x2, dst.y1, *z, rx2 * re.x, ry2 * re.y, c, *alpha),
+                Vertex::new(dst.x2, dst.y2, *z, rx2 * re.x, ry1 * re.y, c, *alpha),
+                Vertex::new(dst.x1, dst.y1, *z, rx1 * re.x, ry2 * re.y, c, *alpha),
+                Vertex::new(dst.x1, dst.y2, *z, rx1 * re.x, ry1 * re.y, c, *alpha),
+                Vertex::new(dst.x2, dst.y2, *z, rx2 * re.x, ry1 * re.y, c, *alpha),
             ]);
         }
         buf
