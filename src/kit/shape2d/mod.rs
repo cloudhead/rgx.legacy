@@ -67,11 +67,26 @@ impl Stroke {
     }
 }
 
+impl Default for Stroke {
+    fn default() -> Self {
+        Self {
+            width: 1.,
+            color: Rgba::default(),
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 pub enum Fill {
     Empty(),
     Solid(Rgba),
     Gradient(Rgba, Rgba),
+}
+
+impl Default for Fill {
+    fn default() -> Self {
+        Self::Empty()
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -101,10 +116,63 @@ impl Default for Rotation {
 pub enum Shape {
     Line(Line, ZDepth, Rotation, Stroke),
     Rectangle(Rect<f32>, ZDepth, Rotation, Stroke, Fill),
-    Circle(Point2<f32>, ZDepth, f32, u32, Stroke, Fill),
+    Circle(Circle, ZDepth, Stroke, Fill),
 }
 
 impl Shape {
+    pub fn circle(position: Point2<f32>, radius: f32, sides: u32) -> Self {
+        Self::Circle(
+            Circle {
+                position,
+                radius,
+                sides,
+            },
+            ZDepth::default(),
+            Stroke::default(),
+            Fill::default(),
+        )
+    }
+
+    pub fn zdepth<T: Into<ZDepth>>(mut self, z: T) -> Self {
+        let z: ZDepth = z.into();
+
+        match self {
+            Self::Line(_, ref mut zdepth, _, _) => *zdepth = z,
+            Self::Rectangle(_, ref mut zdepth, _, _, _) => *zdepth = z,
+            Self::Circle(_, ref mut zdepth, _, _) => *zdepth = z,
+        }
+        self
+    }
+
+    pub fn rotation(mut self, r: Rotation) -> Self {
+        match self {
+            Self::Line(_, _, ref mut rotation, _) => *rotation = r,
+            Self::Rectangle(_, _, ref mut rotation, _, _) => *rotation = r,
+            _ => {}
+        }
+        self
+    }
+
+    pub fn fill(mut self, f: Fill) -> Self {
+        match self {
+            Self::Rectangle(_, _, _, _, ref mut fill) => *fill = f,
+            Self::Circle(_, _, _, ref mut fill) => *fill = f,
+            _ => {}
+        }
+        self
+    }
+
+    pub fn stroke(mut self, width: f32, color: Rgba) -> Self {
+        let s = Stroke::new(width, color);
+
+        match self {
+            Self::Line(_, _, _, ref mut stroke) => *stroke = s,
+            Self::Rectangle(_, _, _, ref mut stroke, _) => *stroke = s,
+            Self::Circle(_, _, ref mut stroke, _) => *stroke = s,
+        }
+        self
+    }
+
     pub fn triangulate(&self) -> Vec<Vertex> {
         match *self {
             Shape::Line(l, ZDepth(z), Rotation { angle, center }, Stroke { width, color }) => {
@@ -186,12 +254,17 @@ impl Shape {
                 }
                 verts
             }
-            Shape::Circle(position, ZDepth(z), radius, sides, stroke, fill) => {
-                let inner = Self::circle(position, radius - stroke.width, sides);
+            Shape::Circle(circle, ZDepth(z), stroke, fill) => {
+                let Circle {
+                    position,
+                    radius,
+                    sides,
+                } = circle;
+                let inner = Self::circle_points(position, radius - stroke.width, sides);
 
                 let mut verts = if stroke != Stroke::NONE {
                     // If there is a stroke, the outer circle is larger.
-                    let outer = Self::circle(position, radius, sides);
+                    let outer = Self::circle_points(position, radius, sides);
                     let rgba8 = stroke.color.into();
 
                     let n = inner.len() - 1;
@@ -248,7 +321,7 @@ impl Shape {
         }
     }
 
-    fn circle(position: Point2<f32>, radius: f32, sides: u32) -> Vec<Point2<f32>> {
+    fn circle_points(position: Point2<f32>, radius: f32, sides: u32) -> Vec<Point2<f32>> {
         let mut verts = Vec::with_capacity(sides as usize + 1);
 
         for i in 0..=sides as usize {
@@ -306,6 +379,13 @@ impl std::ops::Add<Vector2<f32>> for Line {
             p2: self.p2 + vec,
         }
     }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct Circle {
+    position: Point2<f32>,
+    radius: f32,
+    sides: u32,
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

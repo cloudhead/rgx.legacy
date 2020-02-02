@@ -3,8 +3,8 @@
 #![allow(clippy::single_match)]
 
 use rgx::core::*;
-use rgx::kit::shape2d::{Batch, Fill, Shape, Stroke};
-use rgx::kit::{self, ZDepth};
+use rgx::kit;
+use rgx::kit::shape2d::{Batch, Shape};
 
 use rgx::math::*;
 
@@ -98,14 +98,10 @@ fn main() -> Result<(), std::io::Error> {
                     let delta = Vector2::distance(rpos, cursor);
                     let width = 1. + delta * (rad / 1.5);
 
-                    batch.add(Shape::Circle(
-                        Point2::new(x + rad, y + rad),
-                        ZDepth::ZERO,
-                        rad,
-                        32,
-                        Stroke::new(width, Rgba::new(0.5, c2, c1, 0.75)),
-                        Fill::Empty(),
-                    ));
+                    batch.add(
+                        Shape::circle(Point2::new(x + rad, y + rad), rad, 32)
+                            .stroke(width, Rgba::new(0.5, c2, c1, 0.75)),
+                    );
                 }
             }
 

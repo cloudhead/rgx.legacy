@@ -98,14 +98,10 @@ fn main() -> Result<(), std::io::Error> {
                     let c2 = j as f32 / cols as f32 - dx;
 
                     if j % 2 == 0 && i % 2 == 0 {
-                        batch.add(Shape::Circle(
-                            Point2::new(x + sw / 2., y + sw / 2.),
-                            ZDepth::ZERO,
-                            sw * 2.,
-                            32,
-                            Stroke::new(1.0, Rgba::new(0.5, c2, c1, 0.75)),
-                            Fill::Empty(),
-                        ));
+                        batch.add(
+                            Shape::circle(Point2::new(x + sw / 2., y + sw / 2.), sw * 2., 32)
+                                .stroke(1.0, Rgba::new(0.5, c2, c1, 0.75)),
+                        );
                     }
 
                     if j * i % 2 != 0 {

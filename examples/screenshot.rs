@@ -4,7 +4,6 @@
 
 use self::kit::shape2d;
 use self::kit::shape2d::*;
-use self::kit::ZDepth;
 use rgx::core;
 use rgx::core::*;
 use rgx::kit;
@@ -132,14 +131,14 @@ fn main() -> Result<(), std::io::Error> {
     let onscreen: FramebufferPipeline = r.pipeline(Blending::default());
     let onscreen_binding = onscreen.binding(&r, &framebuffer, &sampler);
 
-    let buffer = shape2d::Batch::singleton(Shape::Circle(
-        Point2::new(sw as f32 / 2., sh as f32 / 2.),
-        ZDepth::ZERO,
-        sh as f32 / 2.0,
-        128,
-        Stroke::new(3.0, Rgba::new(1.0, 0.0, 1.0, 1.0)),
-        Fill::Empty(),
-    ))
+    let buffer = shape2d::Batch::singleton(
+        Shape::circle(
+            Point2::new(sw as f32 / 2., sh as f32 / 2.),
+            sh as f32 / 2.0,
+            128,
+        )
+        .stroke(3.0, Rgba::new(1.0, 0.0, 1.0, 1.0)),
+    )
     .finish(&r);
 
     ///////////////////////////////////////////////////////////////////////////

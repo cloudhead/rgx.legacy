@@ -5,7 +5,7 @@
 use chrono::{Local, Timelike};
 
 use rgx::core::*;
-use rgx::kit::shape2d::{Batch, Fill, Line, Rotation, Shape, Stroke};
+use rgx::kit::shape2d::{Batch, Line, Rotation, Shape, Stroke};
 use rgx::kit::{self, ZDepth};
 
 use rgx::math::*;
@@ -77,37 +77,16 @@ fn main() -> Result<(), std::io::Error> {
             let y = win.height as f32 / 2.;
 
             // Draw outter rim.
-            batch.add(Shape::Circle(
-                Point2::new(x, y),
-                ZDepth::default(),
-                510.0,
-                1024,
-                Stroke::new(5.0, color),
-                Fill::Empty(),
-            ));
+            batch.add(Shape::circle(Point2::new(x, y), 510.0, 1024).stroke(5.0, color));
 
             // Draw inner circles.
-            batch.add(Shape::Circle(
-                Point2::new(x, y),
-                ZDepth::default(),
-                30.0,
-                1024,
-                Stroke::new(1.0, color),
-                Fill::Solid(color),
-            ));
+            batch.add(Shape::circle(Point2::new(x, y), 30.0, 1024).stroke(1.0, color));
 
             for i in 1..(510 / 30) {
                 let mut c = color;
                 c.a = 0.2 * i as f32;
 
-                batch.add(Shape::Circle(
-                    Point2::new(x, y),
-                    ZDepth::default(),
-                    30.0 * i as f32,
-                    1024,
-                    Stroke::new(1.0, c),
-                    Fill::Empty(),
-                ));
+                batch.add(Shape::circle(Point2::new(x, y), 30.0 * i as f32, 1024).stroke(1.0, c));
             }
 
             // Draw hour ticks.

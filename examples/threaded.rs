@@ -5,9 +5,9 @@
 use rgx::core::*;
 use rgx::math::Point2;
 
+use rgx::kit;
 use rgx::kit::shape2d;
-use rgx::kit::shape2d::{Fill, Shape, Stroke};
-use rgx::kit::{self, ZDepth};
+use rgx::kit::shape2d::{Fill, Shape};
 
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -49,14 +49,10 @@ fn main() -> Result<(), std::io::Error> {
 
             let (mx, my) = { *t_shared_coords.lock().unwrap() };
 
-            let buffer = shape2d::Batch::singleton(Shape::Circle(
-                Point2::new(mx, size.height as f32 - my),
-                ZDepth::ZERO,
-                20.,
-                32,
-                Stroke::NONE,
-                Fill::Solid(Rgba::new(1., 0., 0., 1.)),
-            ))
+            let buffer = shape2d::Batch::singleton(
+                Shape::circle(Point2::new(mx, size.height as f32 - my), 20., 32)
+                    .fill(Fill::Solid(Rgba::new(1., 0., 0., 1.))),
+            )
             .finish(&renderer);
 
             let output = chain.next();
