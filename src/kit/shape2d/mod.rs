@@ -80,7 +80,6 @@ impl Default for Stroke {
 pub enum Fill {
     Empty,
     Solid(Rgba),
-    Gradient(Rgba, Rgba),
 }
 
 impl Fill {
@@ -277,9 +276,6 @@ impl Shape {
                             vertex(inner.x2, inner.y2, z, angle, center, rgba8),
                         ]);
                     }
-                    Fill::Gradient(_, _) => {
-                        unimplemented!();
-                    }
                     Fill::Empty => {}
                 }
                 verts
@@ -340,9 +336,6 @@ impl Shape {
                             *inner_verts.last().unwrap(),
                             *inner_verts.first().unwrap(),
                         ]);
-                    }
-                    Fill::Gradient(_, _) => {
-                        unimplemented!();
                     }
                     Fill::Empty => {}
                 }
