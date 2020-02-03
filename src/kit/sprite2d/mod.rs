@@ -56,8 +56,8 @@ impl Sprite {
         }
     }
 
-    pub fn color(mut self, color: Rgba) -> Self {
-        self.color = color;
+    pub fn color<T: Into<Rgba>>(mut self, color: T) -> Self {
+        self.color = color.into();
         self
     }
 

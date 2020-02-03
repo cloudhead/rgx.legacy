@@ -78,14 +78,20 @@ impl Default for Stroke {
 
 #[derive(Copy, Clone, Debug)]
 pub enum Fill {
-    Empty(),
+    Empty,
     Solid(Rgba),
     Gradient(Rgba, Rgba),
 }
 
+impl Fill {
+    pub fn solid<T: Into<Rgba>>(color: T) -> Self {
+        Self::Solid(color.into())
+    }
+}
+
 impl Default for Fill {
     fn default() -> Self {
-        Self::Empty()
+        Self::Empty
     }
 }
 
@@ -186,8 +192,8 @@ impl Shape {
         self
     }
 
-    pub fn stroke(mut self, width: f32, color: Rgba) -> Self {
-        let s = Stroke::new(width, color);
+    pub fn stroke<T: Into<Rgba>>(mut self, width: f32, color: T) -> Self {
+        let s = Stroke::new(width, color.into());
 
         match self {
             Self::Line(_, _, _, ref mut stroke) => *stroke = s,
@@ -274,7 +280,7 @@ impl Shape {
                     Fill::Gradient(_, _) => {
                         unimplemented!();
                     }
-                    Fill::Empty() => {}
+                    Fill::Empty => {}
                 }
                 verts
             }
@@ -338,7 +344,7 @@ impl Shape {
                     Fill::Gradient(_, _) => {
                         unimplemented!();
                     }
-                    Fill::Empty() => {}
+                    Fill::Empty => {}
                 }
                 verts
             }
