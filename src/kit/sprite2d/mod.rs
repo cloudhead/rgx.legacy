@@ -40,7 +40,9 @@ impl Vertex {
 #[derive(Clone, Debug, Default)]
 pub struct Sprite {
     pub src: Rect<f32>,
-    pub dst: Rect<f32>,
+    pub pos: ultraviolet::Vec2,
+    pub angle: f32,
+    pub scale: ultraviolet::Vec2,
     pub zdepth: ZDepth,
     pub color: Rgba,
     pub alpha: f32,
@@ -48,10 +50,17 @@ pub struct Sprite {
 }
 
 impl Sprite {
-    pub fn new(src: Rect<f32>, dst: Rect<f32>) -> Self {
+    pub fn new(
+        src: Rect<f32>,
+        pos: ultraviolet::Vec2,
+        angle: f32,
+        scale: ultraviolet::Vec2,
+    ) -> Self {
         Self {
             src,
-            dst,
+            pos,
+            angle,
+            scale,
             ..Default::default()
         }
     }
@@ -77,8 +86,13 @@ impl Sprite {
     }
 }
 
-pub fn sprite(src: Rect<f32>, dst: Rect<f32>) -> Sprite {
-    Sprite::new(src, dst)
+pub fn sprite(
+    src: Rect<f32>,
+    dst: ultraviolet::Vec2,
+    angle: f32,
+    scale: ultraviolet::Vec2,
+) -> Sprite {
+    Sprite::new(src, dst, angle, scale)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -108,7 +122,9 @@ impl Batch {
         w: u32,
         h: u32,
         src: Rect<f32>,
-        dst: Rect<f32>,
+        dst: ultraviolet::Vec2,
+        angle: f32,
+        scale: ultraviolet::Vec2,
         zdepth: ZDepth,
         rgba: Rgba,
         alpha: f32,
@@ -116,7 +132,7 @@ impl Batch {
     ) -> Self {
         let mut view = Self::new(w, h);
         view.push(
-            Sprite::new(src, dst)
+            Sprite::new(src, dst, angle, scale)
                 .zdepth(zdepth)
                 .color(rgba)
                 .alpha(alpha)
@@ -132,7 +148,9 @@ impl Batch {
     pub fn add(
         &mut self,
         src: Rect<f32>,
-        dst: Rect<f32>,
+        dst: ultraviolet::Vec2,
+        angle: f32,
+        scale: ultraviolet::Vec2,
         depth: ZDepth,
         rgba: Rgba,
         alpha: f32,
@@ -147,7 +165,7 @@ impl Batch {
             );
         }
         self.items.push(
-            Sprite::new(src, dst)
+            Sprite::new(src, dst, angle, scale)
                 .zdepth(depth)
                 .color(rgba)
                 .alpha(alpha)
@@ -161,7 +179,9 @@ impl Batch {
 
         for Sprite {
             src,
-            dst,
+            pos,
+            angle,
+            scale,
             zdepth,
             color,
             alpha,
@@ -179,14 +199,40 @@ impl Batch {
 
             let c: Rgba8 = (*color).into();
 
+            // Transform matrix
+            let scale_mat = ultraviolet::Mat3::from_nonuniform_scale_homogeneous(
+                ultraviolet::Vec3::new(scale.x * src.width(), scale.y * src.height(), 1.0),
+            );
+            let origin_translation = ultraviolet::Mat3::from_translation(ultraviolet::Vec2::new(
+                -src.width() / 2.0 * scale.x,
+                -src.height() / 2.0 * scale.y,
+            ));
+            let rotation = ultraviolet::Mat3::from_rotation_homogeneous(*angle * 3.14 / 180.0);
+            let translation = ultraviolet::Mat3::from_translation(*pos);
+            let transformation = translation * rotation * origin_translation * scale_mat;
+
+            let vec1 = ultraviolet::Vec3::new(0.0, 0.0, 1.0);
+
+            let vec1 = transformation * vec1;
+            let vec2 = ultraviolet::Vec3::new(1.0, 0.0, 1.0);
+            let vec2 = transformation * vec2;
+            let vec3 = ultraviolet::Vec3::new(1.0, 1.0, 1.0);
+            let vec3 = transformation * vec3;
+            let vec4 = ultraviolet::Vec3::new(0.0, 0.0, 1.0);
+            let vec4 = transformation * vec4;
+            let vec5 = ultraviolet::Vec3::new(0.0, 1.0, 1.0);
+            let vec5 = transformation * vec5;
+            let vec6 = ultraviolet::Vec3::new(1.0, 1.0, 1.0);
+            let vec6 = transformation * vec6;
+
             // TODO: Use an index buffer
             buf.extend_from_slice(&[
-                Vertex::new(dst.x1, dst.y1, *z, rx1 * re.x, ry2 * re.y, c, *alpha),
-                Vertex::new(dst.x2, dst.y1, *z, rx2 * re.x, ry2 * re.y, c, *alpha),
-                Vertex::new(dst.x2, dst.y2, *z, rx2 * re.x, ry1 * re.y, c, *alpha),
-                Vertex::new(dst.x1, dst.y1, *z, rx1 * re.x, ry2 * re.y, c, *alpha),
-                Vertex::new(dst.x1, dst.y2, *z, rx1 * re.x, ry1 * re.y, c, *alpha),
-                Vertex::new(dst.x2, dst.y2, *z, rx2 * re.x, ry1 * re.y, c, *alpha),
+                Vertex::new(vec1.x, vec1.y, *z, rx1 * re.x, ry2 * re.y, c, *alpha),
+                Vertex::new(vec2.x, vec2.y, *z, rx2 * re.x, ry2 * re.y, c, *alpha),
+                Vertex::new(vec3.x, vec3.y, *z, rx2 * re.x, ry1 * re.y, c, *alpha),
+                Vertex::new(vec4.x, vec4.y, *z, rx1 * re.x, ry2 * re.y, c, *alpha),
+                Vertex::new(vec5.x, vec5.y, *z, rx1 * re.x, ry1 * re.y, c, *alpha),
+                Vertex::new(vec6.x, vec6.y, *z, rx2 * re.x, ry1 * re.y, c, *alpha),
             ]);
         }
         buf
@@ -199,7 +245,7 @@ impl Batch {
 
     pub fn offset(&mut self, x: f32, y: f32) {
         for sprite in self.items.iter_mut() {
-            sprite.dst = sprite.dst + Vector2::new(x, y);
+            sprite.pos = sprite.pos + ultraviolet::Vec2::new(x, y);
         }
     }
 
@@ -216,7 +262,7 @@ mod test {
     fn test() {
         let mut batch = Batch::new(32, 32);
         batch.push(
-            Sprite::new(Rect::origin(32., 32.), Rect::new(32., 32., 64., 64.))
+            Sprite::new(Rect::origin(32., 32.), Rect::new(32., 32., 64., 64.), 0)
                 .color(Rgba::BLUE)
                 .alpha(0.5)
                 .zdepth(0.1)

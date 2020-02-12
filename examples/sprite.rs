@@ -171,20 +171,18 @@ fn main() -> Result<(), std::io::Error> {
                     for j in 0..cols {
                         let pad = j as f32 * sw / 2.0;
 
-                        let rect = if i % 2 == 0 {
-                            Rect::new(
-                                win.width as f32 - x - pad,
-                                y,
-                                win.width as f32 - x - pad - sw,
-                                y + sh,
-                            )
+                        let pos = if i % 2 == 0 {
+                            ultraviolet::Vec2::new(win.width as f32 - x - pad, y)
                         } else {
-                            Rect::new(pad + x, y, pad + x + sw, y + sh)
+                            ultraviolet::Vec2::new(pad + x, y)
                         };
 
                         batch.add(
                             anim.val(),
-                            rect,
+                            //pos,
+                            ultraviolet::Vec2::new(40.0, 40.0),
+                            0.0,
+                            ultraviolet::Vec2::new(1.0, 1.0),
                             ZDepth::default(),
                             Rgba::new(i as f32 / rows as f32, j as f32 / cols as f32, 0.5, 0.5),
                             1.0,
