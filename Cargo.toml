@@ -1,6 +1,6 @@
 [package]
 name = "rgx"
-version = "0.7.1"
+version = "0.8.0"
 description = "Mid-level 2D graphics abstraction with a wgpu backend"
 repository = "https://github.com/cloudhead/rgx"
 homepage = "https://github.com/cloudhead/rgx"
