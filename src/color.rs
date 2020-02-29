@@ -168,6 +168,12 @@ impl Bgra8 {
     }
 }
 
+impl From<u32> for Bgra8 {
+    fn from(rgba: u32) -> Self {
+        unsafe { std::mem::transmute(rgba) }
+    }
+}
+
 impl From<Rgba8> for Bgra8 {
     fn from(rgba: Rgba8) -> Self {
         Self {
