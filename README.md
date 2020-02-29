@@ -33,6 +33,10 @@ rendered, while the former exposes some useful building blocks for various use-c
 such as a shape-oriented pipeline and a sprite oriented pipeline. Users can construct
 their own pipelines and use them with **rgx**.
 
+**rgx** can be used with, or without a rendering backend. To use it *with*,
+turn on the `renderer` feature. When used *without* a backend, the `kit`
+module's backend-agnostic utilities can be used.
+
 ### Pipelines included in the `kit`
 
 * **shape2d**: for batched 2D shape rendering
