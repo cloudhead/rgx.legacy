@@ -76,7 +76,7 @@ impl Rgba8 {
     }
 
     /// Given a byte slice, returns a slice of [`Rgba8`] values.
-    pub fn align<'a, S: 'a, T: AsRef<[S]>>(bytes: &'a T) -> &'a [Rgba8] {
+    pub fn align<'a, S: 'a, T: AsRef<[S]> + ?Sized>(bytes: &'a T) -> &'a [Rgba8] {
         let bytes = bytes.as_ref();
         let (head, body, tail) = unsafe { bytes.align_to::<Rgba8>() };
 
@@ -157,7 +157,7 @@ impl Bgra8 {
     }
 
     /// Given a byte slice, returns a slice of `Bgra8` values.
-    pub fn align<'a, S: 'a, T: AsRef<[S]>>(bytes: &'a T) -> &'a [Self] {
+    pub fn align<'a, S: 'a, T: AsRef<[S]> + ?Sized>(bytes: &'a T) -> &'a [Self] {
         let bytes = bytes.as_ref();
         let (head, body, tail) = unsafe { bytes.align_to::<Self>() };
 
