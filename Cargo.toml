@@ -63,5 +63,9 @@ name = "sprite"
 required-features = ["renderer"]
 
 [[example]]
+name = "sprite_origin"
+required-features = ["renderer"]
+
+[[example]]
 name = "circles"
 required-features = ["renderer"]

@@ -43,6 +43,7 @@ pub struct Sprite {
     pub pos: ultraviolet::Vec2,
     pub angle: f32,
     pub scale: ultraviolet::Vec2,
+    pub origin: ultraviolet::Vec2,
     pub zdepth: ZDepth,
     pub color: Rgba,
     pub alpha: f32,
@@ -55,12 +56,14 @@ impl Sprite {
         pos: ultraviolet::Vec2,
         angle: f32,
         scale: ultraviolet::Vec2,
+        origin: ultraviolet::Vec2
     ) -> Self {
         Self {
             src,
             pos,
             angle,
             scale,
+            origin,
             ..Default::default()
         }
     }
@@ -91,8 +94,9 @@ pub fn sprite(
     dst: ultraviolet::Vec2,
     angle: f32,
     scale: ultraviolet::Vec2,
+    origin: ultraviolet::Vec2
 ) -> Sprite {
-    Sprite::new(src, dst, angle, scale)
+    Sprite::new(src, dst, angle, scale, origin)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -125,6 +129,7 @@ impl Batch {
         dst: ultraviolet::Vec2,
         angle: f32,
         scale: ultraviolet::Vec2,
+        origin: ultraviolet::Vec2,
         zdepth: ZDepth,
         rgba: Rgba,
         alpha: f32,
@@ -132,7 +137,7 @@ impl Batch {
     ) -> Self {
         let mut view = Self::new(w, h);
         view.push(
-            Sprite::new(src, dst, angle, scale)
+            Sprite::new(src, dst, angle, scale, origin)
                 .zdepth(zdepth)
                 .color(rgba)
                 .alpha(alpha)
@@ -151,6 +156,7 @@ impl Batch {
         dst: ultraviolet::Vec2,
         angle: f32,
         scale: ultraviolet::Vec2,
+        origin: ultraviolet::Vec2,
         depth: ZDepth,
         rgba: Rgba,
         alpha: f32,
@@ -165,7 +171,7 @@ impl Batch {
             );
         }
         self.items.push(
-            Sprite::new(src, dst, angle, scale)
+            Sprite::new(src, dst, angle, scale, origin)
                 .zdepth(depth)
                 .color(rgba)
                 .alpha(alpha)
@@ -186,6 +192,7 @@ impl Batch {
             color,
             alpha,
             repeat,
+            origin
         } in self.items.iter()
         {
             let ZDepth(z) = zdepth;
@@ -204,8 +211,8 @@ impl Batch {
                 ultraviolet::Vec3::new(scale.x * src.width(), scale.y * src.height(), 1.0),
             );
             let origin_translation = ultraviolet::Mat3::from_translation(ultraviolet::Vec2::new(
-                -src.width() / 2.0 * scale.x,
-                -src.height() / 2.0 * scale.y,
+                -src.width() * origin.x * scale.x,
+                -src.height() * origin.y * scale.y,
             ));
             let rotation = ultraviolet::Mat3::from_rotation_homogeneous(*angle * 3.14 / 180.0);
             let translation = ultraviolet::Mat3::from_translation(*pos);
