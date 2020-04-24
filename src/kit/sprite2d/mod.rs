@@ -37,13 +37,13 @@ impl Vertex {
 // Sprite
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Sprite {
     pub src: Rect<f32>,
-    pub pos: ultraviolet::Vec2,
+    pub pos: Vector2<f32>,
     pub angle: f32,
-    pub scale: ultraviolet::Vec2,
-    pub origin: ultraviolet::Vec2,
+    pub scale: Vector2<f32>,
+    pub origin: Vector2<f32>,
     pub zdepth: ZDepth,
     pub color: Rgba,
     pub alpha: f32,
@@ -53,10 +53,10 @@ pub struct Sprite {
 impl Sprite {
     pub fn new(
         src: Rect<f32>,
-        pos: ultraviolet::Vec2,
+        pos: Vector2<f32>,
         angle: f32,
-        scale: ultraviolet::Vec2,
-        origin: ultraviolet::Vec2
+        scale: Vector2<f32>,
+        origin: Vector2<f32>
     ) -> Self {
         Self {
             src,
@@ -64,7 +64,10 @@ impl Sprite {
             angle,
             scale,
             origin,
-            ..Default::default()
+            zdepth: Default::default(),
+            color: Default::default(),
+            alpha: 0.0,
+            repeat: Default::default(),
         }
     }
 
@@ -91,10 +94,10 @@ impl Sprite {
 
 pub fn sprite(
     src: Rect<f32>,
-    dst: ultraviolet::Vec2,
+    dst: Vector2<f32>,
     angle: f32,
-    scale: ultraviolet::Vec2,
-    origin: ultraviolet::Vec2
+    scale: Vector2<f32>,
+    origin: Vector2<f32>
 ) -> Sprite {
     Sprite::new(src, dst, angle, scale, origin)
 }
@@ -126,10 +129,10 @@ impl Batch {
         w: u32,
         h: u32,
         src: Rect<f32>,
-        dst: ultraviolet::Vec2,
+        dst: Vector2<f32>,
         angle: f32,
-        scale: ultraviolet::Vec2,
-        origin: ultraviolet::Vec2,
+        scale: Vector2<f32>,
+        origin: Vector2<f32>,
         zdepth: ZDepth,
         rgba: Rgba,
         alpha: f32,
@@ -153,10 +156,10 @@ impl Batch {
     pub fn add(
         &mut self,
         src: Rect<f32>,
-        dst: ultraviolet::Vec2,
+        dst: Vector2<f32>,
         angle: f32,
-        scale: ultraviolet::Vec2,
-        origin: ultraviolet::Vec2,
+        scale: Vector2<f32>,
+        origin: Vector2<f32>,
         depth: ZDepth,
         rgba: Rgba,
         alpha: f32,
@@ -207,29 +210,30 @@ impl Batch {
             let c: Rgba8 = (*color).into();
 
             // Transform matrix
-            let scale_mat = ultraviolet::Mat3::from_nonuniform_scale_homogeneous(
-                ultraviolet::Vec3::new(scale.x * src.width(), scale.y * src.height(), 1.0),
+            let scale_mat = Matrix4::from_nonuniform_scale(
+                scale.x * src.width(), scale.y * src.height(), 1.0
             );
-            let origin_translation = ultraviolet::Mat3::from_translation(ultraviolet::Vec2::new(
+            let origin_translation = Matrix4::from_translation(Vector3::new(
                 -src.width() * origin.x * scale.x,
                 -src.height() * origin.y * scale.y,
+                0.0,
             ));
-            let rotation = ultraviolet::Mat3::from_rotation_homogeneous(*angle * 3.14 / 180.0);
-            let translation = ultraviolet::Mat3::from_translation(*pos);
+            let rotation = Matrix4::from_angle_z(*angle * 3.14 / 180.0);
+            let translation = Matrix4::from_translation(Vector3::new((*pos).x, (*pos).y, 0.0));
             let transformation = translation * rotation * origin_translation * scale_mat;
 
-            let vec1 = ultraviolet::Vec3::new(0.0, 0.0, 1.0);
+            let vec1 = Vector3::new(0.0, 0.0, 1.0);
 
             let vec1 = transformation * vec1;
-            let vec2 = ultraviolet::Vec3::new(1.0, 0.0, 1.0);
+            let vec2 = Vector3::new(1.0, 0.0, 1.0);
             let vec2 = transformation * vec2;
-            let vec3 = ultraviolet::Vec3::new(1.0, 1.0, 1.0);
+            let vec3 = Vector3::new(1.0, 1.0, 1.0);
             let vec3 = transformation * vec3;
-            let vec4 = ultraviolet::Vec3::new(0.0, 0.0, 1.0);
+            let vec4 = Vector3::new(0.0, 0.0, 1.0);
             let vec4 = transformation * vec4;
-            let vec5 = ultraviolet::Vec3::new(0.0, 1.0, 1.0);
+            let vec5 = Vector3::new(0.0, 1.0, 1.0);
             let vec5 = transformation * vec5;
-            let vec6 = ultraviolet::Vec3::new(1.0, 1.0, 1.0);
+            let vec6 = Vector3::new(1.0, 1.0, 1.0);
             let vec6 = transformation * vec6;
 
             // TODO: Use an index buffer
@@ -252,7 +256,7 @@ impl Batch {
 
     pub fn offset(&mut self, x: f32, y: f32) {
         for sprite in self.items.iter_mut() {
-            sprite.pos = sprite.pos + ultraviolet::Vec2::new(x, y);
+            sprite.pos = sprite.pos + Vector2::new(x, y);
         }
     }
 
@@ -269,7 +273,7 @@ mod test {
     fn test() {
         let mut batch = Batch::new(32, 32);
         batch.push(
-            Sprite::new(Rect::origin(32., 32.), Rect::new(32., 32., 64., 64.), 0)
+            Sprite::new(Rect::new(32., 32., 64., 64.), Vector2::new(0.0, 0.0), 0.0, Vector2::new(1.0, 1.0), Vector2::new(0.5, 0.5))
                 .color(Rgba::BLUE)
                 .alpha(0.5)
                 .zdepth(0.1)

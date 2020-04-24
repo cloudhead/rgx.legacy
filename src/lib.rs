@@ -1,5 +1,4 @@
 #![deny(clippy::all)]
-extern crate ultraviolet;
 
 pub mod color;
 pub mod error;

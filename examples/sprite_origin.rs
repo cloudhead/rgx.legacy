@@ -18,8 +18,9 @@ use winit::{
 };
 
 use std::time::{Duration, Instant};
+ use rgx::math::Vector2;
 
-fn main() -> Result<(), std::io::Error> {
+ fn main() -> Result<(), std::io::Error> {
     let event_loop = EventLoop::new();
     let window = Window::new(&event_loop).unwrap();
 
@@ -119,10 +120,10 @@ fn main() -> Result<(), std::io::Error> {
                 let scale = f32::abs(f32::sin(seconds * 3.14 / 4.0)) * 10.0;
                 batch.add(
                     src,
-                    ultraviolet::Vec2 { x: window.width as f32 / 2.0, y: window.height as f32 / 2.0 },
+                    Vector2 { x: window.width as f32 / 2.0, y: window.height as f32 / 2.0 },
                     seconds * 360.0 / 2.0,
-                    ultraviolet::Vec2::new(scale, scale),
-                    ultraviolet::Vec2::new(0.5, 0.5),
+                    Vector2::new(scale, scale),
+                    Vector2::new(0.5, 0.5),
                     ZDepth::default(),
                     Rgba::new(1.0, 1.0, 1.0, 0.0),
                     1.0,
