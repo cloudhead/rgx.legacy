@@ -494,6 +494,28 @@ impl std::ops::Mul<Vector3<f32>> for Matrix4<f32> {
     }
 }
 
+/// Transform a [`Vector4`] with a [`Matrix4`].
+///
+/// ```
+/// use rgx::math::*;
+/// let m = Matrix4::from_translation(Vector3::new(8., 8., 0.));
+/// let v = Vector4::new(1., 1., 0., 1.);
+///
+/// assert_eq!(m * v, Vector4::new(9., 9., 0., 1.));
+/// ```
+impl std::ops::Mul<Vector4<f32>> for Matrix4<f32> {
+    type Output = Vector4<f32>;
+
+    fn mul(self, vec: Vector4<f32>) -> Vector4<f32> {
+        Vector4::new(
+            self.row(0) * vec,
+            self.row(1) * vec,
+            self.row(2) * vec,
+            self.row(3) * vec,
+        )
+    }
+}
+
 /// Transform a [`Point2`] with a [`Matrix4`].
 ///
 /// ```

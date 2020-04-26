@@ -2,7 +2,7 @@ pub mod shape2d;
 pub mod sprite2d;
 
 pub use crate::color::{Bgra8, Rgba, Rgba8};
-use crate::math::{Matrix4, Ortho, Point2};
+use crate::math::{Matrix4, Ortho, Vector4};
 
 use std::time;
 
@@ -12,8 +12,8 @@ pub trait Geometry {
 
 impl Geometry for crate::rect::Rect<f32> {
     fn transform(self, m: Matrix4<f32>) -> Self {
-        let p1 = m * Point2::new(self.x1, self.y1);
-        let p2 = m * Point2::new(self.x2, self.y2);
+        let p1 = m * Vector4::new(self.x1, self.y1, 0., 1.);
+        let p2 = m * Vector4::new(self.x2, self.y2, 0., 1.);
 
         Self::new(p1.x, p1.y, p2.x, p2.y)
     }
