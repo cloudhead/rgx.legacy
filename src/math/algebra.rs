@@ -453,28 +453,13 @@ impl<S: Copy + Zero + One + Float> Matrix4<S> {
         )
     }
 
-    /// Create a homogeneous transformation matrix from a rotation around the `y` axis (yaw).
-    #[inline]
-    #[rustfmt::skip]
-    pub fn from_angle_y(theta: S) -> Matrix4<S> {
-        // http://en.wikipedia.org/wiki/Rotation_matrix#Basic_rotations
-        let (s, c) = (theta.sin(), theta.cos());
-
-        Matrix4::new(
-            c, S::zero(), -s, S::zero(),
-            S::zero(), S::one(), S::zero(), S::zero(),
-            s.clone(), S::zero(), c.clone(), S::zero(),
-            S::zero(), S::zero(), S::zero(), S::one(),
-        )
-    }
-
     /// Create a homogeneous transformation matrix from a rotation around the `z` axis (roll).
     pub fn from_angle_z(theta: S) -> Matrix4<S> {
         // http://en.wikipedia.org/wiki/Rotation_matrix#Basic_rotations
         let (s, c) = (theta.sin(), theta.cos());
 
-        #[cfg_attr(rustfmt, rustfmt_skip)]
-            Matrix4::new(
+        #[rustfmt::skip]
+        Matrix4::new(
             c, s, S::zero(), S::zero(),
             -s.clone(), c.clone(), S::zero(), S::zero(),
             S::zero(), S::zero(), S::one(), S::zero(),

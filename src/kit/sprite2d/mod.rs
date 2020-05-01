@@ -218,7 +218,7 @@ impl Batch {
                 -src.height() * origin.y * scale.y,
                 0.0,
             ));
-            let rotation = Matrix4::from_angle_z(*angle * 3.14 / 180.0);
+            let rotation = Matrix4::from_angle_z(*angle * std::f32::consts::PI / 180.0);
             let translation = Matrix4::from_translation(Vector3::new((*pos).x, (*pos).y, 0.0));
             let transformation = translation * rotation * origin_translation * scale_mat;
 
