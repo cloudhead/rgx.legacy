@@ -109,9 +109,6 @@ use std::time::{Duration, Instant};
             Event::MainEventsCleared => {
                 *control_flow = ControlFlow::Poll;
 
-                let sprite_width = sprite_width as f32 * scale;
-                let sprite_height = sprite_height as f32 * scale;
-
                 ///////////////////////////////////////////////////////////////////////////
                 // Prepare sprite batch
                 ///////////////////////////////////////////////////////////////////////////

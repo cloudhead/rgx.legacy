@@ -18,6 +18,7 @@ use winit::{
 };
 
 use std::time::{Duration, Instant};
+use rgx::math::Vector2;
 
 fn main() -> Result<(), std::io::Error> {
     let event_loop = EventLoop::new();
@@ -175,17 +176,17 @@ fn main() -> Result<(), std::io::Error> {
                         let pad = j as f32 * sw / 2.0;
 
                         let pos = if i % 2 == 0 {
-                            ultraviolet::Vec2::new(window_size.width as f32 - x - pad, y + height_scaled)
+                            Vector2::new(window_size.width as f32 - x - pad, y + height_scaled)
                         } else {
-                            ultraviolet::Vec2::new(pad + x, y + height_scaled)
+                            Vector2::new(pad + x, y + height_scaled)
                         };
 
                         batch.add(
                             src,
                             pos,
                             180.0,
-                            ultraviolet::Vec2::new(scale, scale),
-                            ultraviolet::Vec2::new(0.5, 0.5),
+                            Vector2::new(scale, scale),
+                            Vector2::new(0.5, 0.5),
                             ZDepth::default(),
                             Rgba::new(i as f32 / rows as f32, j as f32 / cols as f32, 0.5, 0.5),
                             1.0,

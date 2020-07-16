@@ -52,23 +52,51 @@ pub struct Sprite {
 
 impl Sprite {
     pub fn new(
-        src: Rect<f32>,
-        pos: Vector2<f32>,
-        angle: f32,
-        scale: Vector2<f32>,
-        origin: Vector2<f32>
+        src: Rect<f32>
     ) -> Self {
         Self {
             src,
-            pos,
-            angle,
-            scale,
-            origin,
+            pos: Vector2::new(0.0, 0.0),
+            angle: Default::default(),
+            scale: Vector2::new(1.0, 1.0),
+            origin: Vector2::new(0.0, 0.0),
             zdepth: Default::default(),
             color: Default::default(),
-            alpha: 0.0,
-            repeat: Default::default(),
+            alpha: Default::default(),
+            repeat: Default::default()
         }
+    }
+
+    pub fn position(mut self, pos: Vector2<f32>) -> Self {
+        self.pos = pos;
+        self
+    }
+
+    pub fn angle(mut self, angle: f32) -> Self {
+        self.angle = angle;
+        self
+    }
+
+    pub fn scale(mut self, scale: Vector2<f32>) -> Self {
+        self.scale = scale;
+        self
+    }
+
+    pub fn rectangle(mut self, dest: Rect<f32>) -> Self {
+        let sprite_width = self.src.width();
+        let sprite_height = self.src.height();
+
+        let position = Vector2::new(dest.x1, dest.y1);
+        let scale = Vector2::new(dest.width() / sprite_width, dest.height() / sprite_height);
+
+        self.pos = position;
+        self.scale = scale;
+        self
+    }
+
+    pub fn origin(mut self, origin: Vector2<f32>) -> Self {
+        self.origin = origin;
+        self
     }
 
     pub fn color<T: Into<Rgba>>(mut self, color: T) -> Self {
@@ -94,12 +122,26 @@ impl Sprite {
 
 pub fn sprite(
     src: Rect<f32>,
-    dst: Vector2<f32>,
-    angle: f32,
+    dst: Rect<f32>
+) -> Sprite {
+    Sprite::new(src).rectangle(dst)
+}
+
+pub fn sprite_pos(
+    src: Rect<f32>,
+    pos: Vector2<f32>,
+    scale: Vector2<f32>,
+) -> Sprite {
+    Sprite::new(src).position(pos).scale(scale)
+}
+
+pub fn sprite_origin(
+    src: Rect<f32>,
+    pos: Vector2<f32>,
     scale: Vector2<f32>,
     origin: Vector2<f32>
 ) -> Sprite {
-    Sprite::new(src, dst, angle, scale, origin)
+    Sprite::new(src).position(pos).scale(scale).origin(origin)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -129,7 +171,7 @@ impl Batch {
         w: u32,
         h: u32,
         src: Rect<f32>,
-        dst: Vector2<f32>,
+        pos: Vector2<f32>,
         angle: f32,
         scale: Vector2<f32>,
         origin: Vector2<f32>,
@@ -140,7 +182,11 @@ impl Batch {
     ) -> Self {
         let mut view = Self::new(w, h);
         view.push(
-            Sprite::new(src, dst, angle, scale, origin)
+            Sprite::new(src)
+                .position(pos)
+                .angle(angle)
+                .scale(scale)
+                .origin(origin)
                 .zdepth(zdepth)
                 .color(rgba)
                 .alpha(alpha)
@@ -156,7 +202,7 @@ impl Batch {
     pub fn add(
         &mut self,
         src: Rect<f32>,
-        dst: Vector2<f32>,
+        pos: Vector2<f32>,
         angle: f32,
         scale: Vector2<f32>,
         origin: Vector2<f32>,
@@ -166,15 +212,20 @@ impl Batch {
         repeat: Repeat,
     ) {
         if repeat != Repeat::default() {
-            assert!(
-                src == Rect::origin(self.w as f32, self.h as f32),
+            assert_eq!(
+                src,
+                Rect::origin(self.w as f32, self.h as f32),
                 "using texture repeat is only valid when using the entire {}x{} texture",
                 self.w,
                 self.h
             );
         }
         self.items.push(
-            Sprite::new(src, dst, angle, scale, origin)
+            Sprite::new(src)
+                .position(pos)
+                .angle(angle)
+                .scale(scale)
+                .origin(origin)
                 .zdepth(depth)
                 .color(rgba)
                 .alpha(alpha)
@@ -273,7 +324,10 @@ mod test {
     fn test() {
         let mut batch = Batch::new(32, 32);
         batch.push(
-            Sprite::new(Rect::new(32., 32., 64., 64.), Vector2::new(0.0, 0.0), 0.0, Vector2::new(1.0, 1.0), Vector2::new(0.5, 0.5))
+            Sprite::new(Rect::new(32., 32., 64., 64.))
+                .position(Vector2::new(0.0, 0.0))
+                .scale(Vector2::new(1.0, 1.0))
+                .origin(Vector2::new(0.5, 0.5))
                 .color(Rgba::BLUE)
                 .alpha(0.5)
                 .zdepth(0.1)
