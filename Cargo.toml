@@ -1,6 +1,6 @@
 [package]
 name = "rgx"
-version = "0.7.1"
+version = "0.8.1"
 description = "Mid-level 2D graphics abstraction with a wgpu backend"
 repository = "https://github.com/cloudhead/rgx"
 homepage = "https://github.com/cloudhead/rgx"
@@ -9,6 +9,10 @@ authors = ["Alexis Sellier <self@cloudhead.io>"]
 license = "MIT"
 edition = "2018"
 keywords = ["graphics", "gamedev", "wgpu", "2d"]
+
+
+[package.metadata.docs.rs]
+all-features = true
 
 [lib]
 name = "rgx"

@@ -375,9 +375,12 @@ impl Line {
 
 impl Geometry for Line {
     fn transform(self, m: Matrix4<f32>) -> Self {
+        let v1 = m * Vector4::new(self.p1.x, self.p1.y, 0., 1.);
+        let v2 = m * Vector4::new(self.p2.x, self.p2.y, 0., 1.);
+
         Self {
-            p1: m * self.p1,
-            p2: m * self.p2,
+            p1: Point2::new(v1.x, v1.y),
+            p2: Point2::new(v2.x, v2.y),
         }
     }
 }

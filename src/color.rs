@@ -76,7 +76,7 @@ impl Rgba8 {
     }
 
     /// Given a byte slice, returns a slice of [`Rgba8`] values.
-    pub fn align<T: AsRef<[u8]>>(bytes: &T) -> &[Rgba8] {
+    pub fn align<'a, S: 'a, T: AsRef<[S]> + ?Sized>(bytes: &'a T) -> &'a [Rgba8] {
         let bytes = bytes.as_ref();
         let (head, body, tail) = unsafe { bytes.align_to::<Rgba8>() };
 
@@ -157,7 +157,7 @@ impl Bgra8 {
     }
 
     /// Given a byte slice, returns a slice of `Bgra8` values.
-    pub fn align<T: AsRef<[u8]>>(bytes: &T) -> &[Self] {
+    pub fn align<'a, S: 'a, T: AsRef<[S]> + ?Sized>(bytes: &'a T) -> &'a [Self] {
         let bytes = bytes.as_ref();
         let (head, body, tail) = unsafe { bytes.align_to::<Self>() };
 
@@ -165,6 +165,12 @@ impl Bgra8 {
             panic!("Bgra8::align: input is not a valid Rgba8 buffer");
         }
         body
+    }
+}
+
+impl From<u32> for Bgra8 {
+    fn from(rgba: u32) -> Self {
+        unsafe { std::mem::transmute(rgba) }
     }
 }
 

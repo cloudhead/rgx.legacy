@@ -1,3 +1,76 @@
+# v0.8.0
+
+commit 3ebcf1c3508d36e3953ba91e492e7a99c7128a7a
+
+    Implement `From<u32>` for `Bgra8`
+
+commit eac299b1a870be23e6c38f38b2315494dec39232
+
+    Make `Rgba8::align` & `Bgra8::align` more generic
+
+commit 508ca7992f77280028833c4981dc430dbcc1f420
+
+    Remove unused `Fill::Gradient` variant
+
+commit 096a514537be19c16404ba46b9a72d5b01711ceb
+
+    Improve `Fill` and color parameters
+
+commit cd87d3f33441050562ed198413a0f3a85818b226
+
+    Add `Shape::rect` function
+
+commit 1c618c92eb72c7fe9907a03adba98eb9491bfe08
+
+    Add `Shape::line` function
+
+commit df8d962985d8846e49f7f79bbeb78d5d4123f914
+
+    Add new ways to construct certain types
+
+commit b4ca46c1b7cb7403a85d6cf069f9b8166e1d1b6d
+
+    Improve `shape2d::Batch` API
+
+commit fc1c05b9bbc1fe5565ae8791dda62dd6bc4d20d5
+
+    Animations shouldn't skip frames
+
+commit 10d33fbf3590a85d0c8089cdb3f9ddd409a5aa46
+
+    Improve `sprite2d::Batch` interface
+
+    * Add `Batch::push` method that takes a `Sprite`
+
+commit e75e477ab80ea578e73b5c5c69a863150064f1af
+
+    Add `Default` instance for `Rect`
+
+commit 831a21bbc6ee815417845ff1887c880737bd2de7
+
+    Add `Default` instances to color types
+
+# v0.7.1
+
+commit e4d86794e3020ddf515365dfd311f37d6c7b935c
+
+    Update dependencies
+
+    * Remove env_logger
+    * Update winit
+
+# v0.7.0
+
+commit 19ff9088303e8325ab8247a6e07d26500ad688d4
+
+    Separate wgpu backend from frontend
+
+    Adds the `renderer` feature to turn the wgpu backend on.
+
+commit 25a22a325e326fc79cba25dbf90b96375defbbcb
+
+    Implement some conversions for Matrix4/Vector4
+
 # v0.6.0
 
 commit 1f5e52bf2751be680fef6949604dfa5563cbb84c
