@@ -11,6 +11,7 @@ use winit::{
     event_loop::{ControlFlow, EventLoop},
     window::Window,
 };
+use rgx::math::Vector2;
 
 fn main() -> Result<(), std::io::Error> {
     let event_loop = EventLoop::new();
@@ -41,7 +42,10 @@ fn main() -> Result<(), std::io::Error> {
         texture.w,
         texture.h,
         texture.rect(),
-        Rect::new(0., 0., size.width as f32, size.height as f32),
+        Vector2::new(0.0, 0.0),
+        0.0,
+        Vector2::new(1.0 * size.width as f32, 1.0 * size.height as f32),
+        Vector2::new(0., 0.),
         ZDepth::ZERO,
         Rgba::new(0.5, 0.6, 0.8, 1.0),
         1.0,
