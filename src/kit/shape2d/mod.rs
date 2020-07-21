@@ -125,7 +125,9 @@ pub enum Shape {
 }
 
 impl Shape {
-    pub fn circle(position: Point2<f32>, radius: f32, sides: u32) -> Self {
+    pub fn circle<P: Into<Point2<f32>>>(position: P, radius: f32, sides: u32) -> Self {
+        let position = position.into();
+
         Self::Circle(
             Circle {
                 position,
@@ -409,9 +411,9 @@ impl std::ops::Add<Vector2<f32>> for Line {
 
 #[derive(Copy, Clone, Debug)]
 pub struct Circle {
-    position: Point2<f32>,
-    radius: f32,
-    sides: u32,
+    pub position: Point2<f32>,
+    pub radius: f32,
+    pub sides: u32,
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
