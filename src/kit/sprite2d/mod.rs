@@ -37,10 +37,13 @@ impl Vertex {
 // Sprite
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Sprite {
     pub src: Rect<f32>,
-    pub dst: Rect<f32>,
+    pub pos: Vector2<f32>,
+    pub angle: f32,
+    pub scale: Vector2<f32>,
+    pub origin: Vector2<f32>,
     pub zdepth: ZDepth,
     pub color: Rgba,
     pub alpha: f32,
@@ -48,12 +51,52 @@ pub struct Sprite {
 }
 
 impl Sprite {
-    pub fn new(src: Rect<f32>, dst: Rect<f32>) -> Self {
+    pub fn new(
+        src: Rect<f32>
+    ) -> Self {
         Self {
             src,
-            dst,
-            ..Default::default()
+            pos: Vector2::new(0.0, 0.0),
+            angle: Default::default(),
+            scale: Vector2::new(1.0, 1.0),
+            origin: Vector2::new(0.0, 0.0),
+            zdepth: Default::default(),
+            color: Default::default(),
+            alpha: Default::default(),
+            repeat: Default::default()
         }
+    }
+
+    pub fn position(mut self, pos: Vector2<f32>) -> Self {
+        self.pos = pos;
+        self
+    }
+
+    pub fn angle(mut self, angle: f32) -> Self {
+        self.angle = angle;
+        self
+    }
+
+    pub fn scale(mut self, scale: Vector2<f32>) -> Self {
+        self.scale = scale;
+        self
+    }
+
+    pub fn rectangle(mut self, dest: Rect<f32>) -> Self {
+        let sprite_width = self.src.width();
+        let sprite_height = self.src.height();
+
+        let position = Vector2::new(dest.x1, dest.y1);
+        let scale = Vector2::new(dest.width() / sprite_width, dest.height() / sprite_height);
+
+        self.pos = position;
+        self.scale = scale;
+        self
+    }
+
+    pub fn origin(mut self, origin: Vector2<f32>) -> Self {
+        self.origin = origin;
+        self
     }
 
     pub fn color<T: Into<Rgba>>(mut self, color: T) -> Self {
@@ -77,8 +120,28 @@ impl Sprite {
     }
 }
 
-pub fn sprite(src: Rect<f32>, dst: Rect<f32>) -> Sprite {
-    Sprite::new(src, dst)
+pub fn sprite(
+    src: Rect<f32>,
+    dst: Rect<f32>
+) -> Sprite {
+    Sprite::new(src).rectangle(dst)
+}
+
+pub fn sprite_pos(
+    src: Rect<f32>,
+    pos: Vector2<f32>,
+    scale: Vector2<f32>,
+) -> Sprite {
+    Sprite::new(src).position(pos).scale(scale)
+}
+
+pub fn sprite_origin(
+    src: Rect<f32>,
+    pos: Vector2<f32>,
+    scale: Vector2<f32>,
+    origin: Vector2<f32>
+) -> Sprite {
+    Sprite::new(src).position(pos).scale(scale).origin(origin)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -108,7 +171,10 @@ impl Batch {
         w: u32,
         h: u32,
         src: Rect<f32>,
-        dst: Rect<f32>,
+        pos: Vector2<f32>,
+        angle: f32,
+        scale: Vector2<f32>,
+        origin: Vector2<f32>,
         zdepth: ZDepth,
         rgba: Rgba,
         alpha: f32,
@@ -116,7 +182,11 @@ impl Batch {
     ) -> Self {
         let mut view = Self::new(w, h);
         view.push(
-            Sprite::new(src, dst)
+            Sprite::new(src)
+                .position(pos)
+                .angle(angle)
+                .scale(scale)
+                .origin(origin)
                 .zdepth(zdepth)
                 .color(rgba)
                 .alpha(alpha)
@@ -132,22 +202,30 @@ impl Batch {
     pub fn add(
         &mut self,
         src: Rect<f32>,
-        dst: Rect<f32>,
+        pos: Vector2<f32>,
+        angle: f32,
+        scale: Vector2<f32>,
+        origin: Vector2<f32>,
         depth: ZDepth,
         rgba: Rgba,
         alpha: f32,
         repeat: Repeat,
     ) {
         if repeat != Repeat::default() {
-            assert!(
-                src == Rect::origin(self.w as f32, self.h as f32),
+            assert_eq!(
+                src,
+                Rect::origin(self.w as f32, self.h as f32),
                 "using texture repeat is only valid when using the entire {}x{} texture",
                 self.w,
                 self.h
             );
         }
         self.items.push(
-            Sprite::new(src, dst)
+            Sprite::new(src)
+                .position(pos)
+                .angle(angle)
+                .scale(scale)
+                .origin(origin)
                 .zdepth(depth)
                 .color(rgba)
                 .alpha(alpha)
@@ -161,11 +239,14 @@ impl Batch {
 
         for Sprite {
             src,
-            dst,
+            pos,
+            angle,
+            scale,
             zdepth,
             color,
             alpha,
             repeat,
+            origin
         } in self.items.iter()
         {
             let ZDepth(z) = zdepth;
@@ -179,14 +260,41 @@ impl Batch {
 
             let c: Rgba8 = (*color).into();
 
+            // Transform matrix
+            let scale_mat = Matrix4::from_nonuniform_scale(
+                scale.x * src.width(), scale.y * src.height(), 1.0
+            );
+            let origin_translation = Matrix4::from_translation(Vector3::new(
+                -src.width() * origin.x * scale.x,
+                -src.height() * origin.y * scale.y,
+                0.0,
+            ));
+            let rotation = Matrix4::from_angle_z(*angle * std::f32::consts::PI / 180.0);
+            let translation = Matrix4::from_translation(Vector3::new((*pos).x, (*pos).y, 0.0));
+            let transformation = translation * rotation * origin_translation * scale_mat;
+
+            let vec1 = Vector3::new(0.0, 0.0, 1.0);
+
+            let vec1 = transformation * vec1;
+            let vec2 = Vector3::new(1.0, 0.0, 1.0);
+            let vec2 = transformation * vec2;
+            let vec3 = Vector3::new(1.0, 1.0, 1.0);
+            let vec3 = transformation * vec3;
+            let vec4 = Vector3::new(0.0, 0.0, 1.0);
+            let vec4 = transformation * vec4;
+            let vec5 = Vector3::new(0.0, 1.0, 1.0);
+            let vec5 = transformation * vec5;
+            let vec6 = Vector3::new(1.0, 1.0, 1.0);
+            let vec6 = transformation * vec6;
+
             // TODO: Use an index buffer
             buf.extend_from_slice(&[
-                Vertex::new(dst.x1, dst.y1, *z, rx1 * re.x, ry2 * re.y, c, *alpha),
-                Vertex::new(dst.x2, dst.y1, *z, rx2 * re.x, ry2 * re.y, c, *alpha),
-                Vertex::new(dst.x2, dst.y2, *z, rx2 * re.x, ry1 * re.y, c, *alpha),
-                Vertex::new(dst.x1, dst.y1, *z, rx1 * re.x, ry2 * re.y, c, *alpha),
-                Vertex::new(dst.x1, dst.y2, *z, rx1 * re.x, ry1 * re.y, c, *alpha),
-                Vertex::new(dst.x2, dst.y2, *z, rx2 * re.x, ry1 * re.y, c, *alpha),
+                Vertex::new(vec1.x, vec1.y, *z, rx1 * re.x, ry2 * re.y, c, *alpha),
+                Vertex::new(vec2.x, vec2.y, *z, rx2 * re.x, ry2 * re.y, c, *alpha),
+                Vertex::new(vec3.x, vec3.y, *z, rx2 * re.x, ry1 * re.y, c, *alpha),
+                Vertex::new(vec4.x, vec4.y, *z, rx1 * re.x, ry2 * re.y, c, *alpha),
+                Vertex::new(vec5.x, vec5.y, *z, rx1 * re.x, ry1 * re.y, c, *alpha),
+                Vertex::new(vec6.x, vec6.y, *z, rx2 * re.x, ry1 * re.y, c, *alpha),
             ]);
         }
         buf
@@ -199,7 +307,7 @@ impl Batch {
 
     pub fn offset(&mut self, x: f32, y: f32) {
         for sprite in self.items.iter_mut() {
-            sprite.dst = sprite.dst + Vector2::new(x, y);
+            sprite.pos = sprite.pos + Vector2::new(x, y);
         }
     }
 
@@ -216,7 +324,10 @@ mod test {
     fn test() {
         let mut batch = Batch::new(32, 32);
         batch.push(
-            Sprite::new(Rect::origin(32., 32.), Rect::new(32., 32., 64., 64.))
+            Sprite::new(Rect::new(32., 32., 64., 64.))
+                .position(Vector2::new(0.0, 0.0))
+                .scale(Vector2::new(1.0, 1.0))
+                .origin(Vector2::new(0.5, 0.5))
                 .color(Rgba::BLUE)
                 .alpha(0.5)
                 .zdepth(0.1)

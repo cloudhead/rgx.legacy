@@ -18,6 +18,7 @@ use winit::{
 };
 
 use std::time::{Duration, Instant};
+use rgx::math::Vector2;
 
 fn main() -> Result<(), std::io::Error> {
     let event_loop = EventLoop::new();
@@ -159,7 +160,7 @@ fn main() -> Result<(), std::io::Error> {
                 // Prepare sprite batch
                 ///////////////////////////////////////////////////////////////////////////
 
-                let win = window.inner_size();
+                let window_size = window.inner_size();
 
                 let mut batch = sprite2d::Batch::new(sprite.w, sprite.h);
 
@@ -169,22 +170,23 @@ fn main() -> Result<(), std::io::Error> {
                     let y = i as f32 * sh;
 
                     for j in 0..cols {
+                        let src = anim.val();
+                        let height_scaled = src.height() * scale;
+
                         let pad = j as f32 * sw / 2.0;
 
-                        let rect = if i % 2 == 0 {
-                            Rect::new(
-                                win.width as f32 - x - pad,
-                                y,
-                                win.width as f32 - x - pad - sw,
-                                y + sh,
-                            )
+                        let pos = if i % 2 == 0 {
+                            Vector2::new(window_size.width as f32 - x - pad, y + height_scaled)
                         } else {
-                            Rect::new(pad + x, y, pad + x + sw, y + sh)
+                            Vector2::new(pad + x, y + height_scaled)
                         };
 
                         batch.add(
-                            anim.val(),
-                            rect,
+                            src,
+                            pos,
+                            180.0,
+                            Vector2::new(scale, scale),
+                            Vector2::new(0.5, 0.5),
                             ZDepth::default(),
                             Rgba::new(i as f32 / rows as f32, j as f32 / cols as f32, 0.5, 0.5),
                             1.0,
@@ -227,7 +229,7 @@ fn main() -> Result<(), std::io::Error> {
                     println!("sprites/frame: {}", rows * cols);
                     println!("time/frame:    {:.2}ms\n", average_ft);
 
-                    if average_ft as u32 <= 16 && scale > 0.1 {
+                    if average_ft as u32 <= 16 {
                         scale -= 0.1;
                         x = 0.;
                     } else {

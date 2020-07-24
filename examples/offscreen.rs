@@ -15,6 +15,7 @@ use winit::{
     event_loop::{ControlFlow, EventLoop},
     window::Window,
 };
+use rgx::math::Vector2;
 
 pub struct Framebuffer {
     target: core::Framebuffer,
@@ -152,7 +153,10 @@ fn main() -> Result<(), std::io::Error> {
         texture.w,
         texture.h,
         rect,
-        Rect::origin(sw as f32, sh as f32),
+        Vector2::new(0.0, 0.0),
+        0.0,
+        Vector2::new(sw as f32 / texture.w as f32, sh as f32 / texture.h as f32),
+        Vector2::new(0.0, 0.0),
         ZDepth::ZERO,
         Rgba::TRANSPARENT,
         1.0,

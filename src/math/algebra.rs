@@ -16,6 +16,7 @@
 //! Most of the code in this module was borrowed from the `cgmath` package.
 
 pub use num_traits::{cast, Float, One, Zero};
+use num_traits::real::Real;
 
 /// 2D vector.
 #[repr(C)]
@@ -382,7 +383,7 @@ impl From<Matrix4<f32>> for [[f32; 4]; 4] {
     }
 }
 
-impl<S: Copy + Zero + One> Matrix4<S> {
+impl<S: Copy + Zero + One + Float> Matrix4<S> {
     /// Create a new matrix, providing values for each index.
     #[inline]
     #[rustfmt::skip]
@@ -448,6 +449,20 @@ impl<S: Copy + Zero + One> Matrix4<S> {
             x,         S::zero(), S::zero(), S::zero(),
             S::zero(), y,         S::zero(), S::zero(),
             S::zero(), S::zero(), z,         S::zero(),
+            S::zero(), S::zero(), S::zero(), S::one(),
+        )
+    }
+
+    /// Create a homogeneous transformation matrix from a rotation around the `z` axis (roll).
+    pub fn from_angle_z(theta: S) -> Matrix4<S> {
+        // http://en.wikipedia.org/wiki/Rotation_matrix#Basic_rotations
+        let (s, c) = (theta.sin(), theta.cos());
+
+        #[rustfmt::skip]
+        Matrix4::new(
+            c, s, S::zero(), S::zero(),
+            -s.clone(), c.clone(), S::zero(), S::zero(),
+            S::zero(), S::zero(), S::one(), S::zero(),
             S::zero(), S::zero(), S::zero(), S::one(),
         )
     }

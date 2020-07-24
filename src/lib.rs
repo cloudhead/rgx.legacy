@@ -1,4 +1,5 @@
 #![deny(clippy::all)]
+#![feature(stmt_expr_attributes)]
 
 pub mod color;
 pub mod error;
