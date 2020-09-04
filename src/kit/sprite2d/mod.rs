@@ -23,6 +23,7 @@ pub struct Vertex {
 }
 
 impl Vertex {
+    #[allow(clippy::many_single_char_names)]
     fn new(x: f32, y: f32, z: f32, u: f32, v: f32, color: Rgba8, opacity: f32) -> Self {
         Self {
             position: Vector3::new(x, y, z),
@@ -104,6 +105,7 @@ impl Batch {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn singleton(
         w: u32,
         h: u32,
@@ -199,7 +201,7 @@ impl Batch {
 
     pub fn offset(&mut self, x: f32, y: f32) {
         for sprite in self.items.iter_mut() {
-            sprite.dst = sprite.dst + Vector2::new(x, y);
+            sprite.dst += Vector2::new(x, y);
         }
     }
 

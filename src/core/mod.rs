@@ -1,8 +1,8 @@
 pub mod transform;
 
-use std::ops::Range;
-
+use approx::relative_eq;
 use raw_window_handle::HasRawWindowHandle;
+use std::ops::Range;
 
 // TODO: These shouldn't be re-exported from here.
 pub use crate::color::{Bgra8, Rgba, Rgba8};
@@ -371,14 +371,12 @@ impl Texture {
     }
 
     fn blit(&self, src: Rect<f32>, dst: Rect<f32>, encoder: &mut wgpu::CommandEncoder) {
-        assert_eq!(
-            src.width(),
-            dst.width(),
+        assert!(
+            relative_eq!(src.width(), dst.width()),
             "source and destination rectangles must be of the same size"
         );
-        assert_eq!(
-            src.height(),
-            dst.height(),
+        assert!(
+            relative_eq!(src.height(), dst.height()),
             "source and destination rectangles must be of the same size"
         );
 
@@ -411,6 +409,7 @@ impl Texture {
         );
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn copy(
         texture: &wgpu::Texture,
         w: u32,
@@ -982,6 +981,7 @@ impl SwapChain {
     ///
     /// When the [`SwapChainTexture`] returned by this method is dropped, the
     /// swapchain will present the texture to the associated [`Renderer`].
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> SwapChainTexture {
         SwapChainTexture {
             depth: &self.depth,

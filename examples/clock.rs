@@ -24,16 +24,17 @@ fn main() -> Result<(), std::io::Error> {
     // Setup renderer
     ///////////////////////////////////////////////////////////////////////////
 
-    let mut r = Renderer::new(&window)?;
+    let mut renderer = Renderer::new(&window)?;
     let mut win = window.inner_size();
 
-    let pip: kit::shape2d::Pipeline = r.pipeline(Blending::default());
+    let pip: kit::shape2d::Pipeline = renderer.pipeline(Blending::default());
 
     ///////////////////////////////////////////////////////////////////////////
     // Render loop
     ///////////////////////////////////////////////////////////////////////////
 
-    let mut textures = r.swap_chain(win.width as u32, win.height as u32, PresentMode::default());
+    let mut textures =
+        renderer.swap_chain(win.width as u32, win.height as u32, PresentMode::default());
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::NewEvents(StartCause::Init) => {
@@ -63,7 +64,7 @@ fn main() -> Result<(), std::io::Error> {
 
                 let (w, h) = (win.width as u32, win.height as u32);
 
-                textures = r.swap_chain(w, h, PresentMode::default());
+                textures = renderer.swap_chain(w, h, PresentMode::default());
 
                 *control_flow = ControlFlow::Poll;
             }
@@ -169,17 +170,17 @@ fn main() -> Result<(), std::io::Error> {
                 );
             }
 
-            let buffer = batch.finish(&r);
+            let buffer = batch.finish(&renderer);
 
             ///////////////////////////////////////////////////////////////////////////
             // Create frame
             ///////////////////////////////////////////////////////////////////////////
 
-            let mut frame = r.frame();
+            let mut frame = renderer.frame();
 
             let out = textures.next();
 
-            r.update_pipeline(
+            renderer.update_pipeline(
                 &pip,
                 kit::ortho(out.width, out.height, Default::default()),
                 &mut frame,
@@ -195,7 +196,7 @@ fn main() -> Result<(), std::io::Error> {
                 pass.set_pipeline(&pip);
                 pass.draw_buffer(&buffer);
             }
-            r.present(frame);
+            renderer.present(frame);
 
             *control_flow = ControlFlow::Poll;
             window.request_redraw();

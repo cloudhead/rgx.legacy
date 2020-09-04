@@ -11,10 +11,12 @@ use rgx::kit::ZDepth;
 
 fn bench_triangulate_circle() {
     Shape::Circle(
-        Point2::new(0., 0.),
+        Circle {
+            position: Point2::new(0., 0.),
+            radius: 1.,
+            sides: 64,
+        },
         ZDepth::default(),
-        1.,
-        64,
         Stroke::new(1., Rgba::WHITE),
         Fill::Solid(Rgba::WHITE),
     )
@@ -33,11 +35,9 @@ fn bench_triangulate_rectangle() {
 }
 
 fn benchmark(c: &mut Criterion) {
-    c.bench_function("triangulate circle", |b| {
-        b.iter(|| bench_triangulate_circle())
-    });
+    c.bench_function("triangulate circle", |b| b.iter(bench_triangulate_circle));
     c.bench_function("triangulate rectangle", |b| {
-        b.iter(|| bench_triangulate_rectangle())
+        b.iter(bench_triangulate_rectangle)
     });
 }
 

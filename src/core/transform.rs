@@ -1,6 +1,9 @@
 use super::*;
 use crate::math::Matrix4;
 
+#[cfg(feature = "cgmath")]
+use cgmath::SquareMatrix;
+
 #[derive(Copy, Clone)]
 pub struct AlignedBuffer {
     // TODO: Make this generic when rust-lang#43408 is fixed.
