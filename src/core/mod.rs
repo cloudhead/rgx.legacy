@@ -979,7 +979,6 @@ impl SwapChain {
     ///
     /// When the [`SwapChainTexture`] returned by this method is dropped, the
     /// swapchain will present the texture to the associated [`Renderer`].
-    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> SwapChainTexture {
         SwapChainTexture {
             depth: &self.depth,
