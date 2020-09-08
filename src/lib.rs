@@ -1,4 +1,5 @@
 #![deny(clippy::all)]
+#![allow(clippy::too_many_arguments)]
 
 pub mod color;
 pub mod error;

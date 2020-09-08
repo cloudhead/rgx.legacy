@@ -1,6 +1,5 @@
 pub mod transform;
 
-use approx::relative_eq;
 use raw_window_handle::HasRawWindowHandle;
 use std::ops::Range;
 
@@ -372,11 +371,11 @@ impl Texture {
 
     fn blit(&self, src: Rect<f32>, dst: Rect<f32>, encoder: &mut wgpu::CommandEncoder) {
         assert!(
-            relative_eq!(src.width(), dst.width()),
+            (src.width() - dst.width()).abs() <= f32::EPSILON,
             "source and destination rectangles must be of the same size"
         );
         assert!(
-            relative_eq!(src.height(), dst.height()),
+            (src.height() - dst.height()).abs() <= f32::EPSILON,
             "source and destination rectangles must be of the same size"
         );
 
@@ -409,7 +408,6 @@ impl Texture {
         );
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn copy(
         texture: &wgpu::Texture,
         w: u32,

@@ -105,7 +105,6 @@ impl Batch {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn singleton(
         w: u32,
         h: u32,
