@@ -1,6 +1,7 @@
 #![deny(clippy::all)]
-#![allow(clippy::too_many_arguments)]
+#![allow(clippy::many_single_char_names)]
 #![allow(clippy::should_implement_trait)]
+#![allow(clippy::too_many_arguments)]
 
 pub mod color;
 pub mod error;
