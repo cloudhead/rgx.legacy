@@ -420,14 +420,14 @@ pub struct Circle {
 // Batch
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Batch {
     items: Vec<Shape>,
 }
 
 impl Batch {
     pub fn new() -> Self {
-        Self { items: Vec::new() }
+        Self::default()
     }
 
     pub fn singleton(shape: Shape) -> Self {

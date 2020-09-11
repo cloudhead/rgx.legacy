@@ -10,7 +10,6 @@ license = "MIT"
 edition = "2018"
 keywords = ["graphics", "gamedev", "wgpu", "2d"]
 
-
 [package.metadata.docs.rs]
 all-features = true
 

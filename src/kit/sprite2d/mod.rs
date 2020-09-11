@@ -199,7 +199,7 @@ impl Batch {
 
     pub fn offset(&mut self, x: f32, y: f32) {
         for sprite in self.items.iter_mut() {
-            sprite.dst = sprite.dst + Vector2::new(x, y);
+            sprite.dst += Vector2::new(x, y);
         }
     }
 
