@@ -15,22 +15,29 @@
 //! Linear algebra types and functions.
 //! Most of the code in this module was borrowed from the `cgmath` package.
 
+use bytemuck::{Pod, Zeroable};
+
 pub use num_traits::{cast, Float, One, Zero};
 
 /// 2D vector.
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
-pub struct Vector2<S> {
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash, Zeroable)]
+pub struct Vector2<S: Zeroable> {
     pub x: S,
     pub y: S,
 }
 
-impl<S: Sized> Vector2<S> {
+/// Implement `Pod`.
+unsafe impl<S: Pod> Pod for Vector2<S> {}
+
+impl<S: Zeroable> Vector2<S> {
     #[inline]
-    pub const fn new(x: S, y: S) -> Self {
+    pub fn new(x: S, y: S) -> Self {
         Vector2 { x, y }
     }
+}
 
+impl<S: Sized + Copy + Pod + Zeroable> Vector2<S> {
     /// Returns a vector with the same direction and a given magnitude.
     #[inline]
     pub fn normalize(self) -> Self
@@ -78,21 +85,32 @@ impl<S: Sized> Vector2<S> {
 
     /// Extend vector to three dimensions.
     pub fn extend(self, z: S) -> Vector3<S> {
-        Vector3::new(self.x, self.y, z)
+        Vector3 {
+            x: self.x,
+            y: self.y,
+            z,
+        }
     }
 
     pub fn map<F, T>(self, mut f: F) -> Vector2<T>
     where
         F: FnMut(S) -> T,
+        T: Pod,
     {
-        Vector2::new(f(self.x), f(self.y))
+        Vector2 {
+            x: f(self.x),
+            y: f(self.y),
+        }
     }
 }
 
-impl<S: Zero + Copy + PartialEq> Zero for Vector2<S> {
+impl<S: Zero + Pod + Copy + PartialEq> Zero for Vector2<S> {
     #[inline]
     fn zero() -> Self {
-        Vector2::new(S::zero(), S::zero())
+        Vector2 {
+            x: S::zero(),
+            y: S::zero(),
+        }
     }
 
     #[inline]
@@ -101,14 +119,17 @@ impl<S: Zero + Copy + PartialEq> Zero for Vector2<S> {
     }
 }
 
-impl<T: Copy> From<[T; 2]> for Vector2<T> {
+impl<T: Copy + Zeroable + Pod> From<[T; 2]> for Vector2<T> {
     #[inline]
     fn from(array: [T; 2]) -> Self {
-        Vector2::new(array[0], array[1])
+        Vector2 {
+            x: array[0],
+            y: array[1],
+        }
     }
 }
 
-impl<S> std::ops::Add<Vector2<S>> for Vector2<S>
+impl<S: Zeroable> std::ops::Add<Vector2<S>> for Vector2<S>
 where
     S: std::ops::Add<Output = S> + Copy,
 {
@@ -122,7 +143,7 @@ where
     }
 }
 
-impl<S> std::ops::Sub<Vector2<S>> for Vector2<S>
+impl<S: Zeroable> std::ops::Sub<Vector2<S>> for Vector2<S>
 where
     S: std::ops::Sub<Output = S> + Copy,
 {
@@ -136,7 +157,7 @@ where
     }
 }
 
-impl<S> std::ops::Mul<S> for Vector2<S>
+impl<S: Zeroable> std::ops::Mul<S> for Vector2<S>
 where
     S: std::ops::Mul<Output = S> + Copy,
 {
@@ -150,49 +171,61 @@ where
     }
 }
 
-impl<S> From<Point2<S>> for Vector2<S> {
+impl<S: Copy + Pod + Zeroable> From<Point2<S>> for Vector2<S> {
     fn from(p: Point2<S>) -> Self {
-        Self::new(p.x, p.y)
+        Self { x: p.x, y: p.y }
     }
 }
 
 /// 3D vector.
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
-pub struct Vector3<S> {
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Zeroable, Hash)]
+pub struct Vector3<S: Zeroable> {
     pub x: S,
     pub y: S,
     pub z: S,
 }
 
-impl<S> Vector3<S> {
+/// Implement `Pod`.
+unsafe impl<S: Pod> Pod for Vector3<S> {}
+
+impl Vector3<f32> {
     #[inline]
-    pub const fn new(x: S, y: S, z: S) -> Self {
+    pub const fn new(x: f32, y: f32, z: f32) -> Self {
         Vector3 { x, y, z }
     }
+}
 
+impl<S: Copy + Zeroable> Vector3<S> {
     /// Extend vector to four dimensions.
     pub fn extend(self, w: S) -> Vector4<S> {
         Vector4::new(self.x, self.y, self.z, w)
     }
 }
 
-impl<T: Copy> From<[T; 3]> for Vector3<T> {
+impl<T: Copy + Zeroable> From<[T; 3]> for Vector3<T> {
     #[inline]
     fn from(array: [T; 3]) -> Self {
-        Vector3::new(array[0], array[1], array[2])
+        Vector3 {
+            x: array[0],
+            y: array[1],
+            z: array[2],
+        }
     }
 }
 
 /// 4D vector.
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
-pub struct Vector4<S> {
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash, Zeroable)]
+pub struct Vector4<S: Copy + Zeroable> {
     pub x: S,
     pub y: S,
     pub z: S,
     pub w: S,
 }
+
+/// Implement `Pod`.
+unsafe impl<S: Pod> Pod for Vector4<S> {}
 
 impl From<Vector4<f32>> for [f32; 4] {
     fn from(mat: Vector4<f32>) -> Self {
@@ -200,21 +233,21 @@ impl From<Vector4<f32>> for [f32; 4] {
     }
 }
 
-impl<T: Copy> From<[T; 4]> for Vector4<T> {
+impl<T: Copy + Zeroable> From<[T; 4]> for Vector4<T> {
     #[inline]
     fn from(array: [T; 4]) -> Self {
         Vector4::new(array[0], array[1], array[2], array[3])
     }
 }
 
-impl<S> Vector4<S> {
+impl<S: Copy + Zeroable> Vector4<S> {
     #[inline]
-    pub const fn new(x: S, y: S, z: S, w: S) -> Self {
+    pub fn new(x: S, y: S, z: S, w: S) -> Self {
         Vector4 { x, y, z, w }
     }
 }
 
-impl<S> std::ops::Mul<S> for Vector4<S>
+impl<S: Copy + Zeroable> std::ops::Mul<S> for Vector4<S>
 where
     S: std::ops::Mul<Output = S> + Copy,
 {
@@ -230,7 +263,7 @@ where
     }
 }
 
-impl<S> std::ops::Mul<Vector4<S>> for Vector4<S>
+impl<S: Copy + Zeroable> std::ops::Mul<Vector4<S>> for Vector4<S>
 where
     S: std::ops::Mul<Output = S> + std::ops::Add<Output = S> + Copy,
 {
@@ -241,7 +274,7 @@ where
     }
 }
 
-impl<S> std::ops::Add<Vector4<S>> for Vector4<S>
+impl<S: Copy + Zeroable> std::ops::Add<Vector4<S>> for Vector4<S>
 where
     S: std::ops::Add<Output = S> + Copy,
 {
@@ -284,7 +317,7 @@ impl<T: Copy> From<[T; 2]> for Point2<T> {
     }
 }
 
-impl<S> From<Vector2<S>> for Point2<S> {
+impl<S: Zeroable> From<Vector2<S>> for Point2<S> {
     fn from(v: Vector2<S>) -> Self {
         Self::new(v.x, v.y)
     }
@@ -292,7 +325,7 @@ impl<S> From<Vector2<S>> for Point2<S> {
 
 impl<S> std::ops::Div<S> for Point2<S>
 where
-    S: std::ops::Div<Output = S> + Copy,
+    S: std::ops::Div<Output = S> + Copy + Zeroable,
 {
     type Output = Self;
 
@@ -306,7 +339,7 @@ where
 
 impl<S> std::ops::Mul<S> for Point2<S>
 where
-    S: std::ops::Mul<Output = S> + Copy,
+    S: std::ops::Mul<Output = S> + Copy + Zeroable,
 {
     type Output = Self;
 
@@ -320,7 +353,7 @@ where
 
 impl<S> std::ops::Add<Vector2<S>> for Point2<S>
 where
-    S: std::ops::Add<Output = S> + Copy,
+    S: std::ops::Add<Output = S> + Copy + Zeroable,
 {
     type Output = Self;
 
@@ -334,7 +367,7 @@ where
 
 impl<S> std::ops::Sub<Vector2<S>> for Point2<S>
 where
-    S: std::ops::Sub<Output = S> + Copy,
+    S: std::ops::Sub<Output = S> + Copy + Zeroable,
 {
     type Output = Self;
 
@@ -348,7 +381,7 @@ where
 
 impl<S> std::ops::Sub<Point2<S>> for Point2<S>
 where
-    S: std::ops::Sub<Output = S> + Copy,
+    S: std::ops::Sub<Output = S> + Copy + Zeroable,
 {
     type Output = Vector2<S>;
 
@@ -364,8 +397,8 @@ where
 ///
 /// This type is marked as `#[repr(C)]`.
 #[repr(C)]
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub struct Matrix4<S> {
+#[derive(Debug, Copy, Clone, PartialEq, Zeroable)]
+pub struct Matrix4<S: Copy + Zeroable> {
     /// The first column of the matrix.
     pub x: Vector4<S>,
     /// The second column of the matrix.
@@ -376,13 +409,16 @@ pub struct Matrix4<S> {
     pub w: Vector4<S>,
 }
 
+/// Implement `Pod`.
+unsafe impl<S: Pod + Copy> Pod for Matrix4<S> {}
+
 impl From<Matrix4<f32>> for [[f32; 4]; 4] {
     fn from(mat: Matrix4<f32>) -> Self {
         unsafe { std::mem::transmute(mat) }
     }
 }
 
-impl<S: Copy + Zero + One> Matrix4<S> {
+impl<S: Copy + Zeroable + Zero + One> Matrix4<S> {
     /// Create a new matrix, providing values for each index.
     #[inline]
     #[rustfmt::skip]
@@ -453,7 +489,7 @@ impl<S: Copy + Zero + One> Matrix4<S> {
     }
 }
 
-impl<S> std::ops::Mul<Matrix4<S>> for Matrix4<S>
+impl<S: Copy + Zeroable> std::ops::Mul<Matrix4<S>> for Matrix4<S>
 where
     S: std::ops::Mul<Output = S> + std::ops::Add<Output = S> + Copy,
 {
@@ -545,7 +581,7 @@ pub struct Ortho<S> {
     pub far: S,
 }
 
-impl<S: Float> From<Ortho<S>> for Matrix4<S> {
+impl<S: Copy + Float + Zeroable> From<Ortho<S>> for Matrix4<S> {
     fn from(ortho: Ortho<S>) -> Matrix4<S> {
         let two: S = cast(2).unwrap();
 

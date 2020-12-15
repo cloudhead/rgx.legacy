@@ -1,3 +1,5 @@
+use bytemuck::Zeroable;
+
 use crate::math;
 use crate::math::{Point2, Vector2};
 
@@ -407,7 +409,7 @@ impl<T> Rect<T> {
 
 impl<T> std::ops::Add<Vector2<T>> for Rect<T>
 where
-    T: std::ops::Add<Output = T> + Copy,
+    T: std::ops::Add<Output = T> + Copy + Zeroable,
 {
     type Output = Self;
 
@@ -423,7 +425,7 @@ where
 
 impl<T> std::ops::AddAssign<Vector2<T>> for Rect<T>
 where
-    T: std::ops::AddAssign<T> + Copy,
+    T: std::ops::AddAssign<T> + Copy + Zeroable,
 {
     fn add_assign(&mut self, vec: Vector2<T>) {
         self.x1 += vec.x;
@@ -435,7 +437,7 @@ where
 
 impl<T> std::ops::Sub<Vector2<T>> for Rect<T>
 where
-    T: std::ops::Sub<Output = T> + Copy,
+    T: std::ops::Sub<Output = T> + Copy + Zeroable,
 {
     type Output = Self;
 
@@ -451,7 +453,7 @@ where
 
 impl<T> std::ops::SubAssign<Vector2<T>> for Rect<T>
 where
-    T: std::ops::SubAssign<T> + Copy,
+    T: std::ops::SubAssign<T> + Copy + Zeroable,
 {
     fn sub_assign(&mut self, vec: Vector2<T>) {
         self.x1 -= vec.x;
