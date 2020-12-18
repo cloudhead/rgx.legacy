@@ -1,14 +1,17 @@
+use bytemuck::{Pod, Zeroable};
+
 use super::*;
 use crate::math::Matrix4;
 
 #[cfg(feature = "cgmath")]
 use cgmath::SquareMatrix;
 
-#[derive(Copy, Clone)]
+#[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
 pub struct AlignedBuffer {
     // TODO: Make this generic when rust-lang#43408 is fixed.
     _data: Matrix4<f32>,
-    _padding: [u8; AlignedBuffer::PAD],
+    // XXX _padding: [u8; AlignedBuffer::PAD],
 }
 
 impl AlignedBuffer {
@@ -18,7 +21,7 @@ impl AlignedBuffer {
     pub fn new(data: Matrix4<f32>) -> Self {
         Self {
             _data: data,
-            _padding: [0u8; AlignedBuffer::PAD],
+            // _padding: [0u8; AlignedBuffer::PAD],
         }
     }
 }

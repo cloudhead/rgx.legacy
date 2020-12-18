@@ -3,6 +3,8 @@ mod backend;
 #[cfg(feature = "renderer")]
 pub use backend::*;
 
+use bytemuck::{Pod, Zeroable};
+
 use crate::color::Rgba;
 use crate::kit::ZDepth;
 use crate::kit::{Repeat, Rgba8};
@@ -14,7 +16,7 @@ use crate::rect::Rect;
 ///////////////////////////////////////////////////////////////////////////
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Zeroable, Pod)]
 pub struct Vertex {
     pub position: Vector3<f32>,
     pub uv: Vector2<f32>,

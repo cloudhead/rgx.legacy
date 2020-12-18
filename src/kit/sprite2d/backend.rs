@@ -1,3 +1,5 @@
+use bytemuck::{Pod, Zeroable};
+
 use crate::core;
 use crate::core::{Binding, BindingType, Set, ShaderStage};
 use crate::math::*;
@@ -7,7 +9,7 @@ use crate::math::*;
 ///////////////////////////////////////////////////////////////////////////
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Zeroable, Pod)]
 pub struct Uniforms {
     pub ortho: Matrix4<f32>,
     pub transform: Matrix4<f32>,
@@ -85,8 +87,8 @@ impl<'a> core::AbstractPipeline<'a> for Pipeline {
         }
     }
 
-    fn apply(&self, pass: &mut core::Pass) {
-        pass.set_pipeline(&self.pipeline);
+    fn apply(&'a self, pass: &mut core::Pass<'a>) {
+        self.pipeline.apply(pass);
         pass.set_binding(&self.bindings, &[]);
     }
 

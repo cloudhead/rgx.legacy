@@ -24,13 +24,13 @@ pub struct Framebuffer {
 impl Framebuffer {
     fn new(w: u32, h: u32, r: &core::Renderer) -> Self {
         #[rustfmt::skip]
-        let vertices: &[(f32, f32, f32, f32)] = &[
-            (-1.0, -1.0, 0.0, 1.0),
-            ( 1.0, -1.0, 1.0, 1.0),
-            ( 1.0,  1.0, 1.0, 0.0),
-            (-1.0, -1.0, 0.0, 1.0),
-            (-1.0,  1.0, 0.0, 0.0),
-            ( 1.0,  1.0, 1.0, 0.0),
+        let vertices: &[[f32; 4]] = &[
+            [-1.0, -1.0, 0.0, 1.0],
+            [ 1.0, -1.0, 1.0, 1.0],
+            [ 1.0,  1.0, 1.0, 0.0],
+            [-1.0, -1.0, 0.0, 1.0],
+            [-1.0,  1.0, 0.0, 0.0],
+            [ 1.0,  1.0, 1.0, 0.0],
         ];
 
         Self {
@@ -86,8 +86,8 @@ impl<'a> core::AbstractPipeline<'a> for FramebufferPipeline {
         }
     }
 
-    fn apply(&self, pass: &mut core::Pass) {
-        pass.set_pipeline(&self.pipeline);
+    fn apply<'b>(&'b self, pass: &mut core::Pass<'b>) {
+        self.pipeline.apply(pass);
         pass.set_binding(&self.bindings, &[]);
     }
 
@@ -118,7 +118,7 @@ fn main() -> Result<(), std::io::Error> {
     // Setup renderer
     ///////////////////////////////////////////////////////////////////////////
 
-    let mut r = Renderer::new(&window)?;
+    let mut r = futures::executor::block_on(Renderer::new(&window))?;
     let size = window.inner_size();
 
     let (sw, sh) = (size.width as u32, size.height as u32);
@@ -209,7 +209,7 @@ fn main() -> Result<(), std::io::Error> {
             // Prepare pipeline
             ///////////////////////////////////////////////////////////////////////////
 
-            let out = textures.next();
+            let out = textures.next().unwrap();
 
             r.update_pipeline(
                 &offscreen,
@@ -223,15 +223,17 @@ fn main() -> Result<(), std::io::Error> {
             ///////////////////////////////////////////////////////////////////////////
 
             {
-                let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &framebuffer.target);
+                let mut pass = frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &framebuffer.target);
                 pass.set_pipeline(&offscreen);
-                pass.draw(&buffer, &offscreen_binding);
+                pass.set_binding(&offscreen_binding, &[]);
+                pass.draw_buffer(&buffer);
             }
 
             {
-                let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &out);
+                let mut pass = frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &out);
                 pass.set_pipeline(&onscreen);
-                pass.draw(&framebuffer.vertices, &onscreen_binding);
+                pass.set_binding(&onscreen_binding, &[]);
+                pass.draw_buffer(&framebuffer.vertices);
             }
 
             r.present(frame);

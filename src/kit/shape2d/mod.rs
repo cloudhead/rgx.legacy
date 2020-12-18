@@ -3,6 +3,8 @@ mod backend;
 #[cfg(feature = "renderer")]
 pub use backend::*;
 
+use bytemuck::{Pod, Zeroable};
+
 use crate::color::Rgba;
 use crate::kit::{Geometry, Rgba8, ZDepth};
 use crate::math::*;
@@ -15,7 +17,7 @@ use std::f32;
 ///////////////////////////////////////////////////////////////////////////
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Zeroable, Pod)]
 pub struct Vertex {
     pub position: Vector3<f32>,
     pub angle: f32,
@@ -28,7 +30,10 @@ impl Vertex {
         Self {
             position: Vector3::new(x, y, z),
             angle,
-            center: Vector2::new(center.x, center.y),
+            center: Vector2 {
+                x: center.x,
+                y: center.y,
+            },
             color,
         }
     }

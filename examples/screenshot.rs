@@ -24,13 +24,13 @@ pub struct Framebuffer {
 impl Framebuffer {
     fn new(w: u32, h: u32, r: &core::Renderer) -> Self {
         #[rustfmt::skip]
-        let vertices: &[(f32, f32, f32, f32)] = &[
-            (-1.0, -1.0, 0.0, 1.0),
-            ( 1.0, -1.0, 1.0, 1.0),
-            ( 1.0,  1.0, 1.0, 0.0),
-            (-1.0, -1.0, 0.0, 1.0),
-            (-1.0,  1.0, 0.0, 0.0),
-            ( 1.0,  1.0, 1.0, 0.0),
+        let vertices: &[[f32; 4]] = &[
+            [-1.0, -1.0, 0.0, 1.0],
+            [ 1.0, -1.0, 1.0, 1.0],
+            [ 1.0,  1.0, 1.0, 0.0],
+            [-1.0, -1.0, 0.0, 1.0],
+            [-1.0,  1.0, 0.0, 0.0],
+            [ 1.0,  1.0, 1.0, 0.0],
         ];
 
         Self {
@@ -86,8 +86,8 @@ impl<'a> core::AbstractPipeline<'a> for FramebufferPipeline {
         }
     }
 
-    fn apply(&self, pass: &mut core::Pass) {
-        pass.set_pipeline(&self.pipeline);
+    fn apply(&'a self, pass: &mut core::Pass<'a>) {
+        self.pipeline.apply(pass);
         pass.set_binding(&self.bindings, &[]);
     }
 
@@ -118,7 +118,7 @@ fn main() -> Result<(), std::io::Error> {
     // Setup renderer
     ///////////////////////////////////////////////////////////////////////////
 
-    let mut r = Renderer::new(&window)?;
+    let mut r = futures::executor::block_on(Renderer::new(&window))?;
     let size = window.inner_size();
 
     let (sw, sh) = (size.width as u32, size.height as u32);
@@ -146,7 +146,7 @@ fn main() -> Result<(), std::io::Error> {
     ///////////////////////////////////////////////////////////////////////////
 
     let mut frame = r.frame();
-    let out = textures.next();
+    let out = textures.next().unwrap();
 
     ///////////////////////////////////////////////////////////////////////////
     // Update pipeline
@@ -154,7 +154,7 @@ fn main() -> Result<(), std::io::Error> {
 
     r.update_pipeline(
         &offscreen,
-        kit::ortho(out.width, out.height, Default::default()),
+        kit::ortho(out.width, out.height, kit::Origin::BottomLeft),
         &mut frame,
     );
     r.update_pipeline(&onscreen, Rgba::TRANSPARENT, &mut frame);
@@ -170,9 +170,10 @@ fn main() -> Result<(), std::io::Error> {
     }
 
     {
-        let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &out);
+        let mut pass = frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &out);
         pass.set_pipeline(&onscreen);
-        pass.draw(&framebuffer.vertices, &onscreen_binding);
+        pass.set_binding(&onscreen_binding, &[]);
+        pass.draw_buffer(&framebuffer.vertices);
     }
 
     // Present frame first, so that we can read it below.
@@ -185,15 +186,14 @@ fn main() -> Result<(), std::io::Error> {
     let w = framebuffer.target.texture.w;
     let h = framebuffer.target.texture.h;
 
-    r.read(&framebuffer.target, move |data| {
-        let file = File::create("screenshot.png").unwrap();
-        let png = PNGEncoder::new(file);
-        let (_, bytes, _) = unsafe { data.align_to::<u8>() };
+    let data = r.read(&framebuffer.target);
+    let file = File::create("screenshot.png").unwrap();
+    let png = PNGEncoder::new(file);
+    let (_, bytes, _) = unsafe { data.align_to::<u8>() };
 
-        // Nb. The blue and red channel are swapped, since our
-        // framebuffer data is in BGRA format.
-        png.encode(bytes, w, h, ColorType::BGRA(8)).unwrap();
-    });
+    // Nb. The blue and red channel are swapped, since our
+    // framebuffer data is in BGRA format.
+    png.encode(bytes, w, h, ColorType::BGRA(8)).unwrap();
 
     Ok(())
 }
