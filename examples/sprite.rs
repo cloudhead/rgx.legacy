@@ -27,7 +27,7 @@ fn main() -> Result<(), std::io::Error> {
     // Setup renderer
     ///////////////////////////////////////////////////////////////////////////
 
-    let mut r = Renderer::new(&window)?;
+    let mut r = futures::executor::block_on(Renderer::new(&window))?;
     let mut win = window.inner_size();
     let pip: kit::sprite2d::Pipeline = r.pipeline(Blending::default());
 
@@ -201,7 +201,7 @@ fn main() -> Result<(), std::io::Error> {
                 ///////////////////////////////////////////////////////////////////////////
 
                 let mut frame = r.frame();
-                let out = textures.next();
+                let out = textures.next().unwrap();
 
                 ///////////////////////////////////////////////////////////////////////////
                 // Draw frame
@@ -209,14 +209,15 @@ fn main() -> Result<(), std::io::Error> {
 
                 r.update_pipeline(
                     &pip,
-                    kit::ortho(out.width, out.height, Default::default()),
+                    kit::ortho(out.width, out.height, kit::Origin::BottomLeft),
                     &mut frame,
                 );
                 {
-                    let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &out);
+                    let mut pass = frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &out);
 
                     pass.set_pipeline(&pip);
-                    pass.draw(&buffer, &binding);
+                    pass.set_binding(&binding, &[]);
+                    pass.draw_buffer(&buffer);
                 }
 
                 r.present(frame);

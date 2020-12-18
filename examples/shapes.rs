@@ -22,7 +22,7 @@ fn main() -> Result<(), std::io::Error> {
     // Setup renderer
     ///////////////////////////////////////////////////////////////////////////
 
-    let mut r = Renderer::new(&window)?;
+    let mut r = futures::executor::block_on(Renderer::new(&window))?;
     let mut win = window.inner_size();
 
     let pip: kit::shape2d::Pipeline = r.pipeline(Blending::default());
@@ -75,6 +75,7 @@ fn main() -> Result<(), std::io::Error> {
             _ => {}
         },
         Event::RedrawRequested(_) => {
+            eprintln!("REDRAW");
             let rows = (win.height as f32 / sh) as u32;
             let cols = (win.width as f32 / sw) as u32;
 
@@ -131,8 +132,7 @@ fn main() -> Result<(), std::io::Error> {
             ///////////////////////////////////////////////////////////////////////////
 
             let mut frame = r.frame();
-
-            let out = textures.next();
+            let out = textures.next().unwrap();
 
             r.update_pipeline(
                 &pip,
@@ -150,7 +150,9 @@ fn main() -> Result<(), std::io::Error> {
                 pass.set_pipeline(&pip);
                 pass.draw_buffer(&buffer);
             }
+            dbg!("4");
             r.present(frame);
+            dbg!("5");
         }
         _ => {}
     });

@@ -194,7 +194,7 @@ fn main() -> Result<(), std::io::Error> {
                 let mut pass = frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &out);
 
                 pass.set_pipeline(&pip);
-                // pass.draw_buffer(&buffer);
+                pass.draw_buffer(&buffer);
             }
             renderer.present(frame);
 

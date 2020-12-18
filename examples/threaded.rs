@@ -24,7 +24,7 @@ fn main() -> Result<(), std::io::Error> {
     let size = window.inner_size();
 
     // Setup renderer
-    let mut renderer = Renderer::new(&window)?;
+    let mut renderer = futures::executor::block_on(Renderer::new(&window))?;
 
     let shared_size = Arc::new(Mutex::new(size));
     let shared_coords = Arc::new(Mutex::new((0., 0.)));
@@ -55,7 +55,7 @@ fn main() -> Result<(), std::io::Error> {
             )
             .finish(&renderer);
 
-            let output = chain.next();
+            let output = chain.next().unwrap();
             let mut frame = renderer.frame();
 
             renderer.update_pipeline(

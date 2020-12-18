@@ -22,7 +22,7 @@ fn main() -> Result<(), std::io::Error> {
     // Setup renderer
     ///////////////////////////////////////////////////////////////////////////
 
-    let mut r = Renderer::new(&window)?;
+    let mut r = futures::executor::block_on(Renderer::new(&window))?;
     let mut win = window.inner_size();
 
     let pip: kit::shape2d::Pipeline = r.pipeline(Blending::default());
@@ -111,7 +111,7 @@ fn main() -> Result<(), std::io::Error> {
             // Create frame
             ///////////////////////////////////////////////////////////////////////////
 
-            let out = chain.next();
+            let out = chain.next().unwrap();
             let mut frame = r.frame();
 
             ///////////////////////////////////////////////////////////////////////////

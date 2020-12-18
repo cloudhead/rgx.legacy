@@ -33,6 +33,31 @@ impl Rgba {
     }
 }
 
+struct BufferDimensions {
+    #[allow(dead_code)]
+    width: u32,
+    height: u32,
+    unpadded_bytes_per_row: usize,
+    padded_bytes_per_row: usize,
+}
+
+impl BufferDimensions {
+    fn new(width: u32, height: u32) -> Self {
+        let bytes_per_pixel = std::mem::size_of::<u32>();
+        let unpadded_bytes_per_row = width as usize * bytes_per_pixel;
+        let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT as usize;
+        let padded_bytes_per_row_padding = (align - unpadded_bytes_per_row % align) % align;
+        let padded_bytes_per_row = unpadded_bytes_per_row + padded_bytes_per_row_padding;
+
+        Self {
+            width,
+            height,
+            unpadded_bytes_per_row,
+            padded_bytes_per_row,
+        }
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 /// Draw
 ///////////////////////////////////////////////////////////////////////////////
@@ -213,13 +238,13 @@ impl Bind for Framebuffer {
 impl Canvas for Framebuffer {
     type Color = Bgra8;
 
-    fn clear(&self, color: Bgra8, device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
-        Texture::clear(&self.texture, color, device, encoder);
-        Texture::clear(&self.depth.texture, 0f32, device, encoder);
+    fn clear(&self, color: Bgra8, device: &mut Device, _encoder: &mut wgpu::CommandEncoder) {
+        Texture::clear(&self.texture, color, device);
+        Texture::clear(&self.depth.texture, 0f32, device);
     }
 
-    fn fill(&self, buf: &[Bgra8], device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
-        Texture::fill(&self.texture, buf, device, encoder);
+    fn fill(&self, buf: &[Bgra8], device: &mut Device, _encoder: &mut wgpu::CommandEncoder) {
+        Texture::fill(&self.texture, buf, device);
     }
 
     fn transfer(
@@ -229,9 +254,9 @@ impl Canvas for Framebuffer {
         h: u32,
         rect: Rect<i32>,
         device: &mut Device,
-        encoder: &mut wgpu::CommandEncoder,
+        _encoder: &mut wgpu::CommandEncoder,
     ) {
-        Texture::transfer(&self.texture, buf, w, h, rect, device, encoder);
+        Texture::transfer(&self.texture, buf, w, h, rect, device);
     }
 
     fn blit(&self, from: Rect<f32>, dst: Rect<f32>, encoder: &mut wgpu::CommandEncoder) {
@@ -266,12 +291,8 @@ impl Texture {
         }
     }
 
-    fn clear<T>(
-        texture: &Texture,
-        value: T,
-        device: &mut Device,
-        encoder: &mut wgpu::CommandEncoder,
-    ) where
+    fn clear<T>(texture: &Texture, value: T, device: &mut Device)
+    where
         T: Clone,
     {
         let mut texels: Vec<T> = Vec::with_capacity(texture.w as usize * texture.h as usize);
@@ -281,15 +302,11 @@ impl Texture {
         assert!(head.is_empty());
         assert!(tail.is_empty());
 
-        Self::fill(texture, body, device, encoder);
+        Self::fill(texture, body, device);
     }
 
-    fn fill<T: 'static>(
-        texture: &Texture,
-        texels: &[T],
-        device: &mut Device,
-        encoder: &mut wgpu::CommandEncoder,
-    ) where
+    fn fill<T: 'static>(texture: &Texture, texels: &[T], device: &mut Device)
+    where
         T: Clone + Copy + Pod,
     {
         assert_eq!(
@@ -298,23 +315,23 @@ impl Texture {
             "fatal: incorrect length for texel buffer"
         );
 
-        let buf = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: None,
-                contents: bytemuck::cast_slice(&texels),
-                usage: wgpu::BufferUsage::COPY_SRC,
-            });
-
-        Self::copy(
-            &texture.wgpu,
-            texture.w,
-            texture.h,
-            0,
-            0,
-            texture.extent,
-            &buf,
-            encoder,
+        device.queue.write_texture(
+            wgpu::TextureCopyView {
+                texture: &texture.wgpu,
+                mip_level: 0,
+                origin: wgpu::Origin3d { x: 0, y: 0, z: 0 },
+            },
+            bytemuck::cast_slice(&texels),
+            wgpu::TextureDataLayout {
+                offset: 0,
+                bytes_per_row: 4 * texture.w,
+                rows_per_image: texture.h,
+            },
+            wgpu::Extent3d {
+                width: texture.w,
+                height: texture.h,
+                depth: 1,
+            },
         );
     }
 
@@ -325,7 +342,6 @@ impl Texture {
         height: u32,
         rect: Rect<i32>,
         device: &mut Device,
-        encoder: &mut wgpu::CommandEncoder,
     ) where
         T: Into<Rgba8> + Clone + Copy + Pod,
     {
@@ -350,28 +366,29 @@ impl Texture {
             "fatal: transfer size must be <= texture size"
         );
 
-        let buf = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: None,
-                contents: bytemuck::cast_slice(&texels),
-                usage: wgpu::BufferUsage::COPY_SRC,
-            });
-
         let extent = wgpu::Extent3d {
             width: tx_w,
             height: tx_h,
             depth: 1,
         };
-        Self::copy(
-            &texture.wgpu,
-            width,
-            height,
-            dst_x,
-            dst_y,
+
+        device.queue.write_texture(
+            wgpu::TextureCopyView {
+                texture: &texture.wgpu,
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: dst_x,
+                    y: dst_y,
+                    z: 0,
+                },
+            },
+            bytemuck::cast_slice(&texels),
+            wgpu::TextureDataLayout {
+                offset: 0,
+                bytes_per_row: 4 * tx_w,
+                rows_per_image: tx_h,
+            },
             extent,
-            &buf,
-            encoder,
         );
     }
 
@@ -411,34 +428,6 @@ impl Texture {
             },
         );
     }
-
-    fn copy(
-        texture: &wgpu::Texture,
-        w: u32,
-        h: u32,
-        x: u32,
-        y: u32,
-        extent: wgpu::Extent3d,
-        buffer: &wgpu::Buffer,
-        encoder: &mut wgpu::CommandEncoder,
-    ) {
-        encoder.copy_buffer_to_texture(
-            wgpu::BufferCopyView {
-                buffer,
-                layout: wgpu::TextureDataLayout {
-                    offset: 0,
-                    bytes_per_row: 4 * w,
-                    rows_per_image: h,
-                },
-            },
-            wgpu::TextureCopyView {
-                texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d { x, y, z: 0 },
-            },
-            extent,
-        );
-    }
 }
 
 impl Bind for Texture {
@@ -453,12 +442,12 @@ impl Bind for Texture {
 impl Canvas for Texture {
     type Color = Rgba8;
 
-    fn fill(&self, buf: &[Rgba8], device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
-        Texture::fill(&self, buf, device, encoder);
+    fn fill(&self, buf: &[Rgba8], device: &mut Device, _encoder: &mut wgpu::CommandEncoder) {
+        Texture::fill(&self, buf, device);
     }
 
-    fn clear(&self, color: Rgba8, device: &mut Device, encoder: &mut wgpu::CommandEncoder) {
-        Texture::clear(&self, color, device, encoder);
+    fn clear(&self, color: Rgba8, device: &mut Device, _encoder: &mut wgpu::CommandEncoder) {
+        Texture::clear(&self, color, device);
     }
 
     fn transfer(
@@ -468,9 +457,9 @@ impl Canvas for Texture {
         h: u32,
         rect: Rect<i32>,
         device: &mut Device,
-        encoder: &mut wgpu::CommandEncoder,
+        _encoder: &mut wgpu::CommandEncoder,
     ) {
-        Texture::transfer(&self, buf, w, h, rect, device, encoder);
+        Texture::transfer(&self, buf, w, h, rect, device);
     }
 
     fn blit(&self, src: Rect<f32>, dst: Rect<f32>, encoder: &mut wgpu::CommandEncoder) {
@@ -620,8 +609,14 @@ impl BindingType {
     fn to_wgpu(&self) -> wgpu::BindingType {
         match self {
             // XXX: Binding size should be non-zero?
-            BindingType::UniformBuffer => wgpu::BindingType::UniformBuffer { dynamic: false, min_binding_size: None  },
-            BindingType::UniformBufferDynamic => wgpu::BindingType::UniformBuffer { dynamic: true, min_binding_size: None },
+            BindingType::UniformBuffer => wgpu::BindingType::UniformBuffer {
+                dynamic: false,
+                min_binding_size: None,
+            },
+            BindingType::UniformBufferDynamic => wgpu::BindingType::UniformBuffer {
+                dynamic: true,
+                min_binding_size: None,
+            },
             BindingType::SampledTexture => wgpu::BindingType::SampledTexture {
                 multisampled: false,
                 dimension: wgpu::TextureViewDimension::D2,
@@ -649,32 +644,6 @@ pub struct Pipeline {
     pub layout: PipelineLayout,
     pub vertex_layout: VertexLayout,
 }
-
-// impl<'a> AbstractPipeline<'a> for Pipeline {
-//     type PrepareContext = ();
-//     type Uniforms = ();
-
-//     fn description() -> PipelineDescription<'a> {
-//         PipelineDescription {
-//             vertex_layout: &[],
-//             pipeline_layout: &[],
-//             vertex_shader: &[],
-//             fragment_shader: &[],
-//         }
-//     }
-
-//     fn setup(pipeline: Self, _dev: &Device) -> Self {
-//         pipeline
-//     }
-
-//     fn apply<'b>(&'b self, pass: &'b mut Pass<'b>) {
-//         pass.wgpu.set_pipeline(&self.wgpu);
-//     }
-
-//     fn prepare(&'a self, _unused: ()) -> Option<(&'a UniformBuffer, Vec<()>)> {
-//         None
-//     }
-// }
 
 impl Pipeline {
     pub fn apply<'a>(&'a self, pass: &mut Pass<'a>) {
@@ -837,22 +806,17 @@ pub struct Pass<'a> {
     wgpu: wgpu::RenderPass<'a>,
 }
 
-impl<'a> Pass<'a> {
+impl<'a, 'b> Pass<'a> {
     pub fn begin(
         encoder: &'a mut wgpu::CommandEncoder,
         view: &'a wgpu::TextureView,
         depth: &'a wgpu::TextureView,
         op: PassOp,
-    ) -> Self {
+    ) -> Pass<'a> {
         let pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
                 attachment: &view,
                 ops: wgpu::Operations {
-                    // XXX: When `Load`, should it clear to transparent?
-                    // clear_color: match op {
-                    //     PassOp::Clear(color) => color.to_wgpu(),
-                    //     PassOp::Load() => Rgba::TRANSPARENT.to_wgpu(),
-                    // },
                     load: op.to_wgpu(),
                     store: true,
                 },
@@ -861,11 +825,7 @@ impl<'a> Pass<'a> {
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachmentDescriptor {
                 attachment: depth,
                 depth_ops: Some(wgpu::Operations {
-                    load:
-                    match op {
-                        PassOp::Clear(_) => wgpu::LoadOp::Clear(0.),
-                        PassOp::Load() => wgpu::LoadOp::Load, //Rgba::TRANSPARENT.to_wgpu(),
-                    },
+                    load: wgpu::LoadOp::Clear(0.),
                     store: true,
                 }),
                 stencil_ops: Some(wgpu::Operations {
@@ -876,7 +836,7 @@ impl<'a> Pass<'a> {
         });
         Pass { wgpu: pass }
     }
-    pub fn set_pipeline<T>(&'a mut self, pipeline: &'a T)
+    pub fn set_pipeline<T>(&mut self, pipeline: &'a T)
     where
         T: AbstractPipeline<'a>,
     {
@@ -895,11 +855,11 @@ impl<'a> Pass<'a> {
     pub fn draw<T: Draw>(&'a mut self, drawable: &'a T, binding: &'a BindingGroup) {
         drawable.draw(binding, self);
     }
-    pub fn draw_buffer(&'a mut self, buf: &'a VertexBuffer) {
+    pub fn draw_buffer(&mut self, buf: &'a VertexBuffer) {
         self.set_vertex_buffer(buf);
         self.wgpu.draw(0..buf.size, 0..1);
     }
-    pub fn draw_buffer_range(&'a mut self, buf: &'a VertexBuffer, range: Range<u32>) {
+    pub fn draw_buffer_range(&mut self, buf: &'a VertexBuffer, range: Range<u32>) {
         self.set_vertex_buffer(buf);
         self.wgpu.draw(range, 0..1);
     }
@@ -1039,11 +999,11 @@ pub struct Renderer {
 
 impl Renderer {
     pub async fn new<W: HasRawWindowHandle>(window: &W) -> Result<Self, Error> {
-        let instance = wgpu::Instance::new(wgpu::BackendBit::METAL | wgpu::BackendBit::VULKAN);
+        let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
         let surface = unsafe { instance.create_surface(window) };
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::LowPower,
+                power_preference: wgpu::PowerPreference::default(),
                 compatible_surface: Some(&surface),
             })
             .await
@@ -1120,57 +1080,55 @@ impl Renderer {
         )
     }
 
-    // TODO: Return buffer.
-    pub fn read<F>(&mut self, fb: &Framebuffer, f: F)
-    where
-        F: 'static + FnOnce(&[Bgra8]),
-    {
-        let mut encoder = self.device.create_command_encoder();
+    pub fn read(&mut self, fb: &Framebuffer) -> Vec<Bgra8> {
+        let dimensions = BufferDimensions::new(fb.texture.w, fb.texture.h);
+        let bytes_per_row = dimensions.padded_bytes_per_row;
+        let bytes_total = bytes_per_row * dimensions.height as usize;
 
-        let bytesize = 4 * fb.size();
         let dst = self.device.device.create_buffer(&wgpu::BufferDescriptor {
             label: None,
-            size: bytesize as u64,
+            size: bytes_total as u64,
             usage: wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::COPY_DST,
             mapped_at_creation: true,
         });
 
-        encoder.copy_texture_to_buffer(
-            wgpu::TextureCopyView {
-                texture: &fb.texture.wgpu,
-                mip_level: 0,
-                origin: wgpu::Origin3d { x: 0, y: 0, z: 0 },
-            },
-            wgpu::BufferCopyView {
-                buffer: &dst,
-                layout: wgpu::TextureDataLayout {
-                    offset: 0,
-                    // TODO: Must be a multiple of 256
-                    bytes_per_row: 4 * fb.texture.w,
-                    rows_per_image: fb.texture.h,
+        let command_buffer = {
+            let mut encoder = self.device.create_command_encoder();
+            encoder.copy_texture_to_buffer(
+                wgpu::TextureCopyView {
+                    texture: &fb.texture.wgpu,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
                 },
-            },
-            fb.texture.extent,
-        );
-        self.device.submit(Some(encoder.finish()));
+                wgpu::BufferCopyView {
+                    buffer: &dst,
+                    layout: wgpu::TextureDataLayout {
+                        offset: 0,
+                        bytes_per_row: bytes_per_row as u32,
+                        rows_per_image: dimensions.height,
+                    },
+                },
+                fb.texture.extent,
+            );
+            encoder.finish()
+        };
 
-        let mut buffer: Vec<u8> = Vec::with_capacity(bytesize);
-
-        let view = dst.slice(..).get_mapped_range();
-
-        // 0u64, bytesize as u64).await {
-        //     Ok(ref mapping) => {
-        buffer.extend_from_slice(&*view);
-        if buffer.len() == bytesize {
-            let (head, body, tail) = unsafe { buffer.align_to::<Bgra8>() };
-            if !(head.is_empty() && tail.is_empty()) {
-                panic!("Renderer::read: framebuffer is not a valid Bgra8 buffer");
+        let mut buffer: Vec<u8> = Vec::with_capacity(fb.size() * std::mem::size_of::<u32>());
+        {
+            let view = dst.slice(..).get_mapped_range();
+            for row in view.chunks(bytes_per_row) {
+                buffer.extend_from_slice(&row[..dimensions.unpadded_bytes_per_row]);
             }
-            f(body);
         }
-        // }
-        // Err(ref err) => panic!("{:?}", err),
-        // }
+        dst.unmap();
+
+        self.device.submit(Some(command_buffer));
+
+        let (head, body, tail) = unsafe { buffer.align_to::<Bgra8>() };
+        if !(head.is_empty() && tail.is_empty()) {
+            panic!("Renderer::read: framebuffer is not a valid Bgra8 buffer");
+        }
+        body.to_owned()
     }
 
     // MUTABLE API ////////////////////////////////////////////////////////////
@@ -1244,10 +1202,7 @@ pub struct Device {
 }
 
 impl Device {
-    pub async fn new(
-        adapter: &wgpu::Adapter,
-        surface: wgpu::Surface,
-    ) -> Self {
+    pub async fn new(adapter: &wgpu::Adapter, surface: wgpu::Surface) -> Self {
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
@@ -1519,9 +1474,7 @@ impl Device {
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: None,
                 contents: bytemuck::cast_slice(&slice),
-                usage: wgpu::BufferUsage::UNIFORM
-                    | wgpu::BufferUsage::COPY_SRC
-                    | wgpu::BufferUsage::MAP_WRITE,
+                usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_SRC,
             });
 
         encoder.copy_buffer_to_buffer(
@@ -1615,7 +1568,9 @@ impl Device {
                 }),
                 vertex_state: wgpu::VertexStateDescriptor {
                     index_format: wgpu::IndexFormat::Uint16,
+                    // index_format: None,
                     vertex_buffers: &[vertex_attrs],
+                    // vertex_buffers: &[],
                 },
                 sample_count: 1,
                 sample_mask: !0,
