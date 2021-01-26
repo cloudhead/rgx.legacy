@@ -51,9 +51,7 @@ pub struct Sprite {
 }
 
 impl Sprite {
-    pub fn new(
-        src: Rect<f32>
-    ) -> Self {
+    pub fn new(src: Rect<f32>) -> Self {
         Self {
             src,
             pos: Vector2::new(0.0, 0.0),
@@ -63,7 +61,7 @@ impl Sprite {
             zdepth: Default::default(),
             color: Default::default(),
             alpha: Default::default(),
-            repeat: Default::default()
+            repeat: Default::default(),
         }
     }
 
@@ -72,8 +70,11 @@ impl Sprite {
         self
     }
 
-    pub fn angle(mut self, angle: f32) -> Self {
+    pub fn rotation<P: Into<Vector2<f32>>>(mut self, angle: f32, center: P) -> Self {
+        let center = center.into();
+
         self.angle = angle;
+        self.origin = center;
         self
     }
 
@@ -120,28 +121,8 @@ impl Sprite {
     }
 }
 
-pub fn sprite(
-    src: Rect<f32>,
-    dst: Rect<f32>
-) -> Sprite {
+pub fn sprite(src: Rect<f32>, dst: Rect<f32>) -> Sprite {
     Sprite::new(src).rectangle(dst)
-}
-
-pub fn sprite_pos(
-    src: Rect<f32>,
-    pos: Vector2<f32>,
-    scale: Vector2<f32>,
-) -> Sprite {
-    Sprite::new(src).position(pos).scale(scale)
-}
-
-pub fn sprite_origin(
-    src: Rect<f32>,
-    pos: Vector2<f32>,
-    scale: Vector2<f32>,
-    origin: Vector2<f32>
-) -> Sprite {
-    Sprite::new(src).position(pos).scale(scale).origin(origin)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -184,9 +165,8 @@ impl Batch {
         view.push(
             Sprite::new(src)
                 .position(pos)
-                .angle(angle)
+                .rotation(angle, origin)
                 .scale(scale)
-                .origin(origin)
                 .zdepth(zdepth)
                 .color(rgba)
                 .alpha(alpha)
@@ -223,9 +203,8 @@ impl Batch {
         self.items.push(
             Sprite::new(src)
                 .position(pos)
-                .angle(angle)
+                .rotation(angle, origin)
                 .scale(scale)
-                .origin(origin)
                 .zdepth(depth)
                 .color(rgba)
                 .alpha(alpha)
@@ -246,7 +225,7 @@ impl Batch {
             color,
             alpha,
             repeat,
-            origin
+            origin,
         } in self.items.iter()
         {
             let ZDepth(z) = zdepth;
@@ -261,9 +240,8 @@ impl Batch {
             let c: Rgba8 = (*color).into();
 
             // Transform matrix
-            let scale_mat = Matrix4::from_nonuniform_scale(
-                scale.x * src.width(), scale.y * src.height(), 1.0
-            );
+            let scale_mat =
+                Matrix4::from_nonuniform_scale(scale.x * src.width(), scale.y * src.height(), 1.0);
             let origin_translation = Matrix4::from_translation(Vector3::new(
                 -src.width() * origin.x * scale.x,
                 -src.height() * origin.y * scale.y,

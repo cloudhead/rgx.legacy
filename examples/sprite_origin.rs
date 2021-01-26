@@ -1,8 +1,8 @@
- #![deny(clippy::all)]
+#![deny(clippy::all)]
 #![allow(clippy::unreadable_literal)]
 #![allow(clippy::single_match)]
 
-use std::collections::vec_deque::VecDeque;
+use std::{collections::vec_deque::VecDeque, fs::File};
 
 use rgx::core::*;
 use rgx::kit;
@@ -17,10 +17,10 @@ use winit::{
     window::Window,
 };
 
+use rgx::math::Vector2;
 use std::time::{Duration, Instant};
- use rgx::math::Vector2;
 
- fn main() -> Result<(), std::io::Error> {
+fn main() -> Result<(), std::io::Error> {
     let event_loop = EventLoop::new();
     let window = Window::new(&event_loop).unwrap();
 
@@ -102,7 +102,8 @@ use std::time::{Duration, Instant};
                     window = size;
 
                     let (window_width, window_height) = (window.width as u32, window.height as u32);
-                    textures = renderer.swap_chain(window_width, window_height, PresentMode::default());
+                    textures =
+                        renderer.swap_chain(window_width, window_height, PresentMode::default());
                 }
                 _ => (),
             },
@@ -117,7 +118,10 @@ use std::time::{Duration, Instant};
                 let scale = f32::abs(f32::sin(seconds * 3.14 / 4.0)) * 10.0;
                 batch.add(
                     src,
-                    Vector2 { x: window.width as f32 / 2.0, y: window.height as f32 / 2.0 },
+                    Vector2 {
+                        x: window.width as f32 / 2.0,
+                        y: window.height as f32 / 2.0,
+                    },
                     seconds * 360.0 / 2.0,
                     Vector2::new(scale, scale),
                     Vector2::new(0.5, 0.5),
