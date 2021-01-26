@@ -458,7 +458,6 @@ impl<S: Copy + Zero + One + Float> Matrix4<S> {
         // http://en.wikipedia.org/wiki/Rotation_matrix#Basic_rotations
         let (s, c) = (theta.sin(), theta.cos());
 
-        #[rustfmt::skip]
         Matrix4::new(
             c, s, S::zero(), S::zero(),
             -s.clone(), c.clone(), S::zero(), S::zero(),
