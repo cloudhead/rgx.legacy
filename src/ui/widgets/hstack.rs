@@ -1,5 +1,4 @@
 use std::ops::ControlFlow;
-use std::time;
 
 use crate::ui::*;
 
@@ -75,9 +74,9 @@ impl<T> Widget<T> for HStack<T> {
         }
     }
 
-    fn update(&mut self, delta: time::Duration, ctx: &Context<'_>, data: &T) {
+    fn update(&mut self, ctx: &Context<'_>, data: &T) {
         for widget in &mut self.children {
-            widget.update(delta, ctx, data);
+            widget.update(ctx, data);
         }
     }
 

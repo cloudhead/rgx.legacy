@@ -11,24 +11,28 @@ use crate::timer::FrameTimer;
 use crate::ui::text::{FontError, FontFormat, FontId};
 use crate::ui::*;
 
+use thiserror::Error;
+
 /// Default UI scale.
 pub const DEFAULT_SCALE: f32 = 2.;
+/// Target frame time (60hz).
+pub const TARGET_FRAME_TIME: time::Duration = time::Duration::from_nanos(16666666);
 
-#[derive(thiserror::Error, Debug)]
+#[derive(Error, Debug)]
 pub enum Error {
-    #[error("Font error: {0}")]
+    #[error("font: {0}")]
     Font(#[from] FontError),
 }
 
 #[derive(Default, Clone, Debug)]
 pub struct ImageOpts {
     /// Cursor origin.
-    cursor: Option<Point2D<u32>>,
+    origin: Option<Point2D<u32>>,
 }
 
 impl ImageOpts {
-    pub fn cursor(mut self, origin: impl Into<Point2D<u32>>) -> Self {
-        self.cursor = Some(origin.into());
+    pub fn origin(mut self, origin: impl Into<Point2D<u32>>) -> Self {
+        self.origin = Some(origin.into());
         self
     }
 }
@@ -75,7 +79,7 @@ impl Application {
     pub fn image(mut self, name: &'static str, image: Image, opts: ImageOpts) -> Self {
         let id = TextureId::next();
 
-        if let Some(origin) = opts.cursor {
+        if let Some(origin) = opts.origin {
             self.cursors.push((name, image.clone(), origin));
         }
         self.graphics.texture(id, image);
@@ -91,7 +95,7 @@ impl Application {
 
         if win.scale_factor() != 1. {
             warn!(
-                "non-standard pixel scaling factor detected: {}",
+                "Non-standard pixel scaling factor detected: {}",
                 win.scale_factor()
             );
         }
@@ -120,7 +124,6 @@ impl Application {
         let mut paint_timer = FrameTimer::new();
         let mut events = Vec::with_capacity(16);
         let mut last = time::Instant::now();
-        let mut delta;
 
         // Window state.
         let mut resized = false;
@@ -137,11 +140,7 @@ impl Application {
         // If we don't do this, widget sizes will be zero when the first events land.
         // It's important however that in the general case, update and layout are run
         // *after* events are processed.
-        root.update(
-            time::Duration::ZERO,
-            &Context::new(Point::ORIGIN, &store),
-            &data,
-        );
+        root.update(&Context::new(Point::ORIGIN, &store), &data);
         root.layout(
             Size::from(win.size()) / ui_scale,
             &LayoutCtx::new(&self.graphics.fonts),
@@ -160,7 +159,22 @@ impl Application {
         }
 
         while win.is_open() {
-            win_events.poll();
+            let delta = last.elapsed();
+
+            // usse a clock.tick
+            // return delta
+            // use same delta eveerywher
+
+            if delta >= TARGET_FRAME_TIME {
+                last = time::Instant::now();
+            } else {
+                std::thread::sleep(TARGET_FRAME_TIME - delta);
+            }
+            let start = time::Instant::now();
+
+            ////////////////////////////////////////////////////////////////////////////////////////
+            // Frame
+            ////////////////////////////////////////////////////////////////////////////////////////
 
             for event in win_events.flush() {
                 if event.is_input() {
@@ -282,16 +296,16 @@ impl Application {
                     _ => {}
                 };
             }
-            // If minimized, don't update or render.
-            if minimized {
-                continue;
-            }
-
             let cursor = Point2D::<f64>::from(win.get_cursor_pos()) / ui_scale as f64;
             let cursor = cursor.map(|n| n.floor());
             let win_size_logical = win.size();
             let win_size_ui = Size::from(win_size_logical) / ui_scale;
             let ctx = Context::new(Point::from(cursor), &store);
+
+            // If minimized, don't update or render.
+            if minimized {
+                // continue;
+            }
 
             // Since we may receive multiple resize events at once, instead of responded to each
             // resize event, we handle the resize only once.
@@ -300,10 +314,8 @@ impl Application {
                 renderer.handle_resized(win_size_logical);
                 events.push(WidgetEvent::Resized(win_size_ui));
             }
-            delta = last.elapsed();
-            last += delta;
+            root.event(&WidgetEvent::Tick(time::Instant::now()), &ctx, &mut data);
 
-            events.push(WidgetEvent::Tick(delta));
             // A common case is that we have multiple `CursorMoved` events
             // in one update. In that case we keep only the last one,
             // since the in-betweens will never be seen.
@@ -331,7 +343,7 @@ impl Application {
             }
 
             update_timer.run(|_avg| {
-                root.update(delta, &ctx, &data);
+                root.update(&ctx, &data);
                 root.layout(
                     win_size_ui,
                     &LayoutCtx::new(&self.graphics.fonts),
@@ -358,8 +370,23 @@ impl Application {
             });
 
             win.present();
-        }
 
+            ////////////////////////////////////////////////////////////////////////////////////////
+
+            // let delta = start.elapsed();
+            // waiting = waiting.saturating_sub(delta);
+
+            // We try to match `TARGET_FRAME_TIME` by subtracting whatever of the frame time we've
+            // already spent waiting.
+            // if waiting == time::Duration::ZERO {
+            //     win_events.poll();
+            //     waiting = TARGET_FRAME_TIME;
+            // } else {
+            //     eprintln!("waiting: {:?}", waiting);
+            // win_events.wait_timeout(time::Duration::from_millis(1));
+            win_events.poll();
+            // }
+        }
         Ok(())
     }
 }

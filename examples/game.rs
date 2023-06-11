@@ -2,7 +2,7 @@
 use std::ops::ControlFlow;
 use std::time;
 
-use rgx::application::ImageOpts;
+use rgx::application::{ImageOpts, TARGET_FRAME_TIME};
 use rgx::gfx::Image;
 use rgx::math::*;
 use rgx::ui::canvas::Canvas;
@@ -13,14 +13,15 @@ pub const LOGO: &[u8] = include_bytes!("assets/rx.rgba");
 pub const DEFAULT_CURSORS: &[u8] = include_bytes!("assets/cursors.rgba");
 
 struct World {}
+
 struct Root {
     offset: Vector,
     image: widgets::Image,
-    acc: time::Duration,
+    last: time::Instant,
 }
 
 impl Widget<World> for Root {
-    fn update(&mut self, delta: time::Duration, ctx: &Context<'_>, world: &World) {
+    fn update(&mut self, ctx: &Context<'_>, world: &World) {
         // self.widgets.update(delta, ctx, session);
     }
 
@@ -42,15 +43,16 @@ impl Widget<World> for Root {
         world: &mut World,
     ) -> ControlFlow<()> {
         match event {
-            WidgetEvent::Tick(delta) => {
-                self.acc += *delta;
+            WidgetEvent::Tick(time) => {
+                let delta = *time - self.last;
 
-                if self.acc >= time::Duration::from_millis(16) {
-                    dbg!(self.acc);
+                if delta >= TARGET_FRAME_TIME {
+                    eprintln!("delta: {:?}", delta);
+                    // dbg!(self.acc);
+                    self.last = *time;
 
                     self.offset.x += 1.;
                     self.offset.y += 1.;
-                    self.acc = time::Duration::ZERO;
                 }
             }
             _ => {}
@@ -159,9 +161,9 @@ impl Widget<World> for Root {
 
 fn main() -> anyhow::Result<()> {
     let ui = Root {
+        last: time::Instant::now(),
         image: widgets::Image::named("logo"),
         offset: Vector::default(),
-        acc: time::Duration::ZERO,
     };
     let world = World {};
     let cursors = Image::try_from(DEFAULT_CURSORS).unwrap();

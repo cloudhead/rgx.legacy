@@ -1,6 +1,5 @@
 use std::fmt;
 use std::ops::{ControlFlow, Deref};
-use std::time;
 
 use crate::ui::canvas::*;
 use crate::ui::*;
@@ -82,8 +81,8 @@ impl<T, W: Widget<T>> Widget<T> for Pod<T, W> {
         }
     }
 
-    fn update(&mut self, delta: time::Duration, ctx: &Context<'_>, data: &T) {
-        self.widget.update(delta, &self.context(ctx), data)
+    fn update(&mut self, ctx: &Context<'_>, data: &T) {
+        self.widget.update(&self.context(ctx), data)
     }
 
     fn cursor(&self) -> Option<&'static str> {

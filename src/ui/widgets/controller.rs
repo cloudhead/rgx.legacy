@@ -25,8 +25,8 @@ pub trait Controller<T, W: Widget<T>> {
     }
 
     /// Analogous to [`Widget::update`].
-    fn update(&mut self, child: &mut W, delta: time::Duration, ctx: &Context<'_>, data: &T) {
-        child.update(delta, ctx, data)
+    fn update(&mut self, child: &mut W, ctx: &Context<'_>, data: &T) {
+        child.update(ctx, data)
     }
 
     /// Analogous to [`Widget::frame`].
@@ -60,8 +60,8 @@ impl<T, W: Widget<T>, C: Controller<T, W>> Widget<T> for Control<W, C> {
         self.widget.contains(point)
     }
 
-    fn update(&mut self, delta: time::Duration, ctx: &Context<'_>, data: &T) {
-        self.controller.update(&mut self.widget, delta, ctx, data)
+    fn update(&mut self, ctx: &Context<'_>, data: &T) {
+        self.controller.update(&mut self.widget, ctx, data)
     }
 
     fn event(&mut self, event: &WidgetEvent, ctx: &Context<'_>, data: &mut T) -> ControlFlow<()> {

@@ -1,4 +1,4 @@
-use std::{ops::ControlFlow, time};
+use std::ops::ControlFlow;
 
 use crate::ui::*;
 
@@ -42,8 +42,8 @@ impl<T> Widget<T> for SizedBox<T> {
         self.widget.paint(canvas.resize(self.widget.size), data);
     }
 
-    fn update(&mut self, delta: time::Duration, ctx: &Context<'_>, data: &T) {
-        self.widget.update(delta, ctx, data);
+    fn update(&mut self, ctx: &Context<'_>, data: &T) {
+        self.widget.update(ctx, data);
     }
 
     fn event(&mut self, event: &WidgetEvent, ctx: &Context<'_>, data: &mut T) -> ControlFlow<()> {

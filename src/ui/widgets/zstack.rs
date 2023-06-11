@@ -1,5 +1,4 @@
 use std::ops::ControlFlow;
-use std::time;
 
 use crate::ui::*;
 
@@ -23,9 +22,9 @@ impl<T> ZStack<T> {
 }
 
 impl<T> Widget<T> for ZStack<T> {
-    fn update(&mut self, delta: time::Duration, ctx: &Context<'_>, data: &T) {
+    fn update(&mut self, ctx: &Context<'_>, data: &T) {
         for widget in &mut self.widgets {
-            widget.update(delta, ctx, data);
+            widget.update(ctx, data);
         }
     }
 

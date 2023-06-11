@@ -69,8 +69,8 @@ impl<T> Widget<T> for Align<T> {
         self.widget.paint(canvas, data);
     }
 
-    fn update(&mut self, delta: time::Duration, ctx: &Context<'_>, data: &T) {
-        self.widget.update(delta, ctx, data);
+    fn update(&mut self, ctx: &Context<'_>, data: &T) {
+        self.widget.update(ctx, data);
     }
 
     fn event(&mut self, event: &WidgetEvent, ctx: &Context<'_>, data: &mut T) -> ControlFlow<()> {

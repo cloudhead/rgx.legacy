@@ -28,7 +28,7 @@ pub enum WidgetEvent {
     },
     CharacterReceived(char, platform::ModifiersState),
     Paste(Option<String>),
-    Tick(time::Duration),
+    Tick(time::Instant),
     Frame,
 }
 

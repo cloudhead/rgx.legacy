@@ -10,7 +10,7 @@ pub trait Widget<T> {
 
     fn paint(&mut self, canvas: Canvas<'_>, data: &T) {}
 
-    fn update(&mut self, delta: time::Duration, ctx: &Context<'_>, data: &T) {}
+    fn update(&mut self, ctx: &Context<'_>, data: &T) {}
 
     fn event(&mut self, event: &WidgetEvent, ctx: &Context<'_>, data: &mut T) -> ControlFlow<()> {
         ControlFlow::Continue(())
@@ -59,8 +59,8 @@ impl<T> Widget<T> for Box<dyn Widget<T>> {
         self.deref_mut().layout(parent, ctx, data, env)
     }
 
-    fn update(&mut self, delta: time::Duration, ctx: &Context<'_>, data: &T) {
-        self.deref_mut().update(delta, ctx, data)
+    fn update(&mut self, ctx: &Context<'_>, data: &T) {
+        self.deref_mut().update(ctx, data)
     }
 
     fn paint(&mut self, canvas: Canvas<'_>, data: &T) {
