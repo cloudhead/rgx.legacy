@@ -23,7 +23,7 @@ pub use canvas::*;
 pub use context::*;
 pub use cursor::{Cursor, CursorStyle};
 pub use env::Env;
-pub use event::{InputState, WidgetEvent, WindowEvent};
+pub use event::{InputState, WidgetEvent};
 pub use widgets::align::Align;
 pub use widgets::align::{align, bottom, center, left, right, top};
 pub use widgets::click::Click;

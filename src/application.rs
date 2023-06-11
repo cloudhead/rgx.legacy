@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::{io, time};
 
+use crate::clock::Clock;
 use crate::gfx;
 use crate::gfx::prelude::*;
 use crate::gfx::Renderer;
@@ -15,8 +16,8 @@ use thiserror::Error;
 
 /// Default UI scale.
 pub const DEFAULT_SCALE: f32 = 2.;
-/// Target frame time (60hz).
-pub const TARGET_FRAME_TIME: time::Duration = time::Duration::from_nanos(16666666);
+/// Default target frames per second.
+pub const DEFAULT_TARGET_FPS: f64 = 60.;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -41,6 +42,8 @@ impl ImageOpts {
 pub struct Application {
     title: String,
     graphics: Graphics,
+    /// Target frames per second.
+    fps: f64,
     env: Env,
     cursors: Vec<(&'static str, Image, Point2D<u32>)>,
 }
@@ -52,6 +55,7 @@ impl Application {
 
         Self {
             title: title.to_owned(),
+            fps: DEFAULT_TARGET_FPS,
             graphics,
             env,
             cursors: Vec::new(),
@@ -64,11 +68,16 @@ impl Application {
     ) -> Result<Self, Error> {
         for (id, data, format) in fonts {
             let id = id.into();
-            log::debug!("Loading font {:?}..", id);
+            log::debug!("Loading font {id:?}..");
 
             self.graphics.font(id, data.as_ref(), format)?;
         }
         Ok(self)
+    }
+
+    pub fn fps(mut self, target: f64) -> Self {
+        self.fps = target;
+        self
     }
 
     pub fn cursors(mut self, image: Image) -> Self {
@@ -95,7 +104,7 @@ impl Application {
 
         if win.scale_factor() != 1. {
             warn!(
-                "Non-standard pixel scaling factor detected: {}",
+                "non-standard pixel scaling factor detected: {}",
                 win.scale_factor()
             );
         }
@@ -105,8 +114,8 @@ impl Application {
         let ui_scale = DEFAULT_SCALE;
 
         info!("window size: {}x{}", win_size.width, win_size.height);
-        info!("window scale: {}", win_scale);
-        info!("ui scale: {}", ui_scale);
+        info!("window scale: {win_scale}");
+        info!("ui scale: {ui_scale}");
         info!(
             "ui size: {}x{}",
             win_size.width as f32 / ui_scale,
@@ -123,11 +132,10 @@ impl Application {
         let mut update_timer = FrameTimer::new();
         let mut paint_timer = FrameTimer::new();
         let mut events = Vec::with_capacity(16);
-        let mut last = time::Instant::now();
+        let mut clock = Clock::new(time::Instant::now());
 
         // Window state.
         let mut resized = false;
-        let mut hovered = false;
         let mut minimized = false;
 
         root.lifecycle(
@@ -158,23 +166,13 @@ impl Application {
             self.graphics.cursors.insert(name, cursor);
         }
 
+        ////////////////////////////////////////////////////////////////////////////////////////
+        // Game loop
+        ////////////////////////////////////////////////////////////////////////////////////////
+
         while win.is_open() {
-            let delta = last.elapsed();
-
-            // usse a clock.tick
-            // return delta
-            // use same delta eveerywher
-
-            if delta >= TARGET_FRAME_TIME {
-                last = time::Instant::now();
-            } else {
-                std::thread::sleep(TARGET_FRAME_TIME - delta);
-            }
-            let start = time::Instant::now();
-
-            ////////////////////////////////////////////////////////////////////////////////////////
-            // Frame
-            ////////////////////////////////////////////////////////////////////////////////////////
+            let delta = clock.tick(self.fps);
+            win_events.poll();
 
             for event in win_events.flush() {
                 if event.is_input() {
@@ -194,18 +192,10 @@ impl Application {
                         }
                     }
                     WindowEvent::CursorEntered { .. } => {
-                        // events.push(WidgetEvent::CursorEntered);
-
-                        if win.is_focused() {
-                            // win.set_cursor_visible(false);
-                        }
-                        hovered = true;
+                        // events.push(WidgetEvent::MouseEnter);
                     }
                     WindowEvent::CursorLeft { .. } => {
-                        // events.push(WidgetEvent::CursorLeft);
-                        // win.set_cursor_visible(true);
-
-                        hovered = false;
+                        // events.push(WidgetEvent::MouseExit);
                     }
                     WindowEvent::Minimized => {
                         minimized = true;
@@ -213,13 +203,8 @@ impl Application {
                     WindowEvent::Restored => {
                         minimized = false;
                     }
-                    WindowEvent::Focused(true) => {
-                        if hovered {
-                            // win.set_cursor_visible(false);
-                        }
-                    }
-                    WindowEvent::Focused(false) => {
-                        // win.set_cursor_visible(true);
+                    WindowEvent::Focused(state) => {
+                        events.push(WidgetEvent::Focus(state));
                     }
                     WindowEvent::RedrawRequested => {
                         // All events currently trigger a redraw, we don't need to
@@ -304,7 +289,7 @@ impl Application {
 
             // If minimized, don't update or render.
             if minimized {
-                // continue;
+                continue;
             }
 
             // Since we may receive multiple resize events at once, instead of responded to each
@@ -314,7 +299,7 @@ impl Application {
                 renderer.handle_resized(win_size_logical);
                 events.push(WidgetEvent::Resized(win_size_ui));
             }
-            root.event(&WidgetEvent::Tick(time::Instant::now()), &ctx, &mut data);
+            root.event(&WidgetEvent::Tick(delta), &ctx, &mut data);
 
             // A common case is that we have multiple `CursorMoved` events
             // in one update. In that case we keep only the last one,
@@ -339,7 +324,6 @@ impl Application {
                         self.graphics.cursor = cursor;
                     }
                 }
-            } else {
             }
 
             update_timer.run(|_avg| {
@@ -370,22 +354,6 @@ impl Application {
             });
 
             win.present();
-
-            ////////////////////////////////////////////////////////////////////////////////////////
-
-            // let delta = start.elapsed();
-            // waiting = waiting.saturating_sub(delta);
-
-            // We try to match `TARGET_FRAME_TIME` by subtracting whatever of the frame time we've
-            // already spent waiting.
-            // if waiting == time::Duration::ZERO {
-            //     win_events.poll();
-            //     waiting = TARGET_FRAME_TIME;
-            // } else {
-            //     eprintln!("waiting: {:?}", waiting);
-            // win_events.wait_timeout(time::Duration::from_millis(1));
-            win_events.poll();
-            // }
         }
         Ok(())
     }

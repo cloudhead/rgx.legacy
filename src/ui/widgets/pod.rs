@@ -90,12 +90,19 @@ impl<T, W: Widget<T>> Widget<T> for Pod<T, W> {
     }
 
     fn event(&mut self, event: &WidgetEvent, ctx: &Context<'_>, data: &mut T) -> ControlFlow<()> {
+        let parent = ctx;
         let ctx = self.context(ctx);
 
         match event {
-            WidgetEvent::MouseEnter(point) => {
-                let cursor = point.untransform(self.transform());
+            WidgetEvent::MouseEnter(cursor) => {
+                let event_c = cursor;
+                let cursor = cursor.untransform(self.transform());
                 let contains = self.bounds().contains(cursor) && self.widget.contains(cursor);
+
+                eprintln!(
+                    "parent:{} child:{} event:{} cursor:{}",
+                    parent.cursor, ctx.cursor, event_c, cursor
+                );
 
                 if contains {
                     self.hot = true;
@@ -118,7 +125,7 @@ impl<T, W: Widget<T>> Widget<T> for Pod<T, W> {
                 let contains = self.bounds().contains(cursor) && self.widget.contains(cursor);
 
                 if contains {
-                    // If the widget wasn't hot before, we send a `MouseOver`.
+                    // If the widget wasn't hot before, we send a `MouseEnter`.
                     if self.hot {
                         self.widget
                             .event(&WidgetEvent::MouseMove(cursor), &ctx, data)
@@ -135,7 +142,11 @@ impl<T, W: Widget<T>> Widget<T> for Pod<T, W> {
                 }
             }
             WidgetEvent::MouseDown(_) => {
-                log::debug!(target: "ui", "{} #{} MouseDown (hot = {})", self.display(), self.id, self.hot);
+                log::debug!(
+                    target: "ui",
+                    "{} #{} MouseDown (hot = {}) (cursor = {})",
+                    self.display(), self.id, self.hot, ctx.cursor
+                );
 
                 // Only propagate event if hot.
                 if self.hot {

@@ -13,6 +13,7 @@ extern crate log;
 
 pub mod alloc;
 pub mod application;
+pub mod clock;
 pub mod gfx;
 pub mod logger;
 pub mod math;

@@ -2,7 +2,7 @@
 use std::ops::ControlFlow;
 use std::time;
 
-use rgx::application::{ImageOpts, TARGET_FRAME_TIME};
+use rgx::application::ImageOpts;
 use rgx::gfx::Image;
 use rgx::math::*;
 use rgx::ui::canvas::Canvas;
@@ -43,17 +43,9 @@ impl Widget<World> for Root {
         world: &mut World,
     ) -> ControlFlow<()> {
         match event {
-            WidgetEvent::Tick(time) => {
-                let delta = *time - self.last;
-
-                if delta >= TARGET_FRAME_TIME {
-                    eprintln!("delta: {:?}", delta);
-                    // dbg!(self.acc);
-                    self.last = *time;
-
-                    self.offset.x += 1.;
-                    self.offset.y += 1.;
-                }
+            WidgetEvent::Tick(delta) => {
+                self.offset.x += 1. * (delta.as_secs_f32() * 10.);
+                self.offset.y += 1. * (delta.as_secs_f32() * 10.);
             }
             _ => {}
         }
