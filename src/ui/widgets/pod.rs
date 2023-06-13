@@ -90,24 +90,16 @@ impl<T, W: Widget<T>> Widget<T> for Pod<T, W> {
     }
 
     fn event(&mut self, event: &WidgetEvent, ctx: &Context<'_>, data: &mut T) -> ControlFlow<()> {
-        let parent = ctx;
         let ctx = self.context(ctx);
 
         match event {
-            WidgetEvent::MouseEnter(cursor) => {
-                let event_c = cursor;
-                let cursor = cursor.untransform(self.transform());
+            WidgetEvent::MouseEnter => {
+                let cursor = ctx.cursor.untransform(self.transform());
                 let contains = self.bounds().contains(cursor) && self.widget.contains(cursor);
-
-                eprintln!(
-                    "parent:{} child:{} event:{} cursor:{}",
-                    parent.cursor, ctx.cursor, event_c, cursor
-                );
 
                 if contains {
                     self.hot = true;
-                    self.widget
-                        .event(&WidgetEvent::MouseEnter(cursor), &ctx, data)
+                    self.widget.event(&WidgetEvent::MouseEnter, &ctx, data)
                 } else {
                     ControlFlow::Continue(())
                 }
@@ -131,8 +123,7 @@ impl<T, W: Widget<T>> Widget<T> for Pod<T, W> {
                             .event(&WidgetEvent::MouseMove(cursor), &ctx, data)
                     } else {
                         self.hot = true;
-                        self.widget
-                            .event(&WidgetEvent::MouseEnter(cursor), &ctx, data)
+                        self.widget.event(&WidgetEvent::MouseEnter, &ctx, data)
                     }
                 } else if self.hot {
                     self.hot = false;
@@ -142,12 +133,6 @@ impl<T, W: Widget<T>> Widget<T> for Pod<T, W> {
                 }
             }
             WidgetEvent::MouseDown(_) => {
-                log::debug!(
-                    target: "ui",
-                    "{} #{} MouseDown (hot = {}) (cursor = {})",
-                    self.display(), self.id, self.hot, ctx.cursor
-                );
-
                 // Only propagate event if hot.
                 if self.hot {
                     self.active = true;

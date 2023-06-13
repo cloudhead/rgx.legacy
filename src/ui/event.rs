@@ -12,7 +12,7 @@ pub enum WidgetEvent {
     MouseScroll(platform::LogicalDelta),
     MouseMove(Point),
     Resized(Size),
-    MouseEnter(Point),
+    MouseEnter,
     MouseExit,
     Focus(bool),
     KeyDown {

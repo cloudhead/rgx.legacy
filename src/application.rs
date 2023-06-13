@@ -174,6 +174,12 @@ impl Application {
             let delta = clock.tick(self.fps);
             win_events.poll();
 
+            let cursor = Point2D::<f64>::from(win.get_cursor_pos()) / ui_scale as f64;
+            let cursor = cursor.map(|n| n.floor());
+            let win_size_logical = win.size();
+            let win_size_ui = Size::from(win_size_logical) / ui_scale;
+            let ctx = Context::new(Point::from(cursor), &store);
+
             for event in win_events.flush() {
                 if event.is_input() {
                     trace!("event: {:?}", event);
@@ -216,11 +222,10 @@ impl Application {
                     WindowEvent::CloseRequested => {
                         // Ignore.
                     }
-                    WindowEvent::CursorMoved { position } => {
-                        events.push(WidgetEvent::MouseMove(Point::new(
-                            (position.x as f32 / ui_scale).floor(),
-                            (position.y as f32 / ui_scale).floor(),
-                        )));
+                    WindowEvent::CursorMoved { .. } => {
+                        // Nb. The position given in the event can be delayed by a frame sometimes.
+                        // Therefore, we use the position gotten at the start of the render loop.
+                        events.push(WidgetEvent::MouseMove(Point::from(cursor)));
                     }
                     WindowEvent::MouseInput { state, button, .. } => match state {
                         platform::InputState::Pressed => {
@@ -281,11 +286,8 @@ impl Application {
                     _ => {}
                 };
             }
-            let cursor = Point2D::<f64>::from(win.get_cursor_pos()) / ui_scale as f64;
-            let cursor = cursor.map(|n| n.floor());
-            let win_size_logical = win.size();
-            let win_size_ui = Size::from(win_size_logical) / ui_scale;
-            let ctx = Context::new(Point::from(cursor), &store);
+
+            // NOTE: `ctx.cursor` is often one frame ahead of `CursorMove`.
 
             // If minimized, don't update or render.
             if minimized {

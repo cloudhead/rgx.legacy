@@ -34,7 +34,7 @@ impl<T> Widget<T> for Element {
 
                 return ControlFlow::Break(());
             }
-            WidgetEvent::MouseEnter(_) => {
+            WidgetEvent::MouseEnter => {
                 self.1 = 1.0;
 
                 return ControlFlow::Break(());
